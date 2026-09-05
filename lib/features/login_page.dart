@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
+import 'login_decorations.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -15,6 +16,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _password = TextEditingController();
   bool _remember = false, _hidden = true, _busy = false;
   String? _error;
+
   @override
   void initState() {
     super.initState();
@@ -56,245 +58,330 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.white,
+    backgroundColor: const Color(0xFF03144B),
     body: SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(28, 26, 28, 28),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF143E9D), KokColors.navy],
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        'KONI KABUPATEN GARUT',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Image.asset(
-                            'assets/branding/logo-koni.png',
-                            width: 102,
-                            height: 112,
-                            semanticLabel: 'Logo KONI Garut',
-                          ),
-                          const SizedBox(width: 24),
-                          Image.asset(
-                            'assets/branding/mascot.png',
-                            width: 70,
-                            height: 90,
-                            semanticLabel: 'Maskot domba Garut',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Selamat Datang!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Bersama memajukan olahraga Garut.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
-                  ),
-                  child: Form(
-                    key: _form,
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  LoginHeaderDecoration(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          'Login Akun',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 25,
-                            fontWeight: FontWeight.w700,
-                            color: KokColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Koordinator Organisasi Kecamatan',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: KokColors.muted,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 26),
-                        const Text(
-                          'Nomor SK',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: KokColors.ink,
-                          ),
-                        ),
                         const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _sk,
-                          textInputAction: TextInputAction.next,
-                          autofillHints: const [AutofillHints.username],
-                          decoration: const InputDecoration(
-                            hintText: 'Masukkan nomor SK',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          validator: (v) => v == null || v.trim().isEmpty
-                              ? 'Nomor SK wajib diisi.'
-                              : null,
-                        ),
-                        const SizedBox(height: 18),
-                        const Text(
-                          'Kata sandi',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: KokColors.ink,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _password,
-                          obscureText: _hidden,
-                          enableSuggestions: false,
-                          autocorrect: false,
-                          onFieldSubmitted: (_) => _busy ? null : _submit(),
-                          decoration: InputDecoration(
-                            hintText: 'Masukkan kata sandi',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              tooltip: _hidden
-                                  ? 'Tampilkan kata sandi'
-                                  : 'Sembunyikan kata sandi',
-                              onPressed: () =>
-                                  setState(() => _hidden = !_hidden),
-                              icon: Icon(
-                                _hidden
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                              ),
-                            ),
-                          ),
-                          validator: (v) => v == null || v.isEmpty
-                              ? 'Kata sandi wajib diisi.'
-                              : null,
-                        ),
-                        Material(
-                          color: Colors.transparent,
-                          child: CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            title: const Text(
-                              'Ingat nomor SK',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: KokColors.muted,
-                              ),
-                            ),
-                            value: _remember,
-                            onChanged: (v) =>
-                                setState(() => _remember = v ?? false),
-                          ),
-                        ),
-                        if (_error != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              _error!,
-                              style: const TextStyle(color: KokColors.red),
-                            ),
-                          ),
-                        FilledButton.icon(
-                          onPressed: _busy ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: KokColors.navy,
-                          ),
-                          icon: _busy
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.login),
-                          label: const Text('Masuk demo'),
-                        ),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: KokColors.pale,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Column(
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Text(
-                                'AKUN DEMO',
-                                style: TextStyle(
-                                  color: KokColors.ink,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.4,
-                                ),
+                              Image.asset(
+                                'assets/branding/mascot.png',
+                                width: 72,
+                                height: 88,
+                                semanticLabel: 'Maskot domba Garut kiri',
                               ),
-                              SizedBox(height: 4),
-                              SelectableText(
-                                'DEMO-001  /  kokgarut123',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: KokColors.ink,
-                                ),
+                              const SizedBox(width: 14),
+                              Image.asset(
+                                'assets/branding/logo-koni.png',
+                                width: 104,
+                                height: 114,
+                                semanticLabel: 'Logo KONI Garut',
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Autentikasi SICABOR belum terhubung.',
-                                style: TextStyle(
-                                  color: KokColors.muted,
-                                  fontSize: 11,
+                              const SizedBox(width: 14),
+                              Transform.flip(
+                                flipX: true,
+                                child: Image.asset(
+                                  'assets/branding/mascot.png',
+                                  width: 72,
+                                  height: 88,
+                                  semanticLabel: 'Maskot domba Garut kanan',
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 18),
+                        const Text(
+                          'Selamat Datang!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Silakan masuk untuk melanjutkan',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(32),
+                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(28, 30, 28, 24),
+                      child: Form(
+                        key: _form,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              'Masuk Akun',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0C2464),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Gunakan akun KOK Anda untuk mengakses sistem',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFF757575),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 26),
+                            const Text(
+                              'Nomor SK',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0C2464),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _sk,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.username],
+                              decoration: InputDecoration(
+                                hintText: 'Masukkan nomor SK',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFF9E9E9E),
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.account_circle_outlined,
+                                  color: Color(0xFF757575),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD4D8E0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD4D8E0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF0C2464),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                              validator: (v) =>
+                                  v == null || v.trim().isEmpty
+                                      ? 'Nomor SK wajib diisi.'
+                                      : null,
+                            ),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Kata Sandi',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0C2464),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _password,
+                              obscureText: _hidden,
+                              enableSuggestions: false,
+                              autocorrect: false,
+                              onFieldSubmitted: (_) =>
+                                  _busy ? null : _submit(),
+                              decoration: InputDecoration(
+                                hintText: 'Masukkan kata sandi',
+                                hintStyle: const TextStyle(
+                                  color: Color(0xFF9E9E9E),
+                                  fontSize: 14,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: Color(0xFF757575),
+                                ),
+                                suffixIcon: IconButton(
+                                  tooltip: _hidden
+                                      ? 'Tampilkan kata sandi'
+                                      : 'Sembunyikan kata sandi',
+                                  onPressed: () =>
+                                      setState(() => _hidden = !_hidden),
+                                  icon: Icon(
+                                    _hidden
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
+                                    color: const Color(0xFF757575),
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD4D8E0),
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFFD4D8E0),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF0C2464),
+                                    width: 1.5,
+                                  ),
+                                ),
+                              ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty
+                                      ? 'Kata sandi wajib diisi.'
+                                      : null,
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _remember,
+                                    materialTapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                    activeColor: const Color(0xFF061A5C),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    side: const BorderSide(
+                                      color: Color(0xFF9E9E9E),
+                                      width: 1.5,
+                                    ),
+                                    onChanged: (v) => setState(
+                                      () => _remember = v ?? false,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => setState(
+                                    () => _remember = !_remember,
+                                  ),
+                                  child: const Text(
+                                    'Ingat Saya',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Color(0xFF616161),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_error != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: KokColors.red,
+                                    fontSize: 13,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            const SizedBox(height: 20),
+                            SizedBox(
+                              height: 50,
+                              child: FilledButton.icon(
+                                onPressed: _busy ? null : _submit,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF061A5C),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                icon: _busy
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.login_rounded,
+                                        size: 20,
+                                      ),
+                                label: const Text('Masuk'),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const Center(
+                              child: SelectableText(
+                                'Mode demo: DEMO-001 · kokgarut123',
+                                style: TextStyle(
+                                  color: Color(0xFF9E9E9E),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
