@@ -7,6 +7,8 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_brand_palette.dart';
 import 'package:kok_app/features/club_detail/club_detail_header.dart';
 import 'package:kok_app/features/club_detail/club_detail_tabs.dart';
+import 'package:kok_app/features/club_detail/club_people_tab.dart';
+import 'package:kok_app/features/club_detail/club_person_card.dart';
 
 const testClub = Club(
   id: 'garuda',
@@ -215,5 +217,181 @@ void main() {
     );
 
     expect(find.text('0 berkas kurang'), findsNothing);
+  });
+
+  testWidgets(
+    'person card hides unavailable metadata and shows document warning',
+    (tester) async {
+      const person = SportPerson(
+        id: 'a1',
+        name: 'Alya Putri',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-18',
+        missingDocuments: ['Kartu Keluarga'],
+      );
+      final palette = ClubBrandPaletteResolver.resolve(testClub);
+      await tester.pumpWidget(
+        app(ClubPersonCard(person: person, palette: palette, onTap: () {})),
+      );
+      expect(find.text('Alya Putri'), findsOneWidget);
+      expect(find.text('U-18'), findsOneWidget);
+      expect(find.text('berkas'), findsOneWidget);
+      expect(find.textContaining('null'), findsNothing);
+    },
+  );
+
+  testWidgets('person card uses role-specific warnings and callback', (
+    tester,
+  ) async {
+    var selected = false;
+    const coach = SportPerson(
+      id: 'p1',
+      name: 'Coach Dedi',
+      clubId: 'garuda',
+      role: 'Pelatih',
+      group: 'Lisensi C',
+      expiredLicense: true,
+    );
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    await tester.pumpWidget(
+      app(
+        ClubPersonCard(
+          person: coach,
+          palette: palette,
+          onTap: () => selected = true,
+        ),
+      ),
+    );
+
+    expect(find.text('lisensi'), findsOneWidget);
+    await tester.tap(find.text('Coach Dedi'));
+    expect(selected, isTrue);
+
+    await tester.pumpWidget(
+      app(
+        ClubPersonCard(
+          person: coach.copyWith(
+            id: 'o1',
+            name: 'Official Rani',
+            role: 'Official',
+            expiredLicense: false,
+            verified: false,
+          ),
+          palette: palette,
+          onTap: () {},
+        ),
+      ),
+    );
+    expect(find.text('verifikasi'), findsOneWidget);
+  });
+
+  testWidgets('people tab applies and resets role-specific filters', (
+    tester,
+  ) async {
+    const people = [
+      SportPerson(
+        id: '1',
+        name: 'Alya Putri',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-18',
+      ),
+      SportPerson(
+        id: '2',
+        name: 'Bima Putra',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-16',
+      ),
+      SportPerson(
+        id: '3',
+        name: 'Coach Dedi',
+        clubId: 'garuda',
+        role: 'Pelatih',
+        group: 'Lisensi C',
+      ),
+    ];
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    await tester.pumpWidget(
+      app(
+        ClubPeopleTab(
+          role: 'Atlet',
+          people: people,
+          palette: palette,
+          onPersonTap: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Alya Putri'), findsOneWidget);
+    expect(find.text('Bima Putra'), findsOneWidget);
+    expect(find.text('Coach Dedi'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-filter-query')),
+      'alya',
+    );
+    await tester.tap(find.byKey(const ValueKey('club-filter-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('U-18').last);
+    await tester.tap(find.text('Terapkan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alya Putri'), findsOneWidget);
+    expect(find.text('Bima Putra'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reset'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alya Putri'), findsOneWidget);
+    expect(find.text('Bima Putra'), findsOneWidget);
+  });
+
+  testWidgets('dismissing filter sheet preserves committed filters', (
+    tester,
+  ) async {
+    const people = [
+      SportPerson(
+        id: '1',
+        name: 'Alya Putri',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-18',
+      ),
+      SportPerson(
+        id: '2',
+        name: 'Bima Putra',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-16',
+      ),
+    ];
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    await tester.pumpWidget(
+      app(
+        ClubPeopleTab(
+          role: 'Atlet',
+          people: people,
+          palette: palette,
+          onPersonTap: (_) {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-filter-query')),
+      'alya',
+    );
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alya Putri'), findsOneWidget);
+    expect(find.text('Bima Putra'), findsOneWidget);
   });
 }
