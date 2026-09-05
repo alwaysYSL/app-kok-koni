@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/app.dart';
 import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/features/clubs_page.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
 
 Future<ProviderContainer> start(
@@ -148,4 +149,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Perlu Perhatian'), findsWidgets);
   });
+
+  testWidgets('ClubsPage renders polished UI, sort modal, filter chips and dynamic count', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await container
+        .read(sessionProvider.notifier)
+        .signIn('DEMO-001', 'kokgarut123', false);
+    await tester.pumpAndSettle();
+
+    container.read(routerProvider).go('/clubs');
+    await tester.pumpAndSettle();
+
+    // Verify dynamic count in AppBar and subtitle
+    expect(find.textContaining('Klub ('), findsOneWidget);
+    expect(find.textContaining('klub ·'), findsOneWidget);
+
+    // Verify filter chips
+    expect(find.text('Semua'), findsOneWidget);
+    expect(find.widgetWithText(FilterChipDropdown, 'Cabor'), findsOneWidget);
+    expect(find.widgetWithText(FilterChipDropdown, 'Status'), findsOneWidget);
+    expect(find.widgetWithText(FilterChipDropdown, 'Kel.'), findsOneWidget);
+
+    // Verify sort button opens sort modal
+    await tester.tap(find.byIcon(Icons.swap_vert));
+    await tester.pumpAndSettle();
+    expect(find.text('Urutkan Klub'), findsOneWidget);
+    expect(find.text('Nama (A → Z)'), findsOneWidget);
+    expect(find.text('Jumlah Atlet Terbanyak'), findsOneWidget);
+
+    // Tap sort by athletes
+    await tester.tap(find.text('Jumlah Atlet Terbanyak'));
+    await tester.pumpAndSettle();
+
+    // Modal should close
+    expect(find.text('Urutkan Klub'), findsNothing);
+  });
 }
+
