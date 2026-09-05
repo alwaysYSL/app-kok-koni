@@ -45,6 +45,7 @@ void main() {
         'anggota': '/committee',
         'profil': '/profile',
         'detail-klub': '/club/garuda',
+        'perlu-perhatian': '/attention',
       }.entries) {
         container.read(routerProvider).go(entry.value);
         await tester.pumpAndSettle();
