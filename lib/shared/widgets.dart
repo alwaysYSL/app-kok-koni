@@ -164,19 +164,145 @@ IconData sportIcon(String sport) => switch (sport) {
   _ => Icons.emoji_events_outlined,
 };
 
+({Color background, Color foreground}) sportThematicColors(String sport) => switch (sport) {
+  'Sepak Bola' => (
+    background: const Color(0xFFE8F0FE),
+    foreground: const Color(0xFF1B4F9E),
+  ),
+  'Bulu Tangkis' => (
+    background: const Color(0xFFEDE7F6),
+    foreground: const Color(0xFF4338CA),
+  ),
+  'Pencak Silat' => (
+    background: const Color(0xFFFBE9E7),
+    foreground: const Color(0xFFD84315),
+  ),
+  'Renang' => (
+    background: const Color(0xFFE0F2F1),
+    foreground: const Color(0xFF00796B),
+  ),
+  'Voli' => (
+    background: const Color(0xFFFFF8E1),
+    foreground: const Color(0xFFF57C00),
+  ),
+  _ => (
+    background: KokColors.pale,
+    foreground: KokColors.blue,
+  ),
+};
+
 class SportAvatar extends StatelessWidget {
-  const SportAvatar(this.sport, {super.key});
+  const SportAvatar(
+    this.sport, {
+    super.key,
+    this.size = 44,
+    this.iconSize = 26,
+    this.backgroundColor,
+    this.foregroundColor,
+  });
+
   final String sport;
+  final double size;
+  final double iconSize;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+
   @override
-  Widget build(BuildContext context) => Container(
-    width: 44,
-    height: 44,
-    decoration: BoxDecoration(
-      color: KokColors.pale,
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Icon(sportIcon(sport), color: KokColors.blue, size: 26),
-  );
+  Widget build(BuildContext context) {
+    final colors = sportThematicColors(sport);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? colors.background,
+        borderRadius: BorderRadius.circular(12),
+        shape: BoxShape.rectangle,
+      ),
+      child: Icon(
+        sportIcon(sport),
+        color: foregroundColor ?? colors.foreground,
+        size: iconSize,
+      ),
+    );
+  }
+}
+
+class DashedDivider extends StatelessWidget {
+  const DashedDivider({
+    super.key,
+    this.height = 1.0,
+    this.dashWidth = 5.0,
+    this.dashSpace = 3.0,
+    this.color = const Color(0xFFE5E7EB),
+  });
+
+  final double height;
+  final double dashWidth;
+  final double dashSpace;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : 0.0;
+        return SizedBox(
+          width: width,
+          height: height,
+          child: CustomPaint(
+            size: Size(width, height),
+            painter: DashedDividerPainter(
+              color: color,
+              dashWidth: dashWidth,
+              dashSpace: dashSpace,
+              strokeWidth: height,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class DashedDividerPainter extends CustomPainter {
+  const DashedDividerPainter({
+    required this.color,
+    required this.dashWidth,
+    required this.dashSpace,
+    required this.strokeWidth,
+  });
+
+  final Color color;
+  final double dashWidth;
+  final double dashSpace;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (dashWidth <= 0 || dashSpace <= 0 || strokeWidth <= 0 || size.width <= 0) {
+      return;
+    }
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final y = size.height / 2;
+    double startX = 0;
+    while (startX < size.width) {
+      final endX = (startX + dashWidth).clamp(0.0, size.width);
+      canvas.drawLine(Offset(startX, y), Offset(endX, y), paint);
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant DashedDividerPainter oldDelegate) {
+    return oldDelegate.color != color ||
+        oldDelegate.dashWidth != dashWidth ||
+        oldDelegate.dashSpace != dashSpace ||
+        oldDelegate.strokeWidth != strokeWidth;
+  }
 }
 
 class DetailRow extends StatelessWidget {
