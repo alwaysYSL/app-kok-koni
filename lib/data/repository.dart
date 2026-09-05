@@ -38,12 +38,16 @@ class DemoKokRepository implements KokRepository {
         name: 'Klub Garuda Muda',
         sport: 'Sepak Bola',
         village: 'Pakuwon',
+        brandPrimaryHex: '#5B566E',
+        brandSecondaryHex: '#11294B',
       ),
       Club(
         id: 'pb',
         name: 'PB Citra Garut',
         sport: 'Bulu Tangkis',
         village: 'Paminggir',
+        brandPrimaryHex: '#A51D2A',
+        brandSecondaryHex: '#670A13',
       ),
       Club(
         id: 'silat',
@@ -56,6 +60,8 @@ class DemoKokRepository implements KokRepository {
         name: 'Voli Bina Muda',
         sport: 'Voli',
         village: 'Pakuwon',
+        brandPrimaryHex: '#F3B51B',
+        brandSecondaryHex: '#8F6100',
       ),
       Club(
         id: 'tirta',
@@ -76,6 +82,8 @@ class DemoKokRepository implements KokRepository {
             clubId: clubs[c].id,
             role: 'Atlet',
             group: i.isEven ? 'U-18' : 'U-16',
+            gender: i.isEven ? 'L' : 'P',
+            age: 15 + (i % 4),
             verified: !(c == 0 && i < 8),
             missingDocuments: c == 0 && i < 8
                 ? ['Kartu Keluarga', 'Akta kelahiran']
@@ -150,12 +158,7 @@ List<SportPerson> clubPeople(KokSnapshot data, String id, [String? role]) =>
         .where((p) => p.clubId == id && (role == null || p.role == role))
         .toList();
 
-enum ClubSortOption {
-  nameAsc,
-  nameDesc,
-  athletesDesc,
-  statusActiveFirst,
-}
+enum ClubSortOption { nameAsc, nameDesc, athletesDesc, statusActiveFirst }
 
 List<Club> filterClubs(
   List<Club> clubs, {
@@ -180,8 +183,8 @@ List<Club> filterClubs(
 
   final effectiveSort =
       (ascending != null && sortOption == ClubSortOption.nameAsc)
-          ? (ascending ? ClubSortOption.nameAsc : ClubSortOption.nameDesc)
-          : sortOption;
+      ? (ascending ? ClubSortOption.nameAsc : ClubSortOption.nameDesc)
+      : sortOption;
 
   switch (effectiveSort) {
     case ClubSortOption.nameAsc:
