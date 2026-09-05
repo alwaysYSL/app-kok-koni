@@ -12,6 +12,11 @@ _Club _$ClubFromJson(Map<String, dynamic> json) => _Club(
   sport: json['sport'] as String,
   village: json['village'] as String,
   active: json['active'] as bool? ?? true,
+  logoUrl: json['logoUrl'] as String?,
+  brandPrimaryHex: json['brandPrimaryHex'] as String?,
+  brandSecondaryHex: json['brandSecondaryHex'] as String?,
+  foundedYear: (json['foundedYear'] as num?)?.toInt(),
+  registrationNumber: json['registrationNumber'] as String?,
 );
 
 Map<String, dynamic> _$ClubToJson(_Club instance) => <String, dynamic>{
@@ -20,6 +25,11 @@ Map<String, dynamic> _$ClubToJson(_Club instance) => <String, dynamic>{
   'sport': instance.sport,
   'village': instance.village,
   'active': instance.active,
+  'logoUrl': instance.logoUrl,
+  'brandPrimaryHex': instance.brandPrimaryHex,
+  'brandSecondaryHex': instance.brandSecondaryHex,
+  'foundedYear': instance.foundedYear,
+  'registrationNumber': instance.registrationNumber,
 };
 
 _SportPerson _$SportPersonFromJson(Map<String, dynamic> json) => _SportPerson(
@@ -35,6 +45,9 @@ _SportPerson _$SportPersonFromJson(Map<String, dynamic> json) => _SportPerson(
           ?.map((e) => e as String)
           .toList() ??
       const <String>[],
+  photoUrl: json['photoUrl'] as String?,
+  gender: json['gender'] as String?,
+  age: (json['age'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$SportPersonToJson(_SportPerson instance) =>
@@ -47,6 +60,9 @@ Map<String, dynamic> _$SportPersonToJson(_SportPerson instance) =>
       'verified': instance.verified,
       'expiredLicense': instance.expiredLicense,
       'missingDocuments': instance.missingDocuments,
+      'photoUrl': instance.photoUrl,
+      'gender': instance.gender,
+      'age': instance.age,
     };
 
 _CommitteeMember _$CommitteeMemberFromJson(Map<String, dynamic> json) =>

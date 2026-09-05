@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Club {
 
- String get id; String get name; String get sport; String get village; bool get active;
+ String get id; String get name; String get sport; String get village; bool get active; String? get logoUrl; String? get brandPrimaryHex; String? get brandSecondaryHex; int? get foundedYear; String? get registrationNumber;
 /// Create a copy of Club
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ClubCopyWith<Club> get copyWith => _$ClubCopyWithImpl<Club>(this as Club, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Club&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.sport, sport) || other.sport == sport)&&(identical(other.village, village) || other.village == village)&&(identical(other.active, active) || other.active == active));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Club&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.sport, sport) || other.sport == sport)&&(identical(other.village, village) || other.village == village)&&(identical(other.active, active) || other.active == active)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.brandPrimaryHex, brandPrimaryHex) || other.brandPrimaryHex == brandPrimaryHex)&&(identical(other.brandSecondaryHex, brandSecondaryHex) || other.brandSecondaryHex == brandSecondaryHex)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.registrationNumber, registrationNumber) || other.registrationNumber == registrationNumber));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,sport,village,active);
+int get hashCode => Object.hash(runtimeType,id,name,sport,village,active,logoUrl,brandPrimaryHex,brandSecondaryHex,foundedYear,registrationNumber);
 
 @override
 String toString() {
-  return 'Club(id: $id, name: $name, sport: $sport, village: $village, active: $active)';
+  return 'Club(id: $id, name: $name, sport: $sport, village: $village, active: $active, logoUrl: $logoUrl, brandPrimaryHex: $brandPrimaryHex, brandSecondaryHex: $brandSecondaryHex, foundedYear: $foundedYear, registrationNumber: $registrationNumber)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ClubCopyWith<$Res>  {
   factory $ClubCopyWith(Club value, $Res Function(Club) _then) = _$ClubCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String sport, String village, bool active
+ String id, String name, String sport, String village, bool active, String? logoUrl, String? brandPrimaryHex, String? brandSecondaryHex, int? foundedYear, String? registrationNumber
 });
 
 
@@ -65,14 +65,19 @@ class _$ClubCopyWithImpl<$Res>
 
 /// Create a copy of Club
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? sport = null,Object? village = null,Object? active = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? sport = null,Object? village = null,Object? active = null,Object? logoUrl = freezed,Object? brandPrimaryHex = freezed,Object? brandSecondaryHex = freezed,Object? foundedYear = freezed,Object? registrationNumber = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,sport: null == sport ? _self.sport : sport // ignore: cast_nullable_to_non_nullable
 as String,village: null == village ? _self.village : village // ignore: cast_nullable_to_non_nullable
 as String,active: null == active ? _self.active : active // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,logoUrl: freezed == logoUrl ? _self.logoUrl : logoUrl // ignore: cast_nullable_to_non_nullable
+as String?,brandPrimaryHex: freezed == brandPrimaryHex ? _self.brandPrimaryHex : brandPrimaryHex // ignore: cast_nullable_to_non_nullable
+as String?,brandSecondaryHex: freezed == brandSecondaryHex ? _self.brandSecondaryHex : brandSecondaryHex // ignore: cast_nullable_to_non_nullable
+as String?,foundedYear: freezed == foundedYear ? _self.foundedYear : foundedYear // ignore: cast_nullable_to_non_nullable
+as int?,registrationNumber: freezed == registrationNumber ? _self.registrationNumber : registrationNumber // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -157,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String sport,  String village,  bool active)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String sport,  String village,  bool active,  String? logoUrl,  String? brandPrimaryHex,  String? brandSecondaryHex,  int? foundedYear,  String? registrationNumber)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Club() when $default != null:
-return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case _:
+return $default(_that.id,_that.name,_that.sport,_that.village,_that.active,_that.logoUrl,_that.brandPrimaryHex,_that.brandSecondaryHex,_that.foundedYear,_that.registrationNumber);case _:
   return orElse();
 
 }
@@ -178,10 +183,10 @@ return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String sport,  String village,  bool active)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String sport,  String village,  bool active,  String? logoUrl,  String? brandPrimaryHex,  String? brandSecondaryHex,  int? foundedYear,  String? registrationNumber)  $default,) {final _that = this;
 switch (_that) {
 case _Club():
-return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case _:
+return $default(_that.id,_that.name,_that.sport,_that.village,_that.active,_that.logoUrl,_that.brandPrimaryHex,_that.brandSecondaryHex,_that.foundedYear,_that.registrationNumber);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +203,10 @@ return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String sport,  String village,  bool active)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String sport,  String village,  bool active,  String? logoUrl,  String? brandPrimaryHex,  String? brandSecondaryHex,  int? foundedYear,  String? registrationNumber)?  $default,) {final _that = this;
 switch (_that) {
 case _Club() when $default != null:
-return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case _:
+return $default(_that.id,_that.name,_that.sport,_that.village,_that.active,_that.logoUrl,_that.brandPrimaryHex,_that.brandSecondaryHex,_that.foundedYear,_that.registrationNumber);case _:
   return null;
 
 }
@@ -213,7 +218,7 @@ return $default(_that.id,_that.name,_that.sport,_that.village,_that.active);case
 @JsonSerializable()
 
 class _Club implements Club {
-  const _Club({required this.id, required this.name, required this.sport, required this.village, this.active = true});
+  const _Club({required this.id, required this.name, required this.sport, required this.village, this.active = true, this.logoUrl, this.brandPrimaryHex, this.brandSecondaryHex, this.foundedYear, this.registrationNumber});
   factory _Club.fromJson(Map<String, dynamic> json) => _$ClubFromJson(json);
 
 @override final  String id;
@@ -221,6 +226,11 @@ class _Club implements Club {
 @override final  String sport;
 @override final  String village;
 @override@JsonKey() final  bool active;
+@override final  String? logoUrl;
+@override final  String? brandPrimaryHex;
+@override final  String? brandSecondaryHex;
+@override final  int? foundedYear;
+@override final  String? registrationNumber;
 
 /// Create a copy of Club
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Club&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.sport, sport) || other.sport == sport)&&(identical(other.village, village) || other.village == village)&&(identical(other.active, active) || other.active == active));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Club&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.sport, sport) || other.sport == sport)&&(identical(other.village, village) || other.village == village)&&(identical(other.active, active) || other.active == active)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.brandPrimaryHex, brandPrimaryHex) || other.brandPrimaryHex == brandPrimaryHex)&&(identical(other.brandSecondaryHex, brandSecondaryHex) || other.brandSecondaryHex == brandSecondaryHex)&&(identical(other.foundedYear, foundedYear) || other.foundedYear == foundedYear)&&(identical(other.registrationNumber, registrationNumber) || other.registrationNumber == registrationNumber));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,sport,village,active);
+int get hashCode => Object.hash(runtimeType,id,name,sport,village,active,logoUrl,brandPrimaryHex,brandSecondaryHex,foundedYear,registrationNumber);
 
 @override
 String toString() {
-  return 'Club(id: $id, name: $name, sport: $sport, village: $village, active: $active)';
+  return 'Club(id: $id, name: $name, sport: $sport, village: $village, active: $active, logoUrl: $logoUrl, brandPrimaryHex: $brandPrimaryHex, brandSecondaryHex: $brandSecondaryHex, foundedYear: $foundedYear, registrationNumber: $registrationNumber)';
 }
 
 
@@ -255,7 +265,7 @@ abstract mixin class _$ClubCopyWith<$Res> implements $ClubCopyWith<$Res> {
   factory _$ClubCopyWith(_Club value, $Res Function(_Club) _then) = __$ClubCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String sport, String village, bool active
+ String id, String name, String sport, String village, bool active, String? logoUrl, String? brandPrimaryHex, String? brandSecondaryHex, int? foundedYear, String? registrationNumber
 });
 
 
@@ -272,14 +282,19 @@ class __$ClubCopyWithImpl<$Res>
 
 /// Create a copy of Club
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? sport = null,Object? village = null,Object? active = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? sport = null,Object? village = null,Object? active = null,Object? logoUrl = freezed,Object? brandPrimaryHex = freezed,Object? brandSecondaryHex = freezed,Object? foundedYear = freezed,Object? registrationNumber = freezed,}) {
   return _then(_Club(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,sport: null == sport ? _self.sport : sport // ignore: cast_nullable_to_non_nullable
 as String,village: null == village ? _self.village : village // ignore: cast_nullable_to_non_nullable
 as String,active: null == active ? _self.active : active // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,logoUrl: freezed == logoUrl ? _self.logoUrl : logoUrl // ignore: cast_nullable_to_non_nullable
+as String?,brandPrimaryHex: freezed == brandPrimaryHex ? _self.brandPrimaryHex : brandPrimaryHex // ignore: cast_nullable_to_non_nullable
+as String?,brandSecondaryHex: freezed == brandSecondaryHex ? _self.brandSecondaryHex : brandSecondaryHex // ignore: cast_nullable_to_non_nullable
+as String?,foundedYear: freezed == foundedYear ? _self.foundedYear : foundedYear // ignore: cast_nullable_to_non_nullable
+as int?,registrationNumber: freezed == registrationNumber ? _self.registrationNumber : registrationNumber // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -290,7 +305,7 @@ as bool,
 /// @nodoc
 mixin _$SportPerson {
 
- String get id; String get name; String get clubId; String get role; String get group; bool get verified; bool get expiredLicense; List<String> get missingDocuments;
+ String get id; String get name; String get clubId; String get role; String get group; bool get verified; bool get expiredLicense; List<String> get missingDocuments; String? get photoUrl; String? get gender; int? get age;
 /// Create a copy of SportPerson
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -303,16 +318,16 @@ $SportPersonCopyWith<SportPerson> get copyWith => _$SportPersonCopyWithImpl<Spor
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SportPerson&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.clubId, clubId) || other.clubId == clubId)&&(identical(other.role, role) || other.role == role)&&(identical(other.group, group) || other.group == group)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.expiredLicense, expiredLicense) || other.expiredLicense == expiredLicense)&&const DeepCollectionEquality().equals(other.missingDocuments, missingDocuments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SportPerson&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.clubId, clubId) || other.clubId == clubId)&&(identical(other.role, role) || other.role == role)&&(identical(other.group, group) || other.group == group)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.expiredLicense, expiredLicense) || other.expiredLicense == expiredLicense)&&const DeepCollectionEquality().equals(other.missingDocuments, missingDocuments)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.age, age) || other.age == age));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,clubId,role,group,verified,expiredLicense,const DeepCollectionEquality().hash(missingDocuments));
+int get hashCode => Object.hash(runtimeType,id,name,clubId,role,group,verified,expiredLicense,const DeepCollectionEquality().hash(missingDocuments),photoUrl,gender,age);
 
 @override
 String toString() {
-  return 'SportPerson(id: $id, name: $name, clubId: $clubId, role: $role, group: $group, verified: $verified, expiredLicense: $expiredLicense, missingDocuments: $missingDocuments)';
+  return 'SportPerson(id: $id, name: $name, clubId: $clubId, role: $role, group: $group, verified: $verified, expiredLicense: $expiredLicense, missingDocuments: $missingDocuments, photoUrl: $photoUrl, gender: $gender, age: $age)';
 }
 
 
@@ -323,7 +338,7 @@ abstract mixin class $SportPersonCopyWith<$Res>  {
   factory $SportPersonCopyWith(SportPerson value, $Res Function(SportPerson) _then) = _$SportPersonCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String clubId, String role, String group, bool verified, bool expiredLicense, List<String> missingDocuments
+ String id, String name, String clubId, String role, String group, bool verified, bool expiredLicense, List<String> missingDocuments, String? photoUrl, String? gender, int? age
 });
 
 
@@ -340,7 +355,7 @@ class _$SportPersonCopyWithImpl<$Res>
 
 /// Create a copy of SportPerson
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? clubId = null,Object? role = null,Object? group = null,Object? verified = null,Object? expiredLicense = null,Object? missingDocuments = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? clubId = null,Object? role = null,Object? group = null,Object? verified = null,Object? expiredLicense = null,Object? missingDocuments = null,Object? photoUrl = freezed,Object? gender = freezed,Object? age = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -350,7 +365,10 @@ as String,group: null == group ? _self.group : group // ignore: cast_nullable_to
 as String,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
 as bool,expiredLicense: null == expiredLicense ? _self.expiredLicense : expiredLicense // ignore: cast_nullable_to_non_nullable
 as bool,missingDocuments: null == missingDocuments ? _self.missingDocuments : missingDocuments // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
+as String?,age: freezed == age ? _self.age : age // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -435,10 +453,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments,  String? photoUrl,  String? gender,  int? age)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SportPerson() when $default != null:
-return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments);case _:
+return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments,_that.photoUrl,_that.gender,_that.age);case _:
   return orElse();
 
 }
@@ -456,10 +474,10 @@ return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.ve
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments,  String? photoUrl,  String? gender,  int? age)  $default,) {final _that = this;
 switch (_that) {
 case _SportPerson():
-return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments);case _:
+return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments,_that.photoUrl,_that.gender,_that.age);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -476,10 +494,10 @@ return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.ve
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String clubId,  String role,  String group,  bool verified,  bool expiredLicense,  List<String> missingDocuments,  String? photoUrl,  String? gender,  int? age)?  $default,) {final _that = this;
 switch (_that) {
 case _SportPerson() when $default != null:
-return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments);case _:
+return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.verified,_that.expiredLicense,_that.missingDocuments,_that.photoUrl,_that.gender,_that.age);case _:
   return null;
 
 }
@@ -491,7 +509,7 @@ return $default(_that.id,_that.name,_that.clubId,_that.role,_that.group,_that.ve
 @JsonSerializable()
 
 class _SportPerson implements SportPerson {
-  const _SportPerson({required this.id, required this.name, required this.clubId, required this.role, required this.group, this.verified = true, this.expiredLicense = false, final  List<String> missingDocuments = const <String>[]}): _missingDocuments = missingDocuments;
+  const _SportPerson({required this.id, required this.name, required this.clubId, required this.role, required this.group, this.verified = true, this.expiredLicense = false, final  List<String> missingDocuments = const <String>[], this.photoUrl, this.gender, this.age}): _missingDocuments = missingDocuments;
   factory _SportPerson.fromJson(Map<String, dynamic> json) => _$SportPersonFromJson(json);
 
 @override final  String id;
@@ -508,6 +526,9 @@ class _SportPerson implements SportPerson {
   return EqualUnmodifiableListView(_missingDocuments);
 }
 
+@override final  String? photoUrl;
+@override final  String? gender;
+@override final  int? age;
 
 /// Create a copy of SportPerson
 /// with the given fields replaced by the non-null parameter values.
@@ -522,16 +543,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SportPerson&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.clubId, clubId) || other.clubId == clubId)&&(identical(other.role, role) || other.role == role)&&(identical(other.group, group) || other.group == group)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.expiredLicense, expiredLicense) || other.expiredLicense == expiredLicense)&&const DeepCollectionEquality().equals(other._missingDocuments, _missingDocuments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SportPerson&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.clubId, clubId) || other.clubId == clubId)&&(identical(other.role, role) || other.role == role)&&(identical(other.group, group) || other.group == group)&&(identical(other.verified, verified) || other.verified == verified)&&(identical(other.expiredLicense, expiredLicense) || other.expiredLicense == expiredLicense)&&const DeepCollectionEquality().equals(other._missingDocuments, _missingDocuments)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.age, age) || other.age == age));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,clubId,role,group,verified,expiredLicense,const DeepCollectionEquality().hash(_missingDocuments));
+int get hashCode => Object.hash(runtimeType,id,name,clubId,role,group,verified,expiredLicense,const DeepCollectionEquality().hash(_missingDocuments),photoUrl,gender,age);
 
 @override
 String toString() {
-  return 'SportPerson(id: $id, name: $name, clubId: $clubId, role: $role, group: $group, verified: $verified, expiredLicense: $expiredLicense, missingDocuments: $missingDocuments)';
+  return 'SportPerson(id: $id, name: $name, clubId: $clubId, role: $role, group: $group, verified: $verified, expiredLicense: $expiredLicense, missingDocuments: $missingDocuments, photoUrl: $photoUrl, gender: $gender, age: $age)';
 }
 
 
@@ -542,7 +563,7 @@ abstract mixin class _$SportPersonCopyWith<$Res> implements $SportPersonCopyWith
   factory _$SportPersonCopyWith(_SportPerson value, $Res Function(_SportPerson) _then) = __$SportPersonCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String clubId, String role, String group, bool verified, bool expiredLicense, List<String> missingDocuments
+ String id, String name, String clubId, String role, String group, bool verified, bool expiredLicense, List<String> missingDocuments, String? photoUrl, String? gender, int? age
 });
 
 
@@ -559,7 +580,7 @@ class __$SportPersonCopyWithImpl<$Res>
 
 /// Create a copy of SportPerson
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? clubId = null,Object? role = null,Object? group = null,Object? verified = null,Object? expiredLicense = null,Object? missingDocuments = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? clubId = null,Object? role = null,Object? group = null,Object? verified = null,Object? expiredLicense = null,Object? missingDocuments = null,Object? photoUrl = freezed,Object? gender = freezed,Object? age = freezed,}) {
   return _then(_SportPerson(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -569,7 +590,10 @@ as String,group: null == group ? _self.group : group // ignore: cast_nullable_to
 as String,verified: null == verified ? _self.verified : verified // ignore: cast_nullable_to_non_nullable
 as bool,expiredLicense: null == expiredLicense ? _self.expiredLicense : expiredLicense // ignore: cast_nullable_to_non_nullable
 as bool,missingDocuments: null == missingDocuments ? _self._missingDocuments : missingDocuments // ignore: cast_nullable_to_non_nullable
-as List<String>,
+as List<String>,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
+as String?,age: freezed == age ? _self.age : age // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

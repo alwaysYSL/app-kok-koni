@@ -11,6 +11,11 @@ abstract class Club with _$Club {
     required String sport,
     required String village,
     @Default(true) bool active,
+    String? logoUrl,
+    String? brandPrimaryHex,
+    String? brandSecondaryHex,
+    int? foundedYear,
+    String? registrationNumber,
   }) = _Club;
   factory Club.fromJson(Map<String, dynamic> json) => _$ClubFromJson(json);
 }
@@ -26,6 +31,9 @@ abstract class SportPerson with _$SportPerson {
     @Default(true) bool verified,
     @Default(false) bool expiredLicense,
     @Default(<String>[]) List<String> missingDocuments,
+    String? photoUrl,
+    String? gender,
+    int? age,
   }) = _SportPerson;
   factory SportPerson.fromJson(Map<String, dynamic> json) =>
       _$SportPersonFromJson(json);
