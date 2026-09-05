@@ -9,12 +9,9 @@ void main() {
   testWidgets(
     'Capture rendered mobile previews',
     (tester) async {
-      final regular = FontLoader('KokSans')
-        ..addFont(rootBundle.load('assets/fonts/roboto-regular.ttf'));
-      await regular.load();
-      final bold = FontLoader('KokSans')
-        ..addFont(rootBundle.load('assets/fonts/roboto-bold.ttf'));
-      await bold.load();
+      final font = FontLoader('KokSans')
+        ..addFont(rootBundle.load('assets/fonts/PlusJakartaSans.ttf'));
+      await font.load();
       final icons = FontLoader('MaterialIcons')
         ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
       await icons.load();
