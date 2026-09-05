@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/app.dart';
 import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/features/dashboard_decorations.dart';
 
 Future<ProviderContainer> start(
   WidgetTester tester, {
@@ -102,5 +103,49 @@ void main() {
     await tester.tap(find.text('Reset filter'));
     await tester.pumpAndSettle();
     expect(find.text('Klub Garuda Muda'), findsOneWidget);
+  });
+
+  testWidgets('HomePage renders floating card, decorations, stats, and sections', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await container
+        .read(sessionProvider.notifier)
+        .signIn('DEMO-001', 'kokgarut123', false);
+    await tester.pumpAndSettle();
+
+    // Check Header & Decorations
+    expect(find.byType(DashboardHeaderDecoration), findsOneWidget);
+    expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
+    expect(find.text('KOORDINATOR ORGANISASI KECAMATAN'), findsOneWidget);
+    expect(find.text('Kec. Garut Kota'), findsOneWidget);
+    expect(find.text('Pak Asep · Koordinator'), findsOneWidget);
+    expect(find.text('PA'), findsOneWidget);
+
+    // Check Floating Stats Card
+    expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsOneWidget);
+    expect(find.text('ATLET'), findsOneWidget);
+    expect(find.text('PELATIH'), findsOneWidget);
+    expect(find.text('KLUB'), findsOneWidget);
+    expect(find.text('OFFICIAL'), findsOneWidget);
+
+    // Check Perlu Perhatian & Klub Sections
+    expect(find.text('Perlu Perhatian'), findsOneWidget);
+    expect(find.text('Klub di kecamatan'), findsOneWidget);
+    expect(find.text('Atlet berkas kurang'), findsOneWidget);
+    expect(find.text('Lisensi pelatih kedaluwarsa'), findsOneWidget);
+    expect(find.text('lihat semua >'), findsNWidgets(2));
+
+    // Tap Profile avatar navigates to profile
+    await tester.tap(find.text('PA'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ketua KOK'), findsNothing);
+
+    // Go back to home and tap 'lihat semua >' on Perlu Perhatian
+    container.read(routerProvider).go('/home');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('lihat semua >').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Perlu Perhatian'), findsWidgets);
   });
 }
