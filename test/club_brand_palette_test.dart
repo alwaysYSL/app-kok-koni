@@ -29,8 +29,17 @@ void main() {
       ClubBrandPaletteResolver.tryParseHex('FF11294B'),
       const Color(0xFF11294B),
     );
+    expect(
+      ClubBrandPaletteResolver.tryParseHex('00112233'),
+      const Color(0x00112233),
+    );
     expect(ClubBrandPaletteResolver.tryParseHex('not-a-color'), isNull);
     expect(ClubBrandPaletteResolver.tryParseHex(null), isNull);
+  });
+
+  test('rejects hashes outside the optional leading position', () {
+    expect(ClubBrandPaletteResolver.tryParseHex('12#3456'), isNull);
+    expect(ClubBrandPaletteResolver.tryParseHex('#12#3456'), isNull);
   });
 
   test('explicit club colors win over demo and sport fallbacks', () {
@@ -64,5 +73,37 @@ void main() {
       contrast(palette.foreground, palette.selectedTab),
       greaterThanOrEqualTo(4.5),
     );
+  });
+
+  test('forces a readable shared foreground for white and black endpoints', () {
+    final palette = ClubBrandPaletteResolver.resolve(
+      club(primary: '#FFFFFF', secondary: '#000000'),
+    );
+    expect(
+      contrast(palette.foreground, palette.headerStart),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrast(palette.foreground, palette.headerEnd),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      contrast(palette.foreground, palette.selectedTab),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
+  test('normalizes resolved ARGB colors to opaque surfaces', () {
+    expect(
+      ClubBrandPaletteResolver.tryParseHex('00112233'),
+      const Color(0x00112233),
+    );
+
+    final palette = ClubBrandPaletteResolver.resolve(
+      club(primary: '00112233', secondary: '80123456'),
+    );
+    expect(palette.headerStart.toARGB32() >>> 24, 0xFF);
+    expect(palette.headerEnd.toARGB32() >>> 24, 0xFF);
+    expect(palette.selectedTab.toARGB32() >>> 24, 0xFF);
   });
 }

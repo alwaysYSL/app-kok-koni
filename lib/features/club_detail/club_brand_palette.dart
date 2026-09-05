@@ -31,7 +31,8 @@ abstract final class ClubBrandPaletteResolver {
 
   static Color? tryParseHex(String? value) {
     if (value == null) return null;
-    var digits = value.trim().replaceFirst('#', '');
+    var digits = value.trim();
+    if (digits.startsWith('#')) digits = digits.substring(1);
     if (digits.length == 6) digits = 'FF$digits';
     if (digits.length != 8) return null;
     final parsed = int.tryParse(digits, radix: 16);
@@ -42,8 +43,8 @@ abstract final class ClubBrandPaletteResolver {
     final explicitStart = tryParseHex(club.brandPrimaryHex);
     final explicitEnd = tryParseHex(club.brandSecondaryHex);
     final fallback = _demoPalettes[club.id] ?? _sportPalette(club.sport);
-    final start = explicitStart ?? fallback.$1;
-    final end = explicitEnd ?? _darken(start, 0.24);
+    final start = _opaque(explicitStart ?? fallback.$1);
+    final end = _opaque(explicitEnd ?? _darken(start, 0.24));
     final safePair = _ensureHeaderPair(start, end);
     final selectedTab = _ensureContrast(safePair.$2, safePair.$3);
     return ClubBrandPalette(
@@ -70,6 +71,8 @@ abstract final class ClubBrandPaletteResolver {
     'Renang' => (const Color(0xFF168A91), const Color(0xFF07555E)),
     _ => (KokColors.blue, KokColors.navy),
   };
+
+  static Color _opaque(Color color) => color.withValues(alpha: 1);
 
   static Color _darken(Color color, double amount) {
     final hsl = HSLColor.fromColor(color);
@@ -118,6 +121,12 @@ abstract final class ClubBrandPaletteResolver {
         break;
       }
     }
+    if (_contrastRatio(Colors.white, safeStart) < 4.5) {
+      safeStart = Colors.black;
+    }
+    if (_contrastRatio(Colors.white, safeEnd) < 4.5) {
+      safeEnd = Colors.black;
+    }
     return (safeStart, safeEnd, Colors.white);
   }
 
@@ -128,6 +137,7 @@ abstract final class ClubBrandPaletteResolver {
           ? _darken(result, 0.035)
           : _lighten(result, 0.035);
     }
-    return result;
+    if (_contrastRatio(result, foreground) >= 4.5) return result;
+    return foreground == Colors.white ? Colors.black : Colors.white;
   }
 }
