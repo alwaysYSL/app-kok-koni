@@ -111,14 +111,19 @@ class ClubDetailHeader extends StatelessWidget {
               children: [
                 _HeaderBadge(
                   label: club.active ? 'AKTIF' : 'TIDAK AKTIF',
-                  background: const Color(0xFFDDF6E6),
-                  foreground: const Color(0xFF176B38),
+                  background: club.active
+                      ? const Color(0xFFDDF6E6)
+                      : const Color(0xFFE9ECF2),
+                  foreground: club.active
+                      ? const Color(0xFF176B38)
+                      : const Color(0xFF4B5563),
                 ),
-                _HeaderBadge(
-                  label: '$missingFileCount berkas kurang',
-                  background: const Color(0xFFFFE7E7),
-                  foreground: const Color(0xFFB42318),
-                ),
+                if (missingFileCount > 0)
+                  _HeaderBadge(
+                    label: '$missingFileCount berkas kurang',
+                    background: const Color(0xFFFFE7E7),
+                    foreground: const Color(0xFFB42318),
+                  ),
               ],
             ),
             const SizedBox(height: 18),

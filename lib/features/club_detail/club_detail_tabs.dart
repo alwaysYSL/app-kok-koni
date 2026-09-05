@@ -32,6 +32,7 @@ class ClubDetailTabBar extends StatelessWidget {
       labelColor: palette.foreground,
       unselectedLabelColor: const Color(0xFF666A73),
       labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
       tabs: const [
         Tab(text: 'Atlet'),
         Tab(text: 'Pelatih'),
