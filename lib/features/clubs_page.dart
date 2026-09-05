@@ -1,25 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
 import '../shared/widgets.dart';
 
-class ClubsPage extends StatefulWidget {
+class ClubsPage extends ConsumerStatefulWidget {
   const ClubsPage({super.key, this.sport});
   final String? sport;
   @override
-  State<ClubsPage> createState() => _ClubsPageState();
+  ConsumerState<ClubsPage> createState() => _ClubsPageState();
 }
 
-class _ClubsPageState extends State<ClubsPage> {
+class _ClubsPageState extends ConsumerState<ClubsPage> {
   final _search = TextEditingController();
   String? _sport, _status, _village;
-  bool _ascending = true;
+  ClubSortOption _sortOption = ClubSortOption.nameAsc;
+
   @override
   void initState() {
     super.initState();
     _sport = widget.sport;
+  }
+
+  @override
+  void didUpdateWidget(ClubsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.sport != oldWidget.sport) {
+      _sport = widget.sport;
+    }
   }
 
   @override
@@ -34,136 +44,431 @@ class _ClubsPageState extends State<ClubsPage> {
     _status = null;
     _village = null;
   });
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.sport ?? 'Klub'),
-      actions: [
-        IconButton(
-          tooltip: 'Ubah urutan nama',
-          icon: const Icon(Icons.swap_vert),
-          onPressed: () => setState(() => _ascending = !_ascending),
-        ),
-      ],
-    ),
-    body: DataView(
-      builder: (data) {
-        final clubs = filterClubs(
-          data.clubs,
-          query: _search.text,
-          sport: _sport,
-          status: _status,
-          village: _village,
-          ascending: _ascending,
-        );
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextField(
-              controller: _search,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Cari nama klub...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _search.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'Hapus pencarian',
-                        onPressed: () => setState(_search.clear),
-                        icon: const Icon(Icons.close),
+
+  void _showSortModal(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalContext) {
+        final options = [
+          (ClubSortOption.nameAsc, 'Nama (A → Z)'),
+          (ClubSortOption.nameDesc, 'Nama (Z → A)'),
+          (ClubSortOption.athletesDesc, 'Jumlah Atlet Terbanyak'),
+          (ClubSortOption.statusActiveFirst, 'Status (Aktif Terlebih Dahulu)'),
+        ];
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE5E7EB),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text(
+                  'Urutkan Klub',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: KokColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...options.map((opt) {
+                  final isSelected = _sortOption == opt.$1;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      setState(() => _sortOption = opt.$1);
+                      Navigator.pop(modalContext);
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
                       ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  ActionChip(label: const Text('Reset'), onPressed: _reset),
-                  const SizedBox(width: 8),
-                  if (widget.sport == null)
-                    FilterMenu(
-                      label: 'Cabor',
-                      value: _sport,
-                      options: data.clubs.map((c) => c.sport).toSet().toList(),
-                      onChanged: (v) => setState(() => _sport = v),
+                      decoration: BoxDecoration(
+                        color: isSelected ? KokColors.pale : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              opt.$2,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? KokColors.blue
+                                    : const Color(0xFF17191D),
+                              ),
+                            ),
+                          ),
+                          if (isSelected)
+                            const Icon(
+                              Icons.check_rounded,
+                              color: KokColors.blue,
+                              size: 20,
+                            ),
+                        ],
+                      ),
                     ),
-                  FilterMenu(
-                    label: 'Status',
-                    value: _status,
-                    options: const ['Aktif', 'Pasif'],
-                    onChanged: (v) => setState(() => _status = v),
-                  ),
-                  FilterMenu(
-                    label: 'Kelurahan',
-                    value: _village,
-                    options: data.clubs.map((c) => c.village).toSet().toList(),
-                    onChanged: (v) => setState(() => _village = v),
-                  ),
-                ],
-              ),
+                  );
+                }),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${clubs.length} klub · ${clubs.map((c) => c.sport).toSet().length} cabor',
-                      style: const TextStyle(color: KokColors.muted),
-                    ),
-                  ),
-                  Text(
-                    _ascending ? 'A → Z' : 'Z → A',
-                    style: const TextStyle(
-                      color: KokColors.blue,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (clubs.isEmpty) EmptyState(onReset: _reset),
-            ...clubs.map((c) => ClubTile(club: c, data: data)),
-            const DemoNote(),
-          ],
+          ),
         );
       },
-    ),
-  );
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = ref.watch(snapshotProvider).asData?.value;
+    final filteredCount = snapshot != null
+        ? filterClubs(
+            snapshot.clubs,
+            query: _search.text,
+            sport: _sport,
+            status: _status,
+            village: _village,
+            sortOption: _sortOption,
+            snapshot: snapshot,
+          ).length
+        : null;
+
+    final titlePrefix = widget.sport ?? 'Klub';
+    final titleText = filteredCount != null
+        ? '$titlePrefix ($filteredCount)'
+        : titlePrefix;
+
+    final hasActiveFilter =
+        (_sport != widget.sport) ||
+        (_status != null) ||
+        (_village != null) ||
+        _search.text.isNotEmpty;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          titleText,
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF17191D),
+          ),
+        ),
+        shape: const Border(
+          bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Tooltip(
+                message: 'Urutkan klub',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => _showSortModal(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: const Icon(
+                      Icons.swap_vert,
+                      color: KokColors.ink,
+                      size: 22,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: DataView(
+        builder: (data) {
+          final clubs = filterClubs(
+            data.clubs,
+            query: _search.text,
+            sport: _sport,
+            status: _status,
+            village: _village,
+            sortOption: _sortOption,
+            snapshot: data,
+          );
+          final caborCount = clubs.map((c) => c.sport).toSet().length;
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (_) => setState(() {}),
+                  style: const TextStyle(fontSize: 14, color: Color(0xFF17191D)),
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama klub...',
+                    hintStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF9E9E9E),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: Color(0xFF9E9E9E),
+                      size: 22,
+                    ),
+                    suffixIcon: _search.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: 'Hapus pencarian',
+                            onPressed: () => setState(_search.clear),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 20,
+                              color: Color(0xFF9E9E9E),
+                            ),
+                          ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    filled: false,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: _reset,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: !hasActiveFilter ? KokColors.blue : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: !hasActiveFilter
+                              ? null
+                              : Border.all(color: const Color(0xFFE5E7EB)),
+                        ),
+                        child: Text(
+                          'Semua',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: !hasActiveFilter
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: !hasActiveFilter
+                                ? Colors.white
+                                : const Color(0xFF17191D),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (widget.sport == null) ...[
+                      FilterChipDropdown(
+                        label: 'Cabor',
+                        value: _sport,
+                        options: data.clubs
+                            .map((c) => c.sport)
+                            .toSet()
+                            .toList()
+                          ..sort(),
+                        onChanged: (v) => setState(() => _sport = v),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    FilterChipDropdown(
+                      label: 'Status',
+                      value: _status,
+                      options: const ['Aktif', 'Pasif'],
+                      onChanged: (v) => setState(() => _status = v),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChipDropdown(
+                      label: 'Kelurahan',
+                      value: _village,
+                      displayValue: _village ?? 'Kel.',
+                      options: data.clubs
+                          .map((c) => c.village)
+                          .toSet()
+                          .toList()
+                        ..sort(),
+                      onChanged: (v) => setState(() => _village = v),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: Text(
+                  '${clubs.length} klub · $caborCount cabor',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF727782),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              if (clubs.isEmpty) EmptyState(onReset: _reset),
+              ...clubs.map((c) => ClubTile(club: c, data: data)),
+              const DemoNote(),
+            ],
+          );
+        },
+      ),
+    );
+  }
 }
 
-class FilterMenu extends StatelessWidget {
-  const FilterMenu({
+class FilterChipDropdown extends StatelessWidget {
+  const FilterChipDropdown({
     super.key,
     required this.label,
     required this.value,
     required this.options,
     required this.onChanged,
+    this.displayValue,
   });
+
   final String label;
   final String? value;
   final List<String> options;
   final ValueChanged<String?> onChanged;
+  final String? displayValue;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(right: 8),
-    child: PopupMenuButton<String>(
+  Widget build(BuildContext context) {
+    final isSelected = value != null;
+    final text = displayValue ?? value ?? label;
+
+    return PopupMenuButton<String>(
       tooltip: 'Filter $label',
       initialValue: value ?? '',
       onSelected: (v) => onChanged(v.isEmpty ? null : v),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 3,
       itemBuilder: (_) => [
-        PopupMenuItem(value: '', child: Text('Semua $label')),
-        ...options.map((o) => PopupMenuItem(value: o, child: Text(o))),
+        PopupMenuItem(
+          value: '',
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Semua $label',
+                  style: TextStyle(
+                    fontWeight: !isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: !isSelected ? KokColors.blue : const Color(0xFF17191D),
+                  ),
+                ),
+              ),
+              if (!isSelected)
+                const Icon(
+                  Icons.check_rounded,
+                  color: KokColors.blue,
+                  size: 18,
+                ),
+            ],
+          ),
+        ),
+        ...options.map(
+          (o) => PopupMenuItem(
+            value: o,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    o,
+                    style: TextStyle(
+                      fontWeight: value == o ? FontWeight.w700 : FontWeight.w500,
+                      color: value == o ? KokColors.blue : const Color(0xFF17191D),
+                    ),
+                  ),
+                ),
+                if (value == o)
+                  const Icon(
+                    Icons.check_rounded,
+                    color: KokColors.blue,
+                    size: 18,
+                  ),
+              ],
+            ),
+          ),
+        ),
       ],
-      child: Chip(
-        backgroundColor: value == null ? Colors.white : KokColors.pale,
-        label: Text(value ?? label),
-        avatar: const Icon(Icons.keyboard_arrow_down, size: 18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFE8F0FE) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFB9D3FC)
+                : const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? KokColors.blue : const Color(0xFF17191D),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: isSelected ? KokColors.blue : const Color(0xFF727782),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
+
+typedef FilterMenu = FilterChipDropdown;
 
 class ClubTile extends StatelessWidget {
   const ClubTile({
@@ -172,16 +477,23 @@ class ClubTile extends StatelessWidget {
     required this.data,
     this.compact = false,
   });
+
   final Club club;
   final KokSnapshot data;
   final bool compact;
+
   @override
   Widget build(BuildContext context) {
     final people = clubPeople(data, club.id);
+    final atletCount = people.where((p) => p.role == 'Atlet').length;
+    final pelatihCount = people.where((p) => p.role == 'Pelatih').length;
+    final officialCount = people.where((p) => p.role == 'Official').length;
     final missing = people.where((p) => p.missingDocuments.isNotEmpty).length;
+
     return Surface(
       onTap: () => context.push('/club/${club.id}'),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -194,16 +506,17 @@ class ClubTile extends StatelessWidget {
                     Text(
                       club.name,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        color: Color(0xFF0C2464),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${club.sport} · ${compact ? '${people.where((p) => p.role == 'Atlet').length} atlet' : club.village}',
+                      '${club.sport} · ${compact ? '$atletCount atlet' : club.village}',
                       style: const TextStyle(
                         fontSize: 12,
-                        color: KokColors.muted,
+                        color: Color(0xFF757575),
                       ),
                     ),
                   ],
@@ -213,24 +526,68 @@ class ClubTile extends StatelessWidget {
               if (compact)
                 const Icon(Icons.chevron_right, color: KokColors.muted)
               else
-                StatusBadge(club.active ? 'Aktif' : 'Pasif'),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: club.active
+                        ? const Color(0xFFE8F0FE)
+                        : const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    club.active ? 'Aktif' : 'Pasif',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: club.active
+                          ? const Color(0xFF1B4F9E)
+                          : const Color(0xFF757575),
+                    ),
+                  ),
+                ),
             ],
           ),
           if (!compact) ...[
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Divider(height: 1),
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: DashedDivider(color: Color(0xFFE5E7EB)),
             ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
+            Row(
               children: [
-                Text(
-                  '${people.where((p) => p.role == 'Atlet').length} atlet · ${people.where((p) => p.role == 'Pelatih').length} pelatih · ${people.where((p) => p.role == 'Official').length} official',
-                  style: const TextStyle(fontSize: 12, color: KokColors.muted),
+                Expanded(
+                  child: Text(
+                    '$atletCount atlet · $pelatihCount pelatih · $officialCount official',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF727782),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-                if (missing > 0) StatusBadge('$missing berkas', warning: true),
+                if (missing > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFEAEA),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$missing berkas',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFD32F2F),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -239,3 +596,4 @@ class ClubTile extends StatelessWidget {
     );
   }
 }
+
