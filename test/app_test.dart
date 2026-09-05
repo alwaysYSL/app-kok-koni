@@ -147,7 +147,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('lihat semua >').first);
     await tester.pumpAndSettle();
-    expect(find.text('Perlu Perhatian'), findsWidgets);
+    expect(find.text('Perlu Perhatian (13)'), findsOneWidget);
+    expect(find.text('Semua 13'), findsOneWidget);
+    expect(find.text('Berkas Atlet 8'), findsOneWidget);
+    expect(find.text('Lisensi 5'), findsOneWidget);
   });
 
   testWidgets('ClubsPage renders polished UI, sort modal, filter chips and dynamic count', (

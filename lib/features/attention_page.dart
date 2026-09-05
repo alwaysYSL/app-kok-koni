@@ -19,8 +19,8 @@ class _AttentionPageState extends State<AttentionPage> {
   @override
   void didUpdateWidget(AttentionPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.type != oldWidget.type && widget.type != null) {
-      _type = widget.type!;
+    if (widget.type != oldWidget.type) {
+      _type = widget.type ?? 'all';
     }
   }
 

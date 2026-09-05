@@ -334,66 +334,6 @@ class PersonDetailPage extends StatelessWidget {
   );
 }
 
-class AttentionPage extends StatefulWidget {
-  const AttentionPage({super.key, this.type});
-  final String? type;
-  @override
-  State<AttentionPage> createState() => _AttentionPageState();
-}
-
-class _AttentionPageState extends State<AttentionPage> {
-  late String type = widget.type ?? 'all';
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Perlu Perhatian')),
-    body: DataView(
-      builder: (data) {
-        final people = data.people
-            .where(
-              (p) => switch (type) {
-                'documents' => p.missingDocuments.isNotEmpty,
-                'license' => p.expiredLicense,
-                _ => p.missingDocuments.isNotEmpty || p.expiredLicense,
-              },
-            )
-            .toList();
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Wrap(
-              spacing: 8,
-              children:
-                  [
-                        ('all', 'Semua'),
-                        ('documents', 'Berkas'),
-                        ('license', 'Lisensi'),
-                      ]
-                      .map(
-                        (item) => ChoiceChip(
-                          label: Text(item.$2),
-                          selected: type == item.$1,
-                          onSelected: (_) => setState(() => type = item.$1),
-                        ),
-                      )
-                      .toList(),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${people.length} orang perlu ditinjau',
-              style: const TextStyle(color: KokColors.muted),
-            ),
-            const SizedBox(height: 12),
-            if (people.isEmpty)
-              const EmptyState(message: 'Tidak ada data yang perlu ditinjau.'),
-            ...people.map((p) => PersonTile(person: p)),
-            const DemoNote(),
-          ],
-        );
-      },
-    ),
-  );
-}
-
 class MissingPage extends StatelessWidget {
   const MissingPage({super.key});
   @override
