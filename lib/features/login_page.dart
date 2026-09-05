@@ -344,8 +344,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   textStyle: const TextStyle(
+                                    fontFamily: 'KokSans',
                                     fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 icon: _busy
@@ -371,7 +372,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 style: TextStyle(
                                   color: Color(0xFF9E9E9E),
                                   fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             ),
