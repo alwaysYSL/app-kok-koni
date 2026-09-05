@@ -34,6 +34,18 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
   bool get wantKeepAlive => true;
 
   @override
+  void didUpdateWidget(ClubPeopleTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final group = _group;
+    if (group != null &&
+        !widget.people.any(
+          (person) => person.role == widget.role && person.group == group,
+        )) {
+      _group = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     super.build(context);
     final rolePeople = widget.people

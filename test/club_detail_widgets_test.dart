@@ -286,6 +286,37 @@ void main() {
     expect(find.text('verifikasi'), findsOneWidget);
   });
 
+  testWidgets('complete person state stays green for a red club', (
+    tester,
+  ) async {
+    const person = SportPerson(
+      id: 'a1',
+      name: 'Alya Putri',
+      clubId: 'pb',
+      role: 'Atlet',
+      group: 'U-18',
+    );
+    final palette = ClubBrandPaletteResolver.resolve(
+      testClub.copyWith(id: 'pb'),
+    );
+    await tester.pumpWidget(
+      app(ClubPersonCard(person: person, palette: palette, onTap: () {})),
+    );
+
+    final completeIcon = tester.widget<Icon>(find.byIcon(Icons.check_rounded));
+    final completeDecoration = tester.widget<DecoratedBox>(
+      find.ancestor(
+        of: find.byIcon(Icons.check_rounded),
+        matching: find.byType(DecoratedBox),
+      ),
+    );
+    expect(
+      (completeDecoration.decoration as BoxDecoration).color,
+      const Color(0xFFDDF6E6),
+    );
+    expect(completeIcon.color, const Color(0xFF176B38));
+  });
+
   testWidgets('people tab applies and resets role-specific filters', (
     tester,
   ) async {
@@ -393,5 +424,52 @@ void main() {
 
     expect(find.text('Alya Putri'), findsOneWidget);
     expect(find.text('Bima Putra'), findsOneWidget);
+  });
+
+  testWidgets('people tab clears a committed group removed by refreshed data', (
+    tester,
+  ) async {
+    const alya = SportPerson(
+      id: '1',
+      name: 'Alya Putri',
+      clubId: 'garuda',
+      role: 'Atlet',
+      group: 'U-18',
+    );
+    const bima = SportPerson(
+      id: '2',
+      name: 'Bima Putra',
+      clubId: 'garuda',
+      role: 'Atlet',
+      group: 'U-16',
+    );
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    Widget peopleTab(List<SportPerson> people) => app(
+      ClubPeopleTab(
+        role: 'Atlet',
+        people: people,
+        palette: palette,
+        onPersonTap: (_) {},
+      ),
+    );
+
+    await tester.pumpWidget(peopleTab(const [alya, bima]));
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('club-filter-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('U-18').last);
+    await tester.tap(find.text('Terapkan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bima Putra'), findsNothing);
+
+    await tester.pumpWidget(peopleTab(const [bima]));
+    expect(find.text('Bima Putra'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Semua kelompok'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
   });
 }

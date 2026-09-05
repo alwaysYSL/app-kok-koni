@@ -90,13 +90,18 @@ class ClubPersonCard extends StatelessWidget {
       return _IssueBadge(label: label);
     }
     return DecoratedBox(
-      decoration: BoxDecoration(
-        color: palette.softAccent,
+      decoration: const BoxDecoration(
+        color: Color(0xFFDDF6E6),
         shape: BoxShape.circle,
       ),
       child: const Padding(
         padding: EdgeInsets.all(9),
-        child: Icon(Icons.check_rounded, size: 20, semanticLabel: 'Lengkap'),
+        child: Icon(
+          Icons.check_rounded,
+          size: 20,
+          color: Color(0xFF176B38),
+          semanticLabel: 'Lengkap',
+        ),
       ),
     );
   }
