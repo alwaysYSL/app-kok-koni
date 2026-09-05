@@ -37,11 +37,11 @@ void main() {
     tester,
   ) async {
     final container = await start(tester);
-    expect(find.text('Login Akun'), findsOneWidget);
+    expect(find.text('Masuk Akun'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-001');
     await tester.enterText(find.byType(TextFormField).at(1), 'kokgarut123');
-    await tester.ensureVisible(find.text('Masuk demo'));
-    await tester.tap(find.text('Masuk demo'));
+    await tester.ensureVisible(find.text('Masuk'));
+    await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
     expect(find.byType(NavigationDestination), findsNWidgets(5));
     await tester.tap(find.text('Cabor'));
@@ -64,10 +64,10 @@ void main() {
     await tester.scrollUntilVisible(find.text('Keluar'), 200);
     await tester.tap(find.text('Keluar'));
     await tester.pumpAndSettle();
-    expect(find.text('Login Akun'), findsOneWidget);
+    expect(find.text('Masuk Akun'), findsOneWidget);
     container.read(routerProvider).go('/club/garuda');
     await tester.pumpAndSettle();
-    expect(find.text('Login Akun'), findsOneWidget);
+    expect(find.text('Masuk Akun'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
