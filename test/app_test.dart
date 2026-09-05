@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/app.dart';
 import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/models.dart';
+import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/clubs_page.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
 
@@ -35,6 +38,146 @@ Future<ProviderContainer> start(
 }
 
 void main() {
+  testWidgets(
+    'club documents reflect registration availability without actions',
+    (tester) async {
+      const club = Club(
+        id: 'pb',
+        name: 'PB Citra Garut',
+        sport: 'Bulu Tangkis',
+        village: 'Paminggir',
+      );
+      for (final registration in [null, '', '   ', '  SK/123/2026  ']) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ClubDocumentTab(
+                club: club.copyWith(registrationNumber: registration),
+              ),
+            ),
+          ),
+        );
+        final available = registration == '  SK/123/2026  ';
+        expect(find.text('SK Klub'), findsOneWidget);
+        expect(find.text('Kepengurusan'), findsOneWidget);
+        expect(
+          find.text('Tersedia'),
+          available ? findsOneWidget : findsNothing,
+        );
+        expect(find.text('Belum tersedia'), findsNWidgets(available ? 1 : 2));
+        if (available) {
+          expect(find.text('  SK/123/2026  '), findsOneWidget);
+          expect(
+            tester.widget<Text>(find.text('Tersedia')).style!.color,
+            const Color(0xFF176B38),
+          );
+        }
+        expect(
+          tester.widget<Text>(find.text('Belum tersedia').first).style!.color,
+          const Color(0xFF4B5563),
+        );
+        expect(find.textContaining('Data milik SICABOR'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (widget) => widget is InkWell && widget.onTap != null,
+          ),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'club detail keeps tabs and collapsed title visible while scrolling',
+    (tester) async {
+      final container = await start(tester, width: 320);
+      await container
+          .read(sessionProvider.notifier)
+          .signIn('DEMO-001', 'kokgarut123', false);
+      await tester.pumpAndSettle();
+      container.read(routerProvider).push('/club/garuda');
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(TabBarView), const Offset(0, -550));
+      await tester.pumpAndSettle();
+      final collapsedTitle = find.text('Klub Garuda Muda').last;
+      expect(tester.getTopLeft(collapsedTitle).dy, lessThan(64));
+      expect(
+        tester
+            .widget<Opacity>(
+              find
+                  .ancestor(of: collapsedTitle, matching: find.byType(Opacity))
+                  .first,
+            )
+            .opacity,
+        1,
+      );
+      for (final label in ['Atlet', 'Pelatih', 'Official', 'Dokumen']) {
+        expect(find.text(label).hitTestable(), findsOneWidget);
+      }
+      await tester.tap(find.text('Dokumen'));
+      await tester.pumpAndSettle();
+      expect(find.text('SK Klub').hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Club detail renders four polished tabs and share action', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await container
+        .read(sessionProvider.notifier)
+        .signIn('DEMO-001', 'kokgarut123', false);
+    await tester.pumpAndSettle();
+    container.read(routerProvider).go('/club/garuda');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Klub Garuda Muda'), findsOneWidget);
+    for (final label in ['Atlet', 'Pelatih', 'Official', 'Dokumen']) {
+      expect(find.text(label), findsOneWidget);
+    }
+    await tester.tap(find.text('Pelatih'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Pelatih 1'), findsWidgets);
+    await tester.tap(find.text('Official'));
+    await tester.pumpAndSettle();
+    expect(find.text('Official · Klub Garuda Muda'), findsOneWidget);
+    await tester.tap(find.text('Dokumen'));
+    await tester.pumpAndSettle();
+    expect(find.text('SK Klub'), findsOneWidget);
+    expect(find.text('Kepengurusan'), findsOneWidget);
+
+    String? copiedText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copiedText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(() {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+    });
+    await tester.tap(find.byTooltip('Bagikan info klub'));
+    await tester.pumpAndSettle();
+    expect(copiedText, 'Klub Garuda Muda · Sepak Bola · Kel. Pakuwon');
+    expect(find.text('Info klub disalin'), findsOneWidget);
+
+    await tester.tap(find.text('Atlet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Atlet 1').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Detail Atlet'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Login, five tabs, sport/club/person navigation and logout', (
     tester,
   ) async {
@@ -53,7 +196,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('PB Citra Garut'));
     await tester.pumpAndSettle();
-    expect(find.text('Detail Klub'), findsOneWidget);
+    expect(find.text('PB Citra Garut'), findsOneWidget);
     await tester.tap(find.text('Atlet 1 · PB Citra Garut'));
     await tester.pumpAndSettle();
     expect(find.text('Detail Atlet'), findsOneWidget);
@@ -190,4 +333,3 @@ void main() {
     expect(find.text('Urutkan Klub'), findsNothing);
   });
 }
-

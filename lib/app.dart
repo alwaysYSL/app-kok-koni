@@ -10,6 +10,7 @@ import 'features/clubs_page.dart';
 import 'features/committee_page.dart';
 import 'features/profile_page.dart';
 import 'features/detail_pages.dart';
+import 'features/club_detail/club_detail_page.dart';
 import 'features/attention_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
