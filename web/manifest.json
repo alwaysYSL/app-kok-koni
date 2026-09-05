@@ -1,0 +1,10 @@
+{
+  "name": "KOK KONI Garut",
+  "short_name": "KOK Garut",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#071B68",
+  "description": "Frontend pemantauan olahraga kecamatan KONI Garut.",
+  "icons": [{"src": "favicon.png", "sizes": "1200x1200", "type": "image/png"}]
+}
