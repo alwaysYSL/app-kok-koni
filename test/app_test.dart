@@ -122,6 +122,57 @@ void main() {
     },
   );
 
+  testWidgets(
+    'club detail keeps toolbar actions and one title semantic available after collapse',
+    (tester) async {
+      final semanticsHandle = tester.ensureSemantics();
+      final container = await start(tester, width: 320);
+      await container
+          .read(sessionProvider.notifier)
+          .signIn('DEMO-001', 'kokgarut123', false);
+      await tester.pumpAndSettle();
+      container.read(routerProvider).push('/club/garuda');
+      await tester.pumpAndSettle();
+
+      String? copiedText;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copiedText =
+                (call.arguments as Map<Object?, Object?>)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(() {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        );
+      });
+
+      await tester.drag(find.byType(TabBarView), const Offset(0, -550));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Kembali').hitTestable(), findsOneWidget);
+      expect(find.byTooltip('Bagikan info klub').hitTestable(), findsOneWidget);
+      expect(find.semantics.byLabel('Klub Garuda Muda'), findsOne);
+      semanticsHandle.dispose();
+
+      await tester.tap(find.byTooltip('Bagikan info klub').hitTestable());
+      await tester.pumpAndSettle();
+      expect(copiedText, 'Klub Garuda Muda · Sepak Bola · Kel. Pakuwon');
+      expect(find.text('Info klub disalin'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Kembali').hitTestable());
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Bagikan info klub'), findsNothing);
+      expect(find.text('Beranda'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Club detail renders four polished tabs and share action', (
     tester,
   ) async {

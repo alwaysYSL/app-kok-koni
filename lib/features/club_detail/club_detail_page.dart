@@ -71,6 +71,7 @@ class ClubDetailPage extends StatelessWidget {
                                 missingFileCount: missingCount,
                                 onBack: () => context.pop(),
                                 onShare: () => _shareClub(context, club),
+                                excludeClubNameSemantics: titleOpacity > 0,
                               ),
                             ),
                           ),
@@ -87,16 +88,52 @@ class ClubDetailPage extends StatelessWidget {
                                       64,
                                       0,
                                     ),
-                                    child: Text(
-                                      club.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: palette.foreground,
-                                        fontWeight: FontWeight.w700,
+                                    child: Semantics(
+                                      container: true,
+                                      label: club.name,
+                                      child: ExcludeSemantics(
+                                        child: Text(
+                                          club.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: palette.foreground,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ),
+                                ),
+                              ),
+                            ),
+                          if (titleOpacity == 1)
+                            Positioned(
+                              top: 0,
+                              left: 12,
+                              right: 12,
+                              child: SizedBox(
+                                height: 64,
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    IconButton(
+                                      onPressed: () => context.pop(),
+                                      tooltip: 'Kembali',
+                                      color: palette.foreground,
+                                      icon: const Icon(
+                                        Icons.arrow_back_rounded,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _shareClub(context, club),
+                                      tooltip: 'Bagikan info klub',
+                                      color: palette.foreground,
+                                      icon: const Icon(Icons.ios_share_rounded),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),

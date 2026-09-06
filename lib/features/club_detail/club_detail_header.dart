@@ -15,6 +15,7 @@ class ClubDetailHeader extends StatelessWidget {
     required this.missingFileCount,
     required this.onBack,
     required this.onShare,
+    this.excludeClubNameSemantics = false,
   });
 
   final Club club;
@@ -25,6 +26,7 @@ class ClubDetailHeader extends StatelessWidget {
   final int missingFileCount;
   final VoidCallback onBack;
   final VoidCallback onShare;
+  final bool excludeClubNameSemantics;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -64,16 +66,25 @@ class ClubDetailHeader extends StatelessWidget {
             ),
             SizedBox(height: 88, child: Center(child: _buildLogo())),
             const SizedBox(height: 8),
-            Text(
-              club.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: palette.foreground,
-                fontSize: 22,
-                height: 1.15,
-                fontWeight: FontWeight.w800,
+            ExcludeSemantics(
+              excluding: excludeClubNameSemantics,
+              child: Semantics(
+                container: true,
+                label: club.name,
+                child: ExcludeSemantics(
+                  child: Text(
+                    club.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: palette.foreground,
+                      fontSize: 22,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 6),
