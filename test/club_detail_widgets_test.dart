@@ -472,4 +472,113 @@ void main() {
     expect(find.text('Semua kelompok'), findsOneWidget);
     expect(find.text('Reset'), findsOneWidget);
   });
+
+  testWidgets('open filter sheet cannot restore a group removed by refresh', (
+    tester,
+  ) async {
+    const alya = SportPerson(
+      id: '1',
+      name: 'Alya Putri',
+      clubId: 'garuda',
+      role: 'Atlet',
+      group: 'U-18',
+    );
+    const bima = SportPerson(
+      id: '2',
+      name: 'Bima Putra',
+      clubId: 'garuda',
+      role: 'Atlet',
+      group: 'U-16',
+    );
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    var people = const [alya, bima];
+    late StateSetter refresh;
+
+    await tester.pumpWidget(
+      app(
+        StatefulBuilder(
+          builder: (context, setState) {
+            refresh = setState;
+            return ClubPeopleTab(
+              role: 'Atlet',
+              people: people,
+              palette: palette,
+              onPersonTap: (_) {},
+            );
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('club-filter-group')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('U-18').last);
+
+    refresh(() => people = const [bima]);
+    await tester.pump();
+    await tester.tap(find.text('Terapkan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Bima Putra'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Semua kelompok'), findsOneWidget);
+  });
+
+  testWidgets('filtered empty state explains and resets the active filter', (
+    tester,
+  ) async {
+    const person = SportPerson(
+      id: '1',
+      name: 'Alya Putri',
+      clubId: 'garuda',
+      role: 'Atlet',
+      group: 'U-18',
+    );
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    await tester.pumpWidget(
+      app(
+        ClubPeopleTab(
+          role: 'Atlet',
+          people: const [person],
+          palette: palette,
+          onPersonTap: (_) {},
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('club-people-filter-Atlet')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('club-filter-query')),
+      'tidak ditemukan',
+    );
+    await tester.tap(find.text('Terapkan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tidak ada atlet yang sesuai filter'), findsOneWidget);
+    await tester.tap(find.text('Reset filter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alya Putri'), findsOneWidget);
+  });
+
+  testWidgets('naturally empty role has no misleading reset action', (
+    tester,
+  ) async {
+    final palette = ClubBrandPaletteResolver.resolve(testClub);
+    await tester.pumpWidget(
+      app(
+        ClubPeopleTab(
+          role: 'Official',
+          people: const [],
+          palette: palette,
+          onPersonTap: (_) {},
+        ),
+      ),
+    );
+
+    expect(find.text('Belum ada data official'), findsOneWidget);
+    expect(find.text('Reset filter'), findsNothing);
+  });
 }

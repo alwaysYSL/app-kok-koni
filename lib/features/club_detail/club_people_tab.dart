@@ -57,6 +57,10 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
       group: _group,
       status: _status,
     );
+    final hasActiveFilters =
+        _query.trim().isNotEmpty ||
+        _group != null ||
+        _status != ClubPeopleStatusFilter.all;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -90,6 +94,29 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
           ),
           const SizedBox(height: 10),
         ],
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: Column(
+              children: [
+                Text(
+                  hasActiveFilters
+                      ? 'Tidak ada ${widget.role.toLowerCase()} yang sesuai filter'
+                      : 'Belum ada data ${widget.role.toLowerCase()}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: KokColors.muted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (hasActiveFilters)
+                  TextButton(
+                    onPressed: _resetFilters,
+                    child: const Text('Reset filter'),
+                  ),
+              ],
+            ),
+          ),
         const Padding(
           padding: EdgeInsets.only(top: 10),
           child: Text(
@@ -191,11 +218,7 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
                           draftQuery = '';
                           draftGroup = null;
                           draftStatus = ClubPeopleStatusFilter.all;
-                          setState(() {
-                            _query = draftQuery;
-                            _group = draftGroup;
-                            _status = draftStatus;
-                          });
+                          _resetFilters();
                           Navigator.pop(sheetContext);
                         },
                         child: const Text('Reset'),
@@ -209,9 +232,15 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
                           foregroundColor: widget.palette.foreground,
                         ),
                         onPressed: () {
+                          final currentGroups = widget.people
+                              .where((person) => person.role == widget.role)
+                              .map((person) => person.group)
+                              .toSet();
                           setState(() {
                             _query = draftQuery;
-                            _group = draftGroup;
+                            _group = currentGroups.contains(draftGroup)
+                                ? draftGroup
+                                : null;
                             _status = draftStatus;
                           });
                           Navigator.pop(sheetContext);
@@ -228,6 +257,12 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
       ),
     );
   }
+
+  void _resetFilters() => setState(() {
+    _query = '';
+    _group = null;
+    _status = ClubPeopleStatusFilter.all;
+  });
 }
 
 class _FilterDropdown<T> extends StatefulWidget {
@@ -254,7 +289,10 @@ class _FilterDropdownState<T> extends State<_FilterDropdown<T>> {
   @override
   Widget build(BuildContext context) {
     final selectedLabel = widget.options
-        .firstWhere((option) => option.$1 == widget.value)
+        .firstWhere(
+          (option) => option.$1 == widget.value,
+          orElse: () => widget.options.first,
+        )
         .$2;
     return Semantics(
       button: true,

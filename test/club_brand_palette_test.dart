@@ -10,10 +10,15 @@ double contrast(Color a, Color b) {
       (darker.computeLuminance() + 0.05);
 }
 
-Club club({String id = 'custom', String? primary, String? secondary}) => Club(
+Club club({
+  String id = 'custom',
+  String sport = 'Sepak Bola',
+  String? primary,
+  String? secondary,
+}) => Club(
   id: id,
   name: 'Klub Test',
-  sport: 'Sepak Bola',
+  sport: sport,
   village: 'Pakuwon',
   brandPrimaryHex: primary,
   brandSecondaryHex: secondary,
@@ -91,6 +96,32 @@ void main() {
       contrast(palette.foreground, palette.selectedTab),
       greaterThanOrEqualTo(4.5),
     );
+  });
+
+  test('foreground remains readable through the middle of the gradient', () {
+    final palette = ClubBrandPaletteResolver.resolve(
+      club(primary: '#FF5500', secondary: '#00AA55'),
+    );
+    final middle = Color.lerp(palette.headerStart, palette.headerEnd, 0.5)!;
+
+    expect(contrast(palette.foreground, middle), greaterThanOrEqualTo(4.5));
+  });
+
+  test('uses both configured fallback endpoints', () {
+    final demo = ClubBrandPaletteResolver.resolve(club(id: 'garuda'));
+    final sport = ClubBrandPaletteResolver.resolve(
+      club(id: 'unknown-football'),
+    );
+    final defaults = ClubBrandPaletteResolver.resolve(
+      club(id: 'unknown', sport: 'Panahan'),
+    );
+
+    expect(demo.headerStart, const Color(0xFF5B566E));
+    expect(demo.headerEnd, const Color(0xFF11294B));
+    expect(sport.headerStart, const Color(0xFF315A91));
+    expect(sport.headerEnd, const Color(0xFF17345C));
+    expect(defaults.headerStart, const Color(0xFF1B4F9E));
+    expect(defaults.headerEnd, const Color(0xFF071B68));
   });
 
   test('normalizes resolved ARGB colors to opaque surfaces', () {

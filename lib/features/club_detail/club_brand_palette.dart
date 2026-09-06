@@ -44,7 +44,10 @@ abstract final class ClubBrandPaletteResolver {
     final explicitEnd = tryParseHex(club.brandSecondaryHex);
     final fallback = _demoPalettes[club.id] ?? _sportPalette(club.sport);
     final start = _opaque(explicitStart ?? fallback.$1);
-    final end = _opaque(explicitEnd ?? _darken(start, 0.24));
+    final end = _opaque(
+      explicitEnd ??
+          (explicitStart == null ? fallback.$2 : _darken(start, 0.24)),
+    );
     final safePair = _ensureHeaderPair(start, end);
     final selectedTab = _ensureContrast(safePair.$2, safePair.$3);
     return ClubBrandPalette(
@@ -98,10 +101,8 @@ abstract final class ClubBrandPaletteResolver {
 
   static (Color, Color, Color) _ensureHeaderPair(Color start, Color end) {
     const darkInk = Color(0xFF17191D);
-    double minimum(Color foreground) => [
-      _contrastRatio(foreground, start),
-      _contrastRatio(foreground, end),
-    ].reduce((a, b) => a < b ? a : b);
+    double minimum(Color foreground) =>
+        _minimumGradientContrast(foreground, start, end);
 
     final whiteMinimum = minimum(Colors.white);
     final darkMinimum = minimum(darkInk);
@@ -116,18 +117,30 @@ abstract final class ClubBrandPaletteResolver {
     for (var i = 0; i < 12; i++) {
       safeStart = _darken(safeStart, 0.035);
       safeEnd = _darken(safeEnd, 0.035);
-      if (_contrastRatio(Colors.white, safeStart) >= 4.5 &&
-          _contrastRatio(Colors.white, safeEnd) >= 4.5) {
+      if (_minimumGradientContrast(Colors.white, safeStart, safeEnd) >= 4.5) {
         break;
       }
     }
-    if (_contrastRatio(Colors.white, safeStart) < 4.5) {
-      safeStart = Colors.black;
-    }
-    if (_contrastRatio(Colors.white, safeEnd) < 4.5) {
-      safeEnd = Colors.black;
+    if (_minimumGradientContrast(Colors.white, safeStart, safeEnd) < 4.5) {
+      safeStart = safeEnd = Colors.black;
     }
     return (safeStart, safeEnd, Colors.white);
+  }
+
+  static double _minimumGradientContrast(
+    Color foreground,
+    Color start,
+    Color end,
+  ) {
+    var minimum = double.infinity;
+    for (var step = 0; step <= 8; step++) {
+      final ratio = _contrastRatio(
+        foreground,
+        Color.lerp(start, end, step / 8)!,
+      );
+      if (ratio < minimum) minimum = ratio;
+    }
+    return minimum;
   }
 
   static Color _ensureContrast(Color background, Color foreground) {

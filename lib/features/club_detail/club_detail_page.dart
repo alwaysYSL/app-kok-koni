@@ -69,7 +69,7 @@ class ClubDetailPage extends StatelessWidget {
                                 coachCount: coaches.length,
                                 officialCount: officials.length,
                                 missingFileCount: missingCount,
-                                onBack: () => context.pop(),
+                                onBack: () => _goBack(context),
                                 onShare: () => _shareClub(context, club),
                                 excludeClubNameSemantics: titleOpacity > 0,
                               ),
@@ -119,7 +119,7 @@ class ClubDetailPage extends StatelessWidget {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     IconButton(
-                                      onPressed: () => context.pop(),
+                                      onPressed: () => _goBack(context),
                                       tooltip: 'Kembali',
                                       color: palette.foreground,
                                       icon: const Icon(
@@ -202,5 +202,13 @@ class ClubDetailPage extends StatelessWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Info klub disalin')));
+  }
+
+  void _goBack(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/clubs');
+    }
   }
 }

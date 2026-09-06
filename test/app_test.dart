@@ -229,6 +229,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('direct club entry back action returns to the club list', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await container
+        .read(sessionProvider.notifier)
+        .signIn('DEMO-001', 'kokgarut123', false);
+    await tester.pumpAndSettle();
+    container.read(routerProvider).go('/club/garuda');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Kembali'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ClubsPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Login, five tabs, sport/club/person navigation and logout', (
     tester,
   ) async {
