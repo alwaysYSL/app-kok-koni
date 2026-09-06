@@ -271,6 +271,7 @@ void main() {
     expect(find.text('Detail Atlet'), findsOneWidget);
     container.read(routerProvider).go('/committee');
     await tester.pumpAndSettle();
+    expect(find.textContaining('Anggota KOK'), findsOneWidget);
     expect(find.text('Ketua KOK'), findsOneWidget);
     expect(find.text('Nama Atlet Satu'), findsNothing);
     container.read(routerProvider).go('/profile');
