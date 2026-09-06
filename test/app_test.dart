@@ -289,6 +289,13 @@ void main() {
       container.read(routerProvider).go(route);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull, reason: route);
+      if (route == '/club/garuda') {
+        for (final label in ['Atlet', 'Pelatih', 'Official', 'Dokumen']) {
+          await tester.tap(find.text(label));
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull, reason: '$route: $label');
+        }
+      }
     }
     container.read(routerProvider).go('/clubs');
     await tester.pumpAndSettle();
@@ -298,6 +305,24 @@ void main() {
     await tester.tap(find.text('Reset filter'));
     await tester.pumpAndSettle();
     expect(find.text('Klub Garuda Muda'), findsOneWidget);
+  });
+
+  testWidgets('club detail supports 1.3 text scale without overflow', (
+    tester,
+  ) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final container = await start(tester, width: 320);
+    await container
+        .read(sessionProvider.notifier)
+        .signIn('DEMO-001', 'kokgarut123', false);
+    container.read(routerProvider).go('/club/garuda');
+    await tester.pumpAndSettle();
+    for (final label in ['Atlet', 'Pelatih', 'Official', 'Dokumen']) {
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: label);
+    }
   });
 
   testWidgets('HomePage renders floating card, decorations, stats, and sections', (

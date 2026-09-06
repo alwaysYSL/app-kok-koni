@@ -45,6 +45,8 @@ void main() {
         'anggota': '/committee',
         'profil': '/profile',
         'detail-klub': '/club/garuda',
+        'detail-klub-pb': '/club/pb',
+        'detail-klub-voli': '/club/voli',
         'perlu-perhatian': '/attention',
       }.entries) {
         container.read(routerProvider).go(entry.value);
