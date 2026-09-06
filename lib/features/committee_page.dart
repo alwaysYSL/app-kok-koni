@@ -386,12 +386,8 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
           );
 
           // Extract unique divisions
-          final uniqueDivisions = <String>[];
-          for (final m in data.committee) {
-            if (!uniqueDivisions.contains(m.division)) {
-              uniqueDivisions.add(m.division);
-            }
-          }
+          final uniqueDivisions =
+              data.committee.map((m) => m.division).toSet().toList();
           final allChipItems = ['Semua', ...uniqueDivisions];
 
           return ListView(
