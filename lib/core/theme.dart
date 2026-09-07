@@ -61,6 +61,13 @@ ThemeData kokTheme() => ThemeData(
       color: Color(0xFF17191D),
     ),
   ),
+  actionIconTheme: ActionIconThemeData(
+    backButtonIconBuilder: (context) => const Icon(
+      Icons.chevron_left,
+      size: 28,
+      color: KokColors.cardTitle,
+    ),
+  ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
       fontSize: 32,

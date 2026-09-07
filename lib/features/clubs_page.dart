@@ -179,6 +179,23 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
         shape: const Border(
           bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
         ),
+        leading: (widget.sport != null || Navigator.canPop(context))
+            ? IconButton(
+                icon: const Icon(
+                  Icons.chevron_left,
+                  size: 28,
+                  color: KokColors.cardTitle,
+                ),
+                tooltip: 'Kembali',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/sports');
+                  }
+                },
+              )
+            : null,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),

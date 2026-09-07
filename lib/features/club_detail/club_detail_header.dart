@@ -42,32 +42,41 @@ class ClubDetailHeader extends StatelessWidget {
       painter: const BrandHeaderPatternPainter(),
       child: SafeArea(
         bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: 48,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: onBack,
-                    tooltip: 'Kembali',
-                    color: palette.foreground,
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                  IconButton(
-                    onPressed: onShare,
-                    tooltip: 'Bagikan info klub',
-                    color: palette.foreground,
-                    icon: const Icon(Icons.ios_share_rounded),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: SizedBox(
+                height: 48,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      onPressed: onBack,
+                      tooltip: 'Kembali',
+                      color: palette.foreground,
+                      icon: const Icon(
+                        Icons.chevron_left,
+                        size: 28,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: onShare,
+                      tooltip: 'Bagikan info klub',
+                      color: palette.foreground,
+                      icon: const Icon(Icons.share_outlined, size: 24),
+                    ),
+                  ],
+                ),
               ),
             ),
-            SizedBox(height: 88, child: Center(child: _buildLogo())),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(height: 88, child: Center(child: _buildLogo())),
             const SizedBox(height: 8),
             ExcludeSemantics(
               excluding: excludeClubNameSemantics,
@@ -175,8 +184,10 @@ class ClubDetailHeader extends StatelessWidget {
           ],
         ),
       ),
-    ),
+    ],
   ),
+),
+),
 );
 
   Widget _buildLogo() {

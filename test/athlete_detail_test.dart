@@ -74,6 +74,8 @@ void main() {
 
         // 1. Header & Title
         expect(find.text('Detail Atlet'), findsOneWidget);
+        final backIcon = tester.widget<Icon>(find.byIcon(Icons.chevron_left));
+        expect(backIcon.size, 28);
 
         // Header container has gradient with club brand palette
         final headerContainer = tester.widget<Container>(
@@ -107,6 +109,8 @@ void main() {
 
         // 2. Profile identity
         expect(find.text('Atlet 1 · Voli Bina Muda'), findsOneWidget);
+        final nameText = tester.widget<Text>(find.text('Atlet 1 · Voli Bina Muda'));
+        expect(nameText.style?.color, KokColors.cardTitle);
         expect(find.text('ID SICABOR · ATL-voli-atlet-0'), findsOneWidget);
 
         // 3. Status Badge: verified (soft green) independent of club brand color
@@ -151,8 +155,20 @@ void main() {
 
         // 5. Kelengkapan Berkas section
         expect(find.text('KELENGKAPAN BERKAS'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text('KELENGKAPAN BERKAS')).style?.color,
+          KokColors.cardTitle,
+        );
         expect(find.text('Kelengkapan dokumen'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text('Kelengkapan dokumen')).style?.color,
+          KokColors.cardTitle,
+        );
         expect(find.text('4 dari 4'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text('4 dari 4')).style?.color,
+          KokColors.cardTitle,
+        );
 
         // Progress bar with palette.headerStart
         final progressBar = tester.widget<LinearProgressIndicator>(
@@ -173,7 +189,15 @@ void main() {
 
         // 6. Riwayat section
         expect(find.text('RIWAYAT'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text('RIWAYAT')).style?.color,
+          KokColors.cardTitle,
+        );
         expect(find.text('2026'), findsOneWidget);
+        expect(
+          tester.widget<Text>(find.text('2026')).style?.color,
+          KokColors.cardTitle,
+        );
         expect(find.text('2025'), findsOneWidget);
         expect(find.text('2024'), findsOneWidget);
 

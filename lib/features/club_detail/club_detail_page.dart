@@ -110,30 +110,43 @@ class ClubDetailPage extends StatelessWidget {
                           if (titleOpacity == 1)
                             Positioned(
                               top: 0,
-                              left: 12,
-                              right: 12,
-                              child: SizedBox(
-                                height: 64,
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    IconButton(
-                                      onPressed: () => _goBack(context),
-                                      tooltip: 'Kembali',
-                                      color: palette.foreground,
-                                      icon: const Icon(
-                                        Icons.arrow_back_rounded,
-                                      ),
+                              left: 0,
+                              right: 0,
+                              child: SafeArea(
+                                bottom: false,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: SizedBox(
+                                    height: 48,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        IconButton(
+                                          onPressed: () => _goBack(context),
+                                          tooltip: 'Kembali',
+                                          color: palette.foreground,
+                                          icon: const Icon(
+                                            Icons.chevron_left,
+                                            size: 28,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          onPressed: () =>
+                                              _shareClub(context, club),
+                                          tooltip: 'Bagikan info klub',
+                                          color: palette.foreground,
+                                          icon: const Icon(
+                                            Icons.share_outlined,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    IconButton(
-                                      onPressed: () =>
-                                          _shareClub(context, club),
-                                      tooltip: 'Bagikan info klub',
-                                      color: palette.foreground,
-                                      icon: const Icon(Icons.ios_share_rounded),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),

@@ -48,6 +48,7 @@ void main() {
         'detail-klub-pb': '/club/pb',
         'detail-klub-voli': '/club/voli',
         'detail-atlet': '/person/voli-atlet-0',
+        'detail-cabor': '/sport/Bulu%20Tangkis',
         'perlu-perhatian': '/attention',
       }.entries) {
         container.read(routerProvider).go(entry.value);

@@ -82,6 +82,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    final backIcon = tester.widget<Icon>(find.byIcon(Icons.chevron_left));
+    expect(backIcon.size, 28);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Padding &&
+            widget.padding == const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('segmented tabs expose all four labels', (tester) async {

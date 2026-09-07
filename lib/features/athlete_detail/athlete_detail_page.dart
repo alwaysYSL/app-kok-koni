@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
 
+import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../shared/widgets.dart';
 import '../club_detail/club_brand_palette.dart';
@@ -223,7 +224,7 @@ class _ProfileCard extends StatelessWidget {
                 person.name,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: Color(0xFF0C2464),
+                  color: KokColors.cardTitle,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                 ),
@@ -369,7 +370,7 @@ class _ProfileCard extends StatelessWidget {
             child: Text(
               value,
               style: const TextStyle(
-                color: Color(0xFF0C2464),
+                color: KokColors.cardTitle,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -431,7 +432,7 @@ class _AvatarCircle extends StatelessWidget {
         style: const TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w800,
-          color: Color(0xFF0C2464),
+          color: KokColors.cardTitle,
         ),
       ),
     );
@@ -471,7 +472,7 @@ class _DocumentChecklistSection extends StatelessWidget {
             child: Text(
               'KELENGKAPAN BERKAS',
               style: TextStyle(
-                color: Color(0xFF0C2464),
+                color: KokColors.cardTitle,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
@@ -503,7 +504,7 @@ class _DocumentChecklistSection extends StatelessWidget {
                         'Kelengkapan dokumen',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Color(0xFF0C2464),
+                          color: KokColors.cardTitle,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -513,7 +514,7 @@ class _DocumentChecklistSection extends StatelessWidget {
                     Text(
                       '$completeCount dari ${_standardDocs.length}',
                       style: const TextStyle(
-                        color: Color(0xFF0C2464),
+                        color: KokColors.cardTitle,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -665,7 +666,7 @@ class _HistoryTimelineSection extends StatelessWidget {
             child: Text(
               'RIWAYAT',
               style: TextStyle(
-                color: Color(0xFF0C2464),
+                color: KokColors.cardTitle,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.8,
@@ -722,7 +723,7 @@ class _HistoryTimelineSection extends StatelessWidget {
                       Text(
                         milestones[i].$1,
                         style: const TextStyle(
-                          color: Color(0xFF0C2464),
+                          color: KokColors.cardTitle,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -831,7 +832,7 @@ class _StickyBottomBar extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0C2464),
+                    color: KokColors.cardTitle,
                   ),
                 ),
                 const SizedBox(height: 6),
