@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/features/dashboard_decorations.dart';
 
 import '../../data/models.dart';
 import '../../shared/widgets.dart';
@@ -104,6 +105,9 @@ class _HeaderAndCardSection extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: [palette.headerStart, palette.headerEnd],
               ),
+            ),
+            child: const CustomPaint(
+              painter: BrandHeaderPatternPainter(),
             ),
           ),
         ),

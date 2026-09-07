@@ -8,6 +8,7 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
 import 'package:kok_app/features/club_detail/club_brand_palette.dart';
+import 'package:kok_app/features/dashboard_decorations.dart';
 import 'package:kok_app/features/detail_pages.dart';
 import 'package:kok_app/shared/widgets.dart';
 
@@ -88,6 +89,21 @@ void main() {
                 as LinearGradient;
         expect(gradient.colors.first, palette.headerStart);
         expect(gradient.colors.last, palette.headerEnd);
+
+        // Header pattern decoration (concentric circles & dot matrix)
+        final patternCustomPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byWidget(headerContainer),
+            matching: find.byType(CustomPaint),
+          ),
+        );
+        expect(patternCustomPaint.painter, isA<BrandHeaderPatternPainter>());
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is BrandHeaderPatternPainter,
+          ),
+          findsOneWidget,
+        );
 
         // 2. Profile identity
         expect(find.text('Atlet 1 · Voli Bina Muda'), findsOneWidget);
