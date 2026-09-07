@@ -280,8 +280,11 @@ void main() {
     expect(find.text('Nama Atlet Satu'), findsNothing);
     container.read(routerProvider).go('/profile');
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Keluar'), 200);
-    await tester.tap(find.text('Keluar'));
+    await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+    await tester.tap(find.text('Keluar dari Akun'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keluar dari Akun?'), findsOneWidget);
+    await tester.tap(find.text('Ya, Keluar'));
     await tester.pumpAndSettle();
     expect(find.text('Masuk Akun'), findsOneWidget);
     container.read(routerProvider).go('/club/garuda');
