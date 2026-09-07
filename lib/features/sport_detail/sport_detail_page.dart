@@ -150,29 +150,6 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                         padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
                         child: _buildAnalyticsCard(palette, athletes),
                       ),
-                      SizedBox(
-                        height: 5,
-                        child: Wrap(
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                if (filteredAthletes.isNotEmpty) {
-                                  context.push('/person/${filteredAthletes.first.id}');
-                                }
-                              },
-                              child: const Text('Atlet dummy', style: TextStyle(color: Colors.transparent, fontSize: 1)),
-                            ),
-                            InkWell(
-                              onTap: () {
-                                if (coaches.isNotEmpty) {
-                                  context.push('/person/${coaches.first.id}');
-                                }
-                              },
-                              child: const Text('Pelatih dummy', style: TextStyle(color: Colors.transparent, fontSize: 1)),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -366,20 +343,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
       fontWeight: FontWeight.w600,
     );
 
-    Widget labelWidget;
-    if (label == 'Atlet') {
-      labelWidget = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [Text('At', style: labelStyle), Text('let', style: labelStyle)],
-      );
-    } else if (label == 'Pelatih') {
-      labelWidget = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: const [Text('Pe', style: labelStyle), Text('latih', style: labelStyle)],
-      );
-    } else {
-      labelWidget = Text(label, style: labelStyle);
-    }
+    final labelWidget = Text(label, style: labelStyle);
 
     return InkWell(
       onTap: onTap,

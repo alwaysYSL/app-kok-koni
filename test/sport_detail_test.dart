@@ -90,7 +90,10 @@ void main() {
       await tester.tap(find.text('U-16'));
       await tester.pumpAndSettle();
 
-      final firstPerson = find.textContaining('Atlet').first;
+      final firstPerson = find.descendant(
+        of: find.byType(TabBarView),
+        matching: find.textContaining('Atlet'),
+      ).first;
       await tester.tap(firstPerson);
       await tester.pumpAndSettle();
 
@@ -107,7 +110,10 @@ void main() {
       await tester.tap(find.text('Pelatih').first);
       await tester.pumpAndSettle();
 
-      final coachFinder = find.textContaining('Pelatih').first;
+      final coachFinder = find.descendant(
+        of: find.byType(TabBarView),
+        matching: find.textContaining('Pelatih'),
+      ).first;
       await tester.tap(coachFinder);
       await tester.pumpAndSettle();
 
