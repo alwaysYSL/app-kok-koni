@@ -215,13 +215,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
 
   Widget _buildSearchResults(KokSnapshot data) {
     final q = _query.toLowerCase();
+    final clubsById = {for (final c in data.clubs) c.id: c};
 
     // 1. Match Athletes & Coaches
     final matchedPeople = data.people.where((p) {
-      final club = data.clubs.firstWhere(
-        (c) => c.id == p.clubId,
-        orElse: () => Club(id: p.clubId, name: '', sport: '', village: ''),
-      );
+      final club = clubsById[p.clubId] ?? Club(id: p.clubId, name: '', sport: '', village: '');
 
       final matchesText = p.name.toLowerCase().contains(q) ||
           club.name.toLowerCase().contains(q) ||
@@ -311,19 +309,13 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
         ...matchedSports.map((s) {
           final clubsCount = data.clubs.where((c) => c.sport == s).length;
           final athletesCount = data.people.where((p) {
-            final club = data.clubs.firstWhere(
-              (c) => c.id == p.clubId,
-              orElse: () => Club(id: p.clubId, name: '', sport: '', village: ''),
-            );
-            return club.sport == s && p.role == 'Atlet';
+            final club = clubsById[p.clubId];
+            return club?.sport == s && p.role == 'Atlet';
           }).length;
           return _buildSportResultCard(s, clubsCount, athletesCount);
         }),
         ...matchedPeople.map((p) {
-          final club = data.clubs.firstWhere(
-            (c) => c.id == p.clubId,
-            orElse: () => Club(id: p.clubId, name: 'Klub', sport: '', village: ''),
-          );
+          final club = clubsById[p.clubId] ?? Club(id: p.clubId, name: 'Klub', sport: '', village: '');
           final palette = ClubBrandPaletteResolver.resolve(club);
           return _buildPersonResultCard(p, club, palette);
         }),
