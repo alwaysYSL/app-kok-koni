@@ -13,6 +13,7 @@ import 'features/detail_pages.dart';
 import 'features/club_detail/club_detail_page.dart';
 import 'features/athlete_detail/athlete_detail_page.dart';
 import 'features/attention_page.dart';
+import 'features/search/global_search_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<bool>(ref.read(sessionProvider));
@@ -77,6 +78,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/attention',
         builder: (_, s) => AttentionPage(type: s.uri.queryParameters['type']),
+      ),
+      GoRoute(
+        path: '/search',
+        builder: (_, _) => const GlobalSearchPage(),
       ),
     ],
   );

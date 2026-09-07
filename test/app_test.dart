@@ -10,6 +10,9 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/clubs_page.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
+import 'package:kok_app/features/home_page.dart';
+import 'package:kok_app/features/search/global_search_page.dart';
+import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
 
 Future<ProviderContainer> start(
   WidgetTester tester, {
@@ -369,6 +372,7 @@ void main() {
     expect(find.text('Kec. Garut Kota'), findsOneWidget);
     expect(find.text('Pak Asep · Koordinator'), findsOneWidget);
     expect(find.text('PA'), findsOneWidget);
+    expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
 
     // Check Floating Stats Card
     expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsOneWidget);
@@ -436,4 +440,44 @@ void main() {
     // Modal should close
     expect(find.text('Urutkan Klub'), findsNothing);
   });
+
+  testWidgets(
+    'Search flow: HomePage search bar navigates to /search, finds athlete, opens detail, and navigates back',
+    (tester) async {
+      final container = await start(tester);
+      await container
+          .read(sessionProvider.notifier)
+          .signIn('DEMO-001', 'kokgarut123', false);
+      await tester.pumpAndSettle();
+
+      // 1. Di Beranda, verifikasi keberadaan placeholder 'Cari nama atlet, klub, cabor...'
+      expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
+
+      // 2. Ketuk search bar -> verifikasi pindah ke /search (GlobalSearchPage)
+      await tester.tap(find.text('Cari nama atlet, klub, cabor...'));
+      await tester.pumpAndSettle();
+      expect(find.byType(GlobalSearchPage), findsOneWidget);
+
+      // 3. Cari atlet (masukkan teks 'Voli Bina Muda')
+      await tester.enterText(find.byType(TextField), 'Voli Bina Muda');
+      await tester.pumpAndSettle();
+      expect(find.text('Atlet 1 · Voli Bina Muda'), findsOneWidget);
+
+      // 4. Ketuk kartu atlet -> verifikasi masuk ke Detail Atlet (/person/voli-atlet-0)
+      await tester.tap(find.text('Atlet 1 · Voli Bina Muda'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AthleteDetailPage), findsOneWidget);
+
+      // 5. Ketuk tombol kembali -> kembali ke /search
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+      expect(find.byType(GlobalSearchPage), findsOneWidget);
+
+      // 6. Ketuk kembali lagi -> kembali ke Beranda (/home)
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+      expect(find.byType(HomePage), findsOneWidget);
+    },
+  );
 }
+

@@ -50,6 +50,7 @@ void main() {
         'detail-atlet': '/person/voli-atlet-0',
         'detail-cabor': '/sport/Bulu%20Tangkis',
         'perlu-perhatian': '/attention',
+        'pencarian': '/search',
       }.entries) {
         container.read(routerProvider).go(entry.value);
         await tester.pumpAndSettle();
