@@ -267,7 +267,7 @@ void main() {
     await tester.tap(find.text('Cabor'));
     await tester.pumpAndSettle();
     expect(find.text('Cabang Olahraga'), findsOneWidget);
-    await tester.tap(find.text('Bulu Tangkis'));
+    await tester.tap(find.text('Bulu Tangkis').first);
     await tester.pumpAndSettle();
     expect(find.byType(SportDetailPage), findsOneWidget);
     expect(find.text('Bulu Tangkis'), findsWidgets);
