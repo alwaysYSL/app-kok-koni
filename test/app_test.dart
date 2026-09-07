@@ -13,6 +13,7 @@ import 'package:kok_app/features/dashboard_decorations.dart';
 import 'package:kok_app/features/home_page.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
+import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
 Future<ProviderContainer> start(
   WidgetTester tester, {
@@ -268,16 +269,24 @@ void main() {
     expect(find.text('Cabang Olahraga'), findsOneWidget);
     await tester.tap(find.text('Bulu Tangkis'));
     await tester.pumpAndSettle();
-    expect(find.byType(ClubsPage), findsOneWidget);
-    expect(find.byIcon(Icons.chevron_left), findsOneWidget);
-    await tester.tap(find.text('PB Citra Garut'));
+    expect(find.byType(SportDetailPage), findsOneWidget);
+    expect(find.text('Bulu Tangkis'), findsWidgets);
+    expect(find.text('Berkas Lengkap'), findsOneWidget);
+    expect(find.byType(TabBar), findsOneWidget);
+    await tester.tap(find.widgetWithText(Tab, 'Atlet'));
     await tester.pumpAndSettle();
-    expect(find.text('PB Citra Garut'), findsOneWidget);
-    await tester.tap(find.text('Atlet 1 · PB Citra Garut'));
+    await tester.tap(find.textContaining('Atlet 1').first);
     await tester.pumpAndSettle();
+    expect(find.byType(AthleteDetailPage), findsOneWidget);
     expect(find.text('Detail Atlet'), findsOneWidget);
     expect(find.text('KELENGKAPAN BERKAS'), findsOneWidget);
     expect(find.text('Hubungi pengurus klub'), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(find.byType(SportDetailPage), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+    expect(find.text('Cabang Olahraga'), findsOneWidget);
     container.read(routerProvider).go('/committee');
     await tester.pumpAndSettle();
     expect(find.textContaining('Anggota KOK'), findsOneWidget);

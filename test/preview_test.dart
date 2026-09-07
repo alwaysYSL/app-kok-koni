@@ -48,7 +48,7 @@ void main() {
         'detail-klub-pb': '/club/pb',
         'detail-klub-voli': '/club/voli',
         'detail-atlet': '/person/voli-atlet-0',
-        'detail-cabor': '/sport/Bulu%20Tangkis',
+        'detail-cabor': '/sport/Sepak%20Bola',
         'perlu-perhatian': '/attention',
         'pencarian': '/search',
       }.entries) {
