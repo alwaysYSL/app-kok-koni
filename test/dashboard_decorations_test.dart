@@ -58,4 +58,33 @@ void main() {
     const silhouettePainter2 = AthletesSilhouettePainter();
     expect(silhouettePainter1.shouldRepaint(silhouettePainter2), isFalse);
   });
+
+  testWidgets('BrandHeaderPatternPainter renders in CustomPaint and shouldRepaint returns false', (tester) async {
+    const painter1 = BrandHeaderPatternPainter();
+    const painter2 = BrandHeaderPatternPainter();
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 200,
+            child: CustomPaint(
+              painter: painter1,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is CustomPaint && widget.painter == painter1,
+      ),
+      findsOneWidget,
+    );
+    expect(painter1.shouldRepaint(painter2), isFalse);
+  });
 }
+
+

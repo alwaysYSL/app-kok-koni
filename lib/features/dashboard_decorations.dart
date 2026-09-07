@@ -379,3 +379,56 @@ class AthletesSilhouettePainter extends CustomPainter {
     return oldDelegate.primaryColor != primaryColor;
   }
 }
+
+/// CustomPainter untuk menggambar pola latar belakang header merek/aplikasi
+/// dengan matriks titik di kanan atas dan busur lingkaran konsentris di kiri/tengah atas.
+class BrandHeaderPatternPainter extends CustomPainter {
+  const BrandHeaderPatternPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+
+    // 1. Gambar Dot Matrix di kanan atas
+    final dotPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.12)
+      ..style = PaintingStyle.fill;
+
+    const rows = 7;
+    const cols = 6;
+    const spacing = 14.0;
+    final startX = size.width - (cols * spacing) - 14.0;
+    const startY = 14.0;
+
+    for (var r = 0; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        canvas.drawCircle(
+          Offset(startX + (c * spacing), startY + (r * spacing)),
+          1.8,
+          dotPaint,
+        );
+      }
+    }
+
+    // 2. Gambar Concentric Circular Arcs (busur lingkaran halus) di kiri atas
+    final center = Offset(size.width * 0.12, -30.0);
+
+    final arcPaint1 = Paint()
+      ..color = Colors.white.withValues(alpha: 0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    final arcPaint2 = Paint()
+      ..color = Colors.white.withValues(alpha: 0.07)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawCircle(center, 130.0, arcPaint1);
+    canvas.drawCircle(center, 190.0, arcPaint1);
+    canvas.drawCircle(center, 260.0, arcPaint2);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
