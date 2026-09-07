@@ -47,6 +47,7 @@ void main() {
         'detail-klub': '/club/garuda',
         'detail-klub-pb': '/club/pb',
         'detail-klub-voli': '/club/voli',
+        'detail-atlet': '/person/voli-atlet-0',
         'perlu-perhatian': '/attention',
       }.entries) {
         container.read(routerProvider).go(entry.value);
