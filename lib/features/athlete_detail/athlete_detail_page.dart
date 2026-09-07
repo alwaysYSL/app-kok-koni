@@ -141,12 +141,16 @@ class _HeaderAndCardSection extends StatelessWidget {
                       }
                     },
                   ),
-                  Text(
-                    'Detail ${person.role}',
-                    style: TextStyle(
-                      color: palette.foreground,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      'Detail ${person.role}',
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: palette.foreground,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -490,14 +494,18 @@ class _DocumentChecklistSection extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Kelengkapan dokumen',
-                      style: TextStyle(
-                        color: Color(0xFF0C2464),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    const Expanded(
+                      child: Text(
+                        'Kelengkapan dokumen',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFF0C2464),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Text(
                       '$completeCount dari ${_standardDocs.length}',
                       style: const TextStyle(
@@ -541,14 +549,18 @@ class _DocumentChecklistSection extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Lisensi',
-                        style: TextStyle(
-                          color: Color(0xFF1F2937),
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
+                      const Expanded(
+                        child: Text(
+                          'Lisensi',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Color(0xFF1F2937),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,

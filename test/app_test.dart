@@ -226,6 +226,8 @@ void main() {
     await tester.tap(find.textContaining('Atlet 1').first);
     await tester.pumpAndSettle();
     expect(find.text('Detail Atlet'), findsOneWidget);
+    expect(find.text('KELENGKAPAN BERKAS'), findsOneWidget);
+    expect(find.text('Hubungi pengurus klub'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -269,6 +271,8 @@ void main() {
     await tester.tap(find.text('Atlet 1 · PB Citra Garut'));
     await tester.pumpAndSettle();
     expect(find.text('Detail Atlet'), findsOneWidget);
+    expect(find.text('KELENGKAPAN BERKAS'), findsOneWidget);
+    expect(find.text('Hubungi pengurus klub'), findsOneWidget);
     container.read(routerProvider).go('/committee');
     await tester.pumpAndSettle();
     expect(find.textContaining('Anggota KOK'), findsOneWidget);
