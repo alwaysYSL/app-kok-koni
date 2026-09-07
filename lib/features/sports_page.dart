@@ -93,6 +93,7 @@ class _SportsPageState extends State<SportsPage> {
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
+                              color: KokColors.cardTitle,
                             ),
                           ),
                           const SizedBox(height: 5),

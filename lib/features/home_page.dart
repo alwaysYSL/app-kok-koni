@@ -548,7 +548,7 @@ class AttentionTile extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
-                  color: KokColors.ink,
+                  color: KokColors.cardTitle,
                 ),
               ),
               const SizedBox(height: 3),

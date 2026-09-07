@@ -50,7 +50,7 @@ class ClubPersonCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0xFF17191D),
+                          color: KokColors.cardTitle,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),

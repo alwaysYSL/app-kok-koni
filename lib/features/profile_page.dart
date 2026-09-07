@@ -706,7 +706,7 @@ class _SyncStatusCard extends ConsumerWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
-                    color: Color(0xFF0C2464),
+                    color: KokColors.cardTitle,
                   ),
                 ),
               ),
@@ -792,7 +792,7 @@ class _MenuTile extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
-                  color: Color(0xFF0C2464),
+                  color: KokColors.cardTitle,
                 ),
               ),
               const SizedBox(height: 3),

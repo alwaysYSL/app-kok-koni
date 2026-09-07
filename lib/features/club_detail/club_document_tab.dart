@@ -24,7 +24,7 @@ class ClubDocumentTab extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: KokColors.ink,
+                    color: KokColors.cardTitle,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),

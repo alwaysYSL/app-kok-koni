@@ -508,7 +508,7 @@ class ClubTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF0C2464),
+                        color: KokColors.cardTitle,
                       ),
                     ),
                     const SizedBox(height: 4),
