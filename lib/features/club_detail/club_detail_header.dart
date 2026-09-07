@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kok_app/features/dashboard_decorations.dart';
 
 import '../../data/models.dart';
 import '../../shared/widgets.dart';
@@ -37,10 +38,12 @@ class ClubDetailHeader extends StatelessWidget {
         colors: [palette.headerStart, palette.headerEnd],
       ),
     ),
-    child: SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+    child: CustomPaint(
+      painter: const BrandHeaderPatternPainter(),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -173,7 +176,8 @@ class ClubDetailHeader extends StatelessWidget {
         ),
       ),
     ),
-  );
+  ),
+);
 
   Widget _buildLogo() {
     final logoUrl = club.logoUrl?.trim();

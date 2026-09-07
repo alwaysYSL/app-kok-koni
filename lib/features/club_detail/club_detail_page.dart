@@ -44,13 +44,13 @@ class ClubDetailPage extends StatelessWidget {
                 sliver: SliverAppBar(
                   automaticallyImplyLeading: false,
                   pinned: true,
-                  expandedHeight: 500,
+                  expandedHeight: 420,
                   toolbarHeight: 64,
                   backgroundColor: palette.headerEnd,
                   flexibleSpace: LayoutBuilder(
                     builder: (context, constraints) {
                       final titleOpacity =
-                          ((500 - constraints.biggest.height) / 290).clamp(
+                          ((420 - constraints.biggest.height) / 200).clamp(
                             0.0,
                             1.0,
                           );

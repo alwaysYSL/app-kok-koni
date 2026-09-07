@@ -9,6 +9,7 @@ import 'package:kok_app/features/club_detail/club_detail_header.dart';
 import 'package:kok_app/features/club_detail/club_detail_tabs.dart';
 import 'package:kok_app/features/club_detail/club_people_tab.dart';
 import 'package:kok_app/features/club_detail/club_person_card.dart';
+import 'package:kok_app/features/dashboard_decorations.dart';
 
 const testClub = Club(
   id: 'garuda',
@@ -63,6 +64,22 @@ void main() {
     expect(find.text('ATLET'), findsOneWidget);
     expect(
       find.bySemanticsLabel('Logo fallback Klub Garuda Muda'),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CustomPaint &&
+            widget.painter is BrandHeaderPatternPainter,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Padding &&
+            widget.padding == const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      ),
       findsOneWidget,
     );
   });
