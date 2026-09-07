@@ -261,7 +261,7 @@ class _ProfileCard extends StatelessWidget {
               _buildDetailRow(
                 icon: Icons.cake_outlined,
                 label: 'Lahir / Usia',
-                value: person.age != null ? '${person.age} tahun' : '16 tahun',
+                value: person.age != null ? '${person.age} tahun' : '-',
                 palette: palette,
               ),
               _buildDetailRow(
