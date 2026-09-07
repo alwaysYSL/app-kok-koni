@@ -58,13 +58,20 @@ class _SportsPageState extends State<SportsPage> {
         final coachesPerSport = <String, int>{};
         final clubsPerSport = <String, List<Club>>{};
 
-        for (final sport in allSports) {
-          final clubs = data.clubs.where((c) => c.sport == sport).toList();
-          clubsPerSport[sport] = clubs;
-          final clubIds = clubs.map((c) => c.id).toSet();
-          final people = data.people.where((p) => clubIds.contains(p.clubId)).toList();
-          athletesPerSport[sport] = people.where((p) => p.role == 'Atlet').toList();
-          coachesPerSport[sport] = people.where((p) => p.role == 'Pelatih').length;
+        final sportByClubId = {for (final c in data.clubs) c.id: c.sport};
+        
+        for (final c in data.clubs) {
+          clubsPerSport.putIfAbsent(c.sport, () => []).add(c);
+        }
+
+        for (final p in data.people) {
+          final sport = sportByClubId[p.clubId];
+          if (sport == null) continue;
+          if (p.role == 'Atlet') {
+            athletesPerSport.putIfAbsent(sport, () => []).add(p);
+          } else if (p.role == 'Pelatih') {
+            coachesPerSport[sport] = (coachesPerSport[sport] ?? 0) + 1;
+          }
         }
 
         final totalAthletes = allSports.fold<int>(

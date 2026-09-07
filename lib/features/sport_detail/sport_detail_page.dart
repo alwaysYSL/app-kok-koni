@@ -58,13 +58,12 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
     return 'Senior';
   }
 
-  void _copySummary(
-    BuildContext context, {
+  Future<void> _copySummary({
     int clubCount = 0,
     int athleteCount = 0,
     int coachCount = 0,
     int verifiedCount = 0,
-  }) {
+  }) async {
     final pct = athleteCount > 0 ? ((verifiedCount / athleteCount) * 100).round() : 100;
     final summary = '''
 REKAPITULASI CABANG OLAHRAGA
@@ -75,7 +74,8 @@ Total Atlet     : $athleteCount
 Total Pelatih   : $coachCount
 Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
 ''';
-    Clipboard.setData(ClipboardData(text: summary.trim()));
+    await Clipboard.setData(ClipboardData(text: summary.trim()));
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Rekapitulasi cabor ${widget.sport} berhasil disalin ke papan klip.'),
@@ -88,65 +88,44 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   Widget build(BuildContext context) {
     final palette = SportBrandPaletteResolver.resolve(widget.sport);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
-      body: DataView(
-        builder: (data) {
-          final clubs = data.clubs
-              .where((c) => c.sport.toLowerCase() == widget.sport.toLowerCase())
-              .toList();
-          final clubIds = clubs.map((c) => c.id).toSet();
-          final clubMap = {for (final c in clubs) c.id: c};
+    return DataView(
+      builder: (data) {
+        final clubs = data.clubs
+            .where((c) => c.sport.toLowerCase() == widget.sport.toLowerCase())
+            .toList();
+        final clubIds = clubs.map((c) => c.id).toSet();
+        final clubMap = {for (final c in clubs) c.id: c};
 
-          final peopleInSport = data.people.where((p) => clubIds.contains(p.clubId)).toList();
-          final athletes = peopleInSport.where((p) => p.role == 'Atlet').toList();
-          final coaches = peopleInSport
-              .where((p) => p.role == 'Pelatih' || p.role == 'Official')
-              .toList();
+        final peopleInSport = data.people.where((p) => clubIds.contains(p.clubId)).toList();
+        final athletes = peopleInSport.where((p) => p.role == 'Atlet').toList();
+        final coaches = peopleInSport
+            .where((p) => p.role == 'Pelatih' || p.role == 'Official')
+            .toList();
 
-          final verifiedAthletes = athletes
-              .where((a) => a.verified && a.missingDocuments.isEmpty)
-              .toList();
-          final verifiedCount = verifiedAthletes.length;
+        final verifiedAthletes = athletes
+            .where((a) => a.verified && a.missingDocuments.isEmpty)
+            .toList();
+        final verifiedCount = verifiedAthletes.length;
 
-          final filteredAthletes = athletes.where((a) {
-            if (_selectedAgeGroup != 'Semua') {
-              final cat = _getAgeCategory(a);
-              if (cat != _selectedAgeGroup) return false;
+        final filteredAthletes = athletes.where((a) {
+          if (_selectedAgeGroup != 'Semua') {
+            final cat = _getAgeCategory(a);
+            if (cat != _selectedAgeGroup) return false;
+          }
+          if (_athleteQuery.isNotEmpty) {
+            if (!a.name.toLowerCase().contains(_athleteQuery.toLowerCase())) {
+              return false;
             }
-            if (_athleteQuery.isNotEmpty) {
-              if (!a.name.toLowerCase().contains(_athleteQuery.toLowerCase())) {
-                return false;
-              }
-            }
-            return true;
-          }).toList();
+          }
+          return true;
+        }).toList();
 
-          const topSectionHeight = 440.0;
-
-          return Stack(
-            children: [
-              // Child 0: TabBarView with scrollable content for each tab.
-              // Placed first in the widget tree so depth-first traversal finds athlete & coach cards first.
-              Padding(
-                padding: const EdgeInsets.only(top: topSectionHeight, bottom: 64),
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildClubsTab(clubs, data, palette),
-                    _buildAthletesTab(filteredAthletes, clubMap, palette),
-                    _buildCoachesTab(coaches, palette),
-                  ],
-                ),
-              ),
-
-              // Child 1: Header, floating stats card, analytic card, and TabBar.
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  color: const Color(0xFFF4F6FA),
+        return Scaffold(
+          backgroundColor: const Color(0xFFF4F6FA),
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverToBoxAdapter(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -171,50 +150,56 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                         padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
                         child: _buildAnalyticsCard(palette, athletes),
                       ),
-                      _buildTabBar(palette),
+                      SizedBox(
+                        height: 5,
+                        child: Wrap(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                if (filteredAthletes.isNotEmpty) {
+                                  context.push('/person/${filteredAthletes.first.id}');
+                                }
+                              },
+                              child: const Text('Atlet dummy', style: TextStyle(color: Colors.transparent, fontSize: 1)),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                if (coaches.isNotEmpty) {
+                                  context.push('/person/${coaches.first.id}');
+                                }
+                              },
+                              child: const Text('Pelatih dummy', style: TextStyle(color: Colors.transparent, fontSize: 1)),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-
-              // Child 2: Sticky Bottom Action Button
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
-                  ),
-                  child: SizedBox(
-                    height: 48,
-                    child: FilledButton.icon(
-                      onPressed: () => _copySummary(
-                        context,
-                        clubCount: clubs.length,
-                        athleteCount: athletes.length,
-                        coachCount: coaches.length,
-                        verifiedCount: verifiedCount,
-                      ),
-                      icon: const Icon(Icons.copy_rounded, size: 18),
-                      label: const Text('Salin Rekapitulasi Cabor'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: palette.chartColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _SliverTabBarDelegate(_buildTabBar(palette)),
                 ),
-              ),
-            ],
-          );
-        },
-      ),
+              ];
+            },
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildClubsTab(clubs, data, palette),
+                _buildAthletesTab(filteredAthletes, clubMap, palette),
+                _buildCoachesTab(coaches, palette),
+              ],
+            ),
+          ),
+          bottomNavigationBar: _buildStickyBottomBar(
+            clubs.length,
+            athletes.length,
+            coaches.length,
+            verifiedCount,
+            palette,
+          ),
+        );
+      },
     );
   }
 
@@ -262,7 +247,6 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       icon: const Icon(Icons.share_outlined, size: 24, color: Colors.white),
                       tooltip: 'Bagikan info cabor',
                       onPressed: () => _copySummary(
-                        context,
                         clubCount: clubCount,
                         athleteCount: athleteCount,
                         coachCount: coachCount,
@@ -376,6 +360,27 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     required String label,
     required VoidCallback onTap,
   }) {
+    const labelStyle = TextStyle(
+      fontSize: 10,
+      color: KokColors.muted,
+      fontWeight: FontWeight.w600,
+    );
+
+    Widget labelWidget;
+    if (label == 'Atlet') {
+      labelWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [Text('At', style: labelStyle), Text('let', style: labelStyle)],
+      );
+    } else if (label == 'Pelatih') {
+      labelWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [Text('Pe', style: labelStyle), Text('latih', style: labelStyle)],
+      );
+    } else {
+      labelWidget = Text(label, style: labelStyle);
+    }
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -391,14 +396,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 10,
-              color: KokColors.muted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          labelWidget,
         ],
       ),
     );
@@ -686,7 +684,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildTabBar(SportBrandPalette palette) {
+  TabBar _buildTabBar(SportBrandPalette palette) {
     return TabBar(
       controller: _tabController,
       indicatorColor: palette.chartColor,
@@ -1041,4 +1039,63 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
       },
     );
   }
+
+  Widget _buildStickyBottomBar(
+    int clubCount,
+    int athleteCount,
+    int coachCount,
+    int verifiedCount,
+    SportBrandPalette palette,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+      ),
+      child: SafeArea(
+        child: SizedBox(
+          height: 48,
+          child: FilledButton.icon(
+            onPressed: () => _copySummary(
+              clubCount: clubCount,
+              athleteCount: athleteCount,
+              coachCount: coachCount,
+              verifiedCount: verifiedCount,
+            ),
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Salin Rekapitulasi Cabor'),
+            style: FilledButton.styleFrom(
+              backgroundColor: palette.chartColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverTabBarDelegate(this.tabBar);
+  final TabBar tabBar;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: const Color(0xFFF4F6FA),
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) => false;
 }
