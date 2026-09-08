@@ -2,17 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/domain/auth_state.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class _FakeProfileAuthController extends AuthController {
+  final UserPrincipal user;
+  _FakeProfileAuthController(this.user);
+
+  @override
+  AuthState build() => AuthSignedIn(user: user, generation: 1);
+
+  @override
+  Future<void> logout() async {
+    state = const AuthSignedOut();
+  }
+}
+
+const testUser = UserPrincipal(
+  id: 'usr-garut-kota-001',
+  skNumber: 'DEMO-001',
+  name: 'Pak Asep',
+  role: 'Koordinator Kecamatan',
+  districtId: 'garut_kota',
+  districtName: 'Kecamatan Garut Kota',
+  permissions: {'sports:read'},
+);
+
 Widget buildTestableProfileWidget({
   required Widget child,
   KokSnapshot? snapshot,
   SharedPreferences? preferences,
   GoRouter? router,
+  UserPrincipal user = testUser,
 }) {
   final snap = snapshot ??
       KokSnapshot(
@@ -68,6 +95,7 @@ Widget buildTestableProfileWidget({
 
   return ProviderScope(
     overrides: [
+      authControllerProvider.overrideWith(() => _FakeProfileAuthController(user)),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
         preferencesProvider.overrideWithValue(preferences),
@@ -84,6 +112,7 @@ Future<void> pumpProfilePage(
   KokSnapshot? snapshot,
   SharedPreferences? preferences,
   GoRouter? router,
+  UserPrincipal user = testUser,
 }) async {
   tester.view.physicalSize = const Size(390, 1200);
   tester.view.devicePixelRatio = 1;
@@ -107,6 +136,7 @@ Future<void> pumpProfilePage(
       snapshot: snapshot,
       preferences: preferences,
       router: appRouter,
+      user: user,
     ),
   );
   await tester.pumpAndSettle();
@@ -117,6 +147,30 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
+  });
+
+  testWidgets('ProfilePage menampilkan profil pengurus dan tombol logout di luar DataView bahkan jika snapshot error', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(() => _FakeProfileAuthController(testUser)),
+          snapshotProvider.overrideWith((ref) => throw Exception('Koneksi olahraga gagal')),
+        ],
+        child: const MaterialApp(
+          home: ProfilePage(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Pak Asep'), findsOneWidget);
+    expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
+    expect(find.text('Keluar dari Akun'), findsOneWidget);
+
+    await tester.tap(find.text('Keluar dari Akun'));
+    await tester.pumpAndSettle();
+    expect(find.text('Keluar dari Akun?'), findsOneWidget);
   });
 
   group('ProfilePage Widget Tests', () {
@@ -342,15 +396,10 @@ void main() {
         final container = ProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
+            authControllerProvider.overrideWith(() => _FakeProfileAuthController(testUser)),
           ],
         );
         addTearDown(container.dispose);
-
-        // Sign in first
-        await container
-            .read(sessionProvider.notifier)
-            .signIn('DEMO-001', 'kokgarut123', false);
-        expect(container.read(sessionProvider), isTrue);
 
         final appRouter = GoRouter(
           initialLocation: '/profile',
@@ -380,8 +429,8 @@ void main() {
         await tester.tap(find.text('Ya, Keluar'));
         await tester.pumpAndSettle();
 
-        // Session revoked
-        expect(container.read(sessionProvider), isFalse);
+        // Session revoked in AuthController
+        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
       },
     );
 

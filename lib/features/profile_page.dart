@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/auth/domain/user_principal.dart';
+import '../core/auth/presentation/auth_controller.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
@@ -34,52 +36,61 @@ class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(
-      title: const Text(
-        'Akun',
-        style: TextStyle(
-          fontFamily: 'KokSans',
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          color: Color(0xFF0C2464),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'Akun',
+          style: TextStyle(
+            fontFamily: 'KokSans',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF0C2464),
+          ),
+        ),
+        centerTitle: false,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: const Color(0xFFF1F5F9),
+            height: 1,
+          ),
         ),
       ),
-      centerTitle: false,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(
-          color: const Color(0xFFF1F5F9),
-          height: 1,
-        ),
-      ),
-    ),
-    body: DataView(
-      builder: (data) => ListView(
+      body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _ExecutiveProfileCard(),
-          _buildSectionHeader('SINKRONISASI DATA SICABOR'),
-          _SyncStatusCard(data: data),
-          _buildSectionHeader('UTILITAS KOORDINATOR'),
-          _MenuTile(
-            icon: Icons.summarize_outlined,
-            iconBg: const Color(0xFFE8F0FE),
-            iconColor: const Color(0xFF1B4F9E),
-            title: 'Rekap Data Kecamatan',
-            subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
-            onTap: () => _showRekapSheet(context, data),
-          ),
-          _MenuTile(
-            icon: Icons.support_agent_rounded,
-            iconBg: const Color(0xFFD1FAE5),
-            iconColor: const Color(0xFF059669),
-            title: 'Helpdesk KONI Kabupaten',
-            subtitle: 'Kontak koordinasi data dan administrasi KOK',
-            onTap: () => _showHelpdeskSheet(context),
+          _ExecutiveProfileCard(user: user),
+          DataView(
+            builder: (data) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionHeader('SINKRONISASI DATA SICABOR'),
+                _SyncStatusCard(data: data),
+                _buildSectionHeader('UTILITAS KOORDINATOR'),
+                _MenuTile(
+                  icon: Icons.summarize_outlined,
+                  iconBg: const Color(0xFFE8F0FE),
+                  iconColor: const Color(0xFF1B4F9E),
+                  title: 'Rekap Data Kecamatan',
+                  subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
+                  onTap: () => _showRekapSheet(context, data),
+                ),
+                _MenuTile(
+                  icon: Icons.support_agent_rounded,
+                  iconBg: const Color(0xFFD1FAE5),
+                  iconColor: const Color(0xFF059669),
+                  title: 'Helpdesk KONI Kabupaten',
+                  subtitle: 'Kontak koordinasi data dan administrasi KOK',
+                  onTap: () => _showHelpdeskSheet(context),
+                ),
+              ],
+            ),
           ),
           _buildSectionHeader('PENGATURAN & APLIKASI'),
           _MenuTile(
@@ -114,7 +125,7 @@ class ProfilePage extends ConsumerWidget {
               'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: Color(0xFF9CA3AF),
                 height: 1.4,
               ),
@@ -122,8 +133,8 @@ class ProfilePage extends ConsumerWidget {
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
 
   Widget _buildSectionHeader(String title) => Padding(
     padding: const EdgeInsets.only(top: 8, bottom: 10),
@@ -528,7 +539,10 @@ Status: Terdaftar pada Sistem KOK Garut Kota''';
                       child: ElevatedButton(
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
-                          ref.read(sessionProvider.notifier).signOut();
+                          ref.read(authControllerProvider.notifier).logout();
+                          try {
+                            ref.read(sessionProvider.notifier).signOut();
+                          } catch (_) {}
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFDC2626),
@@ -559,108 +573,127 @@ Status: Terdaftar pada Sistem KOK Garut Kota''';
 }
 
 class _ExecutiveProfileCard extends StatelessWidget {
+  const _ExecutiveProfileCard({this.user});
+  final UserPrincipal? user;
+
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 20),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF07237B), Color(0xFF03144B)],
-      ),
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0xFF07237B).withValues(alpha: 0.20),
-          blurRadius: 16,
-          offset: const Offset(0, 6),
+  Widget build(BuildContext context) {
+    final name = user?.name ?? 'Pak Asep';
+    final initials = user != null
+        ? user!.name
+            .split(' ')
+            .where((s) => s.isNotEmpty)
+            .map((s) => s[0])
+            .take(2)
+            .join()
+            .toUpperCase()
+        : 'PA';
+    final district = user != null
+        ? 'Koordinator · ${user!.districtName.replaceFirst('Kecamatan ', 'Kec. ')}'
+        : 'Koordinator · Kec. Garut Kota';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF07237B), Color(0xFF03144B)],
         ),
-      ],
-    ),
-    child: ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: CustomPaint(
-        painter: const AccountProfileCardPainter(),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFF1E3A8A),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.40),
-                    width: 1.5,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF07237B).withValues(alpha: 0.20),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: CustomPaint(
+          painter: const AccountProfileCardPainter(),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF1E3A8A),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.40),
+                      width: 1.5,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initials,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 20,
+                    ),
                   ),
                 ),
-                alignment: Alignment.center,
-                child: const Text(
-                  'PA',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Pak Asep',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Koordinator · Kec. Garut Kota',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: const Color(0xFFF59E0B),
-                          width: 1,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      child: const Text(
-                        'AKSES READ-ONLY',
+                      const SizedBox(height: 4),
+                      Text(
+                        district,
                         style: TextStyle(
-                          color: Color(0xFFFBBF24),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
+                          color: Colors.white.withValues(alpha: 0.75),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: const Color(0xFFF59E0B),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Text(
+                          'AKSES READ-ONLY',
+                          style: TextStyle(
+                            color: Color(0xFFFBBF24),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _SyncStatusCard extends ConsumerWidget {

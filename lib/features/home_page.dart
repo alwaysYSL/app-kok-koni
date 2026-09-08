@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/auth/presentation/auth_controller.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -11,44 +12,45 @@ import 'dashboard_decorations.dart';
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    body: DataView(
-      builder: (data) {
-        final athletes = data.people.where((p) => p.role == 'Atlet').toList();
-        final verified = athletes.where((p) => p.verified).length;
-        final missing = data.people
-            .where((p) => p.missingDocuments.isNotEmpty)
-            .length;
-        final expired = data.people.where((p) => p.expiredLicense).length;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
 
-        // Cari klub dan cabor yang membutuhkan perhatian
-        final missingPeople = data.people
-            .where((p) => p.missingDocuments.isNotEmpty)
-            .toList();
-        final missingClubIds = missingPeople.map((p) => p.clubId).toSet();
-        final missingClubs = data.clubs
-            .where((c) => missingClubIds.contains(c.id))
-            .toList();
-        final missingSubtitle = missingClubs.isNotEmpty
-            ? '${missingClubs.first.name.replaceFirst('Klub ', '')} · ${missingClubs.first.sport}'
-            : (missing > 0 ? 'Garuda Muda · Sepak Bola' : 'Semua berkas lengkap');
+    return Scaffold(
+      body: DataView(
+        builder: (data) {
+          final athletes = data.people.where((p) => p.role == 'Atlet').toList();
+          final verified = athletes.where((p) => p.verified).length;
+          final missing = data.people
+              .where((p) => p.missingDocuments.isNotEmpty)
+              .length;
+          final expired = data.people.where((p) => p.expiredLicense).length;
 
-        final expiredCoaches = data.people
-            .where((p) => p.role == 'Pelatih' && p.expiredLicense)
-            .toList();
-        final expiredClubIds = expiredCoaches.map((p) => p.clubId).toSet();
-        final expiredClubs = data.clubs
-            .where((c) => expiredClubIds.contains(c.id))
-            .toList();
-        final expiredSportsCount = expiredClubs
-            .map((c) => c.sport)
-            .toSet()
-            .length;
-        final expiredSubtitle = expired > 0
-            ? (expired == 5
-                ? '4 klub · 3 cabor'
-                : '${expiredClubs.length} klub · $expiredSportsCount cabor')
-            : 'Semua lisensi aktif';
+          // Cari klub dan cabor yang membutuhkan perhatian
+          final missingPeople = data.people
+              .where((p) => p.missingDocuments.isNotEmpty)
+              .toList();
+          final missingClubIds = missingPeople.map((p) => p.clubId).toSet();
+          final missingClubs = data.clubs
+              .where((c) => missingClubIds.contains(c.id))
+              .toList();
+          final missingSubtitle = missingClubs.isNotEmpty
+              ? '${missingClubs.first.name.replaceFirst('Klub ', '')} · ${missingClubs.first.sport}'
+              : (missing > 0 ? 'Garuda Muda · Sepak Bola' : 'Semua berkas lengkap');
+
+          final expiredCoaches = data.people
+              .where((p) => p.role == 'Pelatih' && p.expiredLicense)
+              .toList();
+          final expiredClubIds = expiredCoaches.map((p) => p.clubId).toSet();
+          final expiredClubs = data.clubs
+              .where((c) => expiredClubIds.contains(c.id))
+              .toList();
+          final expiredSportsCount = expiredClubs
+              .map((c) => c.sport)
+              .toSet()
+              .length;
+          final expiredSubtitle = expired > 0
+              ? '${expiredClubs.length} klub · $expiredSportsCount cabor'
+              : 'Semua lisensi aktif';
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -86,37 +88,42 @@ class HomePage extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              FittedBox(
+                              const FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
                                   'KOORDINATOR ORGANISASI KECAMATAN',
                                   style: TextStyle(
-                                    fontSize: 9,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.8,
                                     color: Colors.white70,
                                   ),
                                 ),
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                'Kec. Garut Kota',
-                                style: TextStyle(
+                                user?.districtName ??
+                                    (data.districtName == 'Kecamatan Garut Kota'
+                                        ? 'Kec. Garut Kota'
+                                        : data.districtName),
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: -0.2,
                                 ),
                               ),
-                              SizedBox(height: 2),
+                              const SizedBox(height: 2),
                               Text(
-                                'Pak Asep · Koordinator',
-                                style: TextStyle(
+                                user != null
+                                    ? '${user.name} · ${user.role}'
+                                    : 'Pak Asep · Koordinator',
+                                style: const TextStyle(
                                   fontSize: 12,
                                   color: Colors.white70,
                                 ),
@@ -141,9 +148,17 @@ class HomePage extends ConsumerWidget {
                                 ),
                               ),
                               alignment: Alignment.center,
-                              child: const Text(
-                                'PA',
-                                style: TextStyle(
+                              child: Text(
+                                user != null
+                                    ? user.name
+                                        .split(' ')
+                                        .where((s) => s.isNotEmpty)
+                                        .map((s) => s[0])
+                                        .take(2)
+                                        .join()
+                                        .toUpperCase()
+                                    : 'PA',
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
@@ -216,6 +231,7 @@ class HomePage extends ConsumerWidget {
     ),
   );
 }
+}
 
 /// Kartu statistik mengambang dengan bayangan lembut, badge persentase verifikasi,
 /// siluet atlet lari dinamis, dan 3 kolom metrik ringkas.
@@ -280,7 +296,7 @@ class _FloatingStatsCard extends StatelessWidget {
                 child: Text(
                   'Terakhir Tersinkron SICABOR · $timeStr',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF64748B),
                   ),
@@ -449,7 +465,7 @@ class _MetricColumn extends StatelessWidget {
           label,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
-            fontSize: 11,
+            fontSize: 12,
             letterSpacing: 0.5,
             color: Color(0xFF64748B),
           ),
@@ -461,7 +477,7 @@ class _MetricColumn extends StatelessWidget {
           child: Text(
             subtext,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: Color(0xFF64748B),
             ),
           ),
@@ -634,7 +650,7 @@ class _HomeSearchBar extends StatelessWidget {
                     'Cari',
                     style: TextStyle(
                       color: KokColors.bluePrimary,
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
