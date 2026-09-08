@@ -6,6 +6,20 @@ import 'models.dart';
 /// There are deliberately no guessed HTTP endpoints or fabricated access tokens.
 abstract interface class KokRepository {
   Future<KokSnapshot> fetch();
+  Future<KokSnapshot> fetchDistrict(String districtId);
+}
+
+typedef DistrictSnapshot = KokSnapshot;
+
+extension KokSnapshotDistrictExt on KokSnapshot {
+  String get districtName {
+    if (clubs.any((c) => c.id.startsWith('club-tk-'))) {
+      return 'Kecamatan Tarogong Kidul';
+    }
+    return 'Kecamatan Garut Kota';
+  }
+
+  List<String> get sports => clubs.map((c) => c.sport).toSet().toList();
 }
 
 final dioProvider = Provider<Dio>((ref) {
@@ -30,8 +44,109 @@ final snapshotProvider = FutureProvider<KokSnapshot>(
 
 class DemoKokRepository implements KokRepository {
   @override
-  Future<KokSnapshot> fetch() async {
+  Future<KokSnapshot> fetch() => fetchDistrict('garut_kota');
+
+  @override
+  Future<KokSnapshot> fetchDistrict(String districtId) async {
     await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (districtId == 'tarogong_kidul') {
+      const tkClubs = [
+        Club(
+          id: 'club-tk-1',
+          name: 'Tarogong Kidul Utama FC',
+          sport: 'Sepak Bola',
+          village: 'Sukagalih',
+          brandPrimaryHex: '#1E3A8A',
+          brandSecondaryHex: '#172554',
+        ),
+        Club(
+          id: 'club-tk-2',
+          name: 'PB Surya Tarogong',
+          sport: 'Bulu Tangkis',
+          village: 'Haurpanggung',
+          brandPrimaryHex: '#047857',
+          brandSecondaryHex: '#064E3B',
+        ),
+        Club(
+          id: 'club-tk-3',
+          name: 'Putra Tarogong Silat',
+          sport: 'Pencak Silat',
+          village: 'Jayawaras',
+          brandPrimaryHex: '#B45309',
+          brandSecondaryHex: '#78350F',
+        ),
+        Club(
+          id: 'club-tk-4',
+          name: 'Voli Gemilang Tarogong',
+          sport: 'Bola Voli',
+          village: 'Patarruman',
+          brandPrimaryHex: '#7C3AED',
+          brandSecondaryHex: '#4C1D95',
+        ),
+      ];
+
+      final tkPeople = <SportPerson>[];
+      final tkAthleteCounts = [26, 22, 24, 16];
+      for (var c = 0; c < tkClubs.length; c++) {
+        for (var i = 0; i < tkAthleteCounts[c]; i++) {
+          tkPeople.add(
+            SportPerson(
+              id: '${tkClubs[c].id}-atlet-$i',
+              name: 'Atlet ${i + 1} · ${tkClubs[c].name.replaceFirst('Klub ', '')}',
+              clubId: tkClubs[c].id,
+              role: 'Atlet',
+              group: i.isEven ? 'U-18' : 'U-16',
+              gender: i.isEven ? 'L' : 'P',
+              age: 15 + (i % 4),
+              verified: true,
+              missingDocuments: const [],
+            ),
+          );
+        }
+        for (var i = 0; i < 2; i++) {
+          tkPeople.add(
+            SportPerson(
+              id: '${tkClubs[c].id}-pelatih-$i',
+              name: 'Pelatih ${i + 1} · ${tkClubs[c].name}',
+              clubId: tkClubs[c].id,
+              role: 'Pelatih',
+              group: 'Lisensi C',
+              expiredLicense: false,
+            ),
+          );
+        }
+        tkPeople.add(
+          SportPerson(
+            id: '${tkClubs[c].id}-official',
+            name: 'Official · ${tkClubs[c].name}',
+            clubId: tkClubs[c].id,
+            role: 'Official',
+            group: 'Manajer tim',
+          ),
+        );
+      }
+
+      return KokSnapshot(
+        clubs: tkClubs,
+        people: tkPeople,
+        loadedAt: DateTime.now(),
+        committee: const [
+          CommitteeMember(
+            id: 'ketua-tk',
+            name: 'Cecep (contoh)',
+            position: 'Ketua KOK',
+            division: 'Pengurus inti',
+          ),
+          CommitteeMember(
+            id: 'sekretaris-tk',
+            name: 'Dewi (contoh)',
+            position: 'Sekretaris',
+            division: 'Pengurus inti',
+          ),
+        ],
+      );
+    }
+
     const clubs = [
       Club(
         id: 'garuda',
