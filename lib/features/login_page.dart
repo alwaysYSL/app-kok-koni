@@ -53,19 +53,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _error = null;
     });
     try {
-      bool ok = false;
-      try {
-        ok = await ref.read(authControllerProvider.notifier).login(
-              skNumber: _sk.text.trim(),
-              password: _password.text,
-              staySignedIn: _staySignedIn,
-              rememberSk: _remember,
-            ).timeout(const Duration(milliseconds: 200));
-      } catch (_) {
-        ok = (_sk.text.trim() == 'DEMO-001' && _password.text == 'kokgarut123') ||
-            (_sk.text.trim() == 'DEMO-002' && _password.text == 'koktarogong123') ||
-            (_sk.text.trim() == 'DEMO-003' && _password.text == 'konigarut123');
-      }
+      final ok = await ref.read(authControllerProvider.notifier).login(
+            skNumber: _sk.text.trim(),
+            password: _password.text,
+            staySignedIn: _staySignedIn,
+            rememberSk: _remember,
+          );
       if (ok) {
         try {
           await ref.read(sessionProvider.notifier).signIn(
@@ -82,7 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           setState(() => _error = 'Nomor SK atau kata sandi tidak sesuai.');
         }
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() => _error = 'Nomor SK atau kata sandi tidak sesuai.');
       }

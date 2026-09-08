@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/app.dart';
+import 'package:kok_app/core/auth/data/auth_token_storage.dart';
+import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
+import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/data/models.dart';
@@ -14,6 +18,16 @@ import 'package:kok_app/features/home_page.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
+
+class _FakeTokenStorage implements AuthTokenStorage {
+  String? _token;
+  @override
+  Future<String?> readRefreshToken() async => _token;
+  @override
+  Future<void> saveRefreshToken(String token) async => _token = token;
+  @override
+  Future<void> clear() async => _token = null;
+}
 
 Future<ProviderContainer> start(
   WidgetTester tester, {
@@ -27,10 +41,20 @@ Future<ProviderContainer> start(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   final data = await tester.runAsync(() => DemoKokRepository().fetch());
+  final tokenStorage = _FakeTokenStorage();
+  final skStore = RememberedSkStore(prefs);
+  final authRepo = DemoAuthRepository(
+    tokenStorage: tokenStorage,
+    skStore: skStore,
+    simulateLatency: false,
+  );
   final container = ProviderContainer(
     overrides: [
       preferencesProvider.overrideWithValue(prefs),
       snapshotProvider.overrideWith((ref) async => data!),
+      authTokenStorageProvider.overrideWithValue(tokenStorage),
+      rememberedSkStoreProvider.overrideWithValue(skStore),
+      authRepositoryProvider.overrideWithValue(authRepo),
     ],
   );
   addTearDown(container.dispose);
