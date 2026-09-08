@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'core/session.dart';
+import 'core/auth/domain/auth_state.dart';
+import 'core/auth/presentation/auth_controller.dart';
+import 'core/auth/presentation/session_startup_page.dart';
+import 'core/auth/presentation/session_unavailable_page.dart';
 import 'core/theme.dart';
 import 'features/login_page.dart';
 import 'features/home_page.dart';
@@ -17,20 +20,43 @@ import 'features/attention_page.dart';
 import 'features/search/global_search_page.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final refresh = ValueNotifier<bool>(ref.read(sessionProvider));
-  ref.listen(sessionProvider, (_, next) => refresh.value = next);
+  final refresh = ValueNotifier<AuthState>(ref.read(authControllerProvider));
+  ref.listen(authControllerProvider, (_, next) => refresh.value = next);
   final router = GoRouter(
-    initialLocation: '/home',
+    initialLocation: '/session',
     refreshListenable: refresh,
     redirect: (context, state) {
-      final signedIn = ref.read(sessionProvider);
-      if (!signedIn && state.matchedLocation != '/login') return '/login';
-      if (signedIn && state.matchedLocation == '/login') return '/home';
+      final authState = ref.read(authControllerProvider);
+      final loc = state.matchedLocation;
+
+      if (authState is AuthBootstrapping) {
+        return loc == '/session' ? null : '/session';
+      }
+      if (authState is AuthTemporarilyUnavailable) {
+        return loc == '/session-unavailable' ? null : '/session-unavailable';
+      }
+      if (authState is AuthSignedOut) {
+        return loc == '/login' ? null : '/login';
+      }
+      if (authState is AuthSignedIn) {
+        if (loc == '/login' || loc == '/session' || loc == '/session-unavailable') {
+          return '/home';
+        }
+        return null;
+      }
       return null;
     },
     errorBuilder: (context, state) => const MissingPage(),
     routes: [
       GoRoute(path: '/login', builder: (_, s) => const LoginPage()),
+      GoRoute(
+        path: '/session',
+        builder: (_, _) => const SessionStartupPage(),
+      ),
+      GoRoute(
+        path: '/session-unavailable',
+        builder: (_, _) => const SessionUnavailablePage(),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (_, s, shell) => _NavigationShell(shell: shell),
         branches: [

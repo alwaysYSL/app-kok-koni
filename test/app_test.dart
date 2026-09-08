@@ -8,8 +8,9 @@ import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
+import 'package:kok_app/core/auth/domain/auth_state.dart';
+import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
 import 'package:kok_app/core/session.dart';
-import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/clubs_page.dart';
@@ -33,6 +34,8 @@ Future<ProviderContainer> start(
   WidgetTester tester, {
   double width = 390,
   double scale = 1,
+  String? initialToken,
+  List<dynamic> overrides = const [],
 }) async {
   tester.view.physicalSize = Size(width, 844);
   tester.view.devicePixelRatio = 1;
@@ -40,8 +43,10 @@ Future<ProviderContainer> start(
   addTearDown(tester.view.resetDevicePixelRatio);
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
-  final data = await tester.runAsync(() => DemoKokRepository().fetch());
   final tokenStorage = _FakeTokenStorage();
+  if (initialToken != null) {
+    await tokenStorage.saveRefreshToken(initialToken);
+  }
   final skStore = RememberedSkStore(prefs);
   final authRepo = DemoAuthRepository(
     tokenStorage: tokenStorage,
@@ -51,10 +56,10 @@ Future<ProviderContainer> start(
   final container = ProviderContainer(
     overrides: [
       preferencesProvider.overrideWithValue(prefs),
-      snapshotProvider.overrideWith((ref) async => data!),
       authTokenStorageProvider.overrideWithValue(tokenStorage),
       rememberedSkStoreProvider.overrideWithValue(skStore),
       authRepositoryProvider.overrideWithValue(authRepo),
+      ...overrides,
     ],
   );
   addTearDown(container.dispose);
@@ -63,6 +68,20 @@ Future<ProviderContainer> start(
   );
   await tester.pumpAndSettle();
   return container;
+}
+
+Future<void> signInTestUser(
+  ProviderContainer container, {
+  String sk = 'DEMO-001',
+  String password = 'kokgarut123',
+}) async {
+  await container.read(authControllerProvider.notifier).login(
+    skNumber: sk,
+    password: password,
+    staySignedIn: false,
+    rememberSk: false,
+  );
+  await container.read(sessionProvider.notifier).signIn(sk, password, false);
 }
 
 void main() {
@@ -120,9 +139,7 @@ void main() {
     'club detail keeps tabs and collapsed title visible while scrolling',
     (tester) async {
       final container = await start(tester, width: 320);
-      await container
-          .read(sessionProvider.notifier)
-          .signIn('DEMO-001', 'kokgarut123', false);
+      await signInTestUser(container);
       await tester.pumpAndSettle();
       container.read(routerProvider).push('/club/garuda');
       await tester.pumpAndSettle();
@@ -155,9 +172,7 @@ void main() {
     (tester) async {
       final semanticsHandle = tester.ensureSemantics();
       final container = await start(tester, width: 320);
-      await container
-          .read(sessionProvider.notifier)
-          .signIn('DEMO-001', 'kokgarut123', false);
+      await signInTestUser(container);
       await tester.pumpAndSettle();
       container.read(routerProvider).push('/club/garuda');
       await tester.pumpAndSettle();
@@ -205,9 +220,7 @@ void main() {
     tester,
   ) async {
     final container = await start(tester);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     await tester.pumpAndSettle();
     container.read(routerProvider).go('/club/garuda');
     await tester.pumpAndSettle();
@@ -263,9 +276,7 @@ void main() {
     tester,
   ) async {
     final container = await start(tester);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     await tester.pumpAndSettle();
     container.read(routerProvider).go('/club/garuda');
     await tester.pumpAndSettle();
@@ -335,9 +346,7 @@ void main() {
     tester,
   ) async {
     final container = await start(tester, width: 320);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     await tester.pumpAndSettle();
     for (final route in [
       '/home',
@@ -377,9 +386,7 @@ void main() {
     tester.platformDispatcher.textScaleFactorTestValue = 1.3;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     final container = await start(tester, width: 320);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     container.read(routerProvider).go('/club/garuda');
     await tester.pumpAndSettle();
     for (final label in ['Atlet', 'Pelatih', 'Official', 'Dokumen']) {
@@ -393,17 +400,15 @@ void main() {
     tester,
   ) async {
     final container = await start(tester);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     await tester.pumpAndSettle();
 
     // Check Header & Decorations
     expect(find.byType(DashboardHeaderDecoration), findsOneWidget);
     expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
     expect(find.text('KOORDINATOR ORGANISASI KECAMATAN'), findsOneWidget);
-    expect(find.text('Kec. Garut Kota'), findsOneWidget);
-    expect(find.text('Pak Asep · Koordinator'), findsOneWidget);
+    expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+    expect(find.text('Pak Asep · Koordinator Kecamatan'), findsOneWidget);
     expect(find.text('PA'), findsOneWidget);
     expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
 
@@ -441,9 +446,7 @@ void main() {
     tester,
   ) async {
     final container = await start(tester);
-    await container
-        .read(sessionProvider.notifier)
-        .signIn('DEMO-001', 'kokgarut123', false);
+    await signInTestUser(container);
     await tester.pumpAndSettle();
 
     container.read(routerProvider).go('/clubs');
@@ -478,9 +481,7 @@ void main() {
     'Search flow: HomePage search bar navigates to /search, finds athlete, opens detail, and navigates back',
     (tester) async {
       final container = await start(tester);
-      await container
-          .read(sessionProvider.notifier)
-          .signIn('DEMO-001', 'kokgarut123', false);
+      await signInTestUser(container);
       await tester.pumpAndSettle();
 
       // 1. Di Beranda, verifikasi keberadaan placeholder 'Cari nama atlet, klub, cabor...'
@@ -512,5 +513,103 @@ void main() {
       expect(find.byType(HomePage), findsOneWidget);
     },
   );
+
+  group('Authentication & Multi-Account Lifecycle E2E', () {
+    testWidgets(
+      'Alur 1: Startup -> /session -> /login -> Login Pak Asep -> Logout',
+      (tester) async {
+        final container = await start(tester);
+        expect(find.text('Masuk Akun'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-001');
+        await tester.enterText(find.byType(TextFormField).at(1), 'kokgarut123');
+        await tester.ensureVisible(find.text('Masuk'));
+        await tester.tap(find.text('Masuk'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(HomePage), findsOneWidget);
+        expect(find.textContaining('Pak Asep'), findsWidgets);
+        expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+
+        container.read(routerProvider).go('/profile');
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await tester.tap(find.text('Keluar dari Akun'));
+        await tester.pumpAndSettle();
+        expect(find.text('Keluar dari Akun?'), findsOneWidget);
+        await tester.tap(find.text('Ya, Keluar'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Masuk Akun'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Alur 2: Multi-Akun & Isolasi Cache Tarogong Kidul',
+      (tester) async {
+        final container = await start(tester);
+        expect(find.text('Masuk Akun'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-002');
+        await tester.enterText(find.byType(TextFormField).at(1), 'koktarogong123');
+        await tester.ensureVisible(find.text('Masuk'));
+        await tester.tap(find.text('Masuk'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(HomePage), findsOneWidget);
+        expect(find.textContaining('Pak Cecep'), findsWidgets);
+        expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
+
+        container.read(routerProvider).go('/sports');
+        await tester.pumpAndSettle();
+        expect(find.text('Sepak Bola'), findsWidgets);
+        expect(find.text('Bulu Tangkis'), findsWidgets);
+        expect(find.text('Pencak Silat'), findsWidgets);
+        expect(find.text('Bola Voli'), findsWidgets);
+        expect(find.text('Renang'), findsNothing);
+        expect(find.text('Klub Garuda Muda'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Alur 3: Persistensi token auto-restore langsung ke /home',
+      (tester) async {
+        final container = await start(
+          tester,
+          initialToken: 'token_usr_garut_kota',
+        );
+
+        expect(find.text('Masuk Akun'), findsNothing);
+        expect(find.byType(HomePage), findsOneWidget);
+        expect(find.textContaining('Pak Asep'), findsWidgets);
+        expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+        expect(container.read(currentUserProvider)?.name, 'Pak Asep');
+      },
+    );
+
+    testWidgets(
+      'Alur 4: Simulasi gangguan DEMO-TIMEOUT mengarahkan ke /session-unavailable',
+      (tester) async {
+        final container = await start(tester);
+        expect(find.text('Masuk Akun'), findsOneWidget);
+
+        await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-TIMEOUT');
+        await tester.enterText(find.byType(TextFormField).at(1), 'timeout123');
+        await tester.ensureVisible(find.text('Masuk'));
+        await tester.tap(find.text('Masuk'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SessionUnavailablePage), findsOneWidget);
+        expect(find.text('Koneksi Sesi Terganggu'), findsOneWidget);
+
+        await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SessionUnavailablePage), findsNothing);
+        expect(find.text('Masuk Akun'), findsOneWidget);
+        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      },
+    );
+  });
 }
 

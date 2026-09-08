@@ -2,8 +2,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/app.dart';
-import 'package:kok_app/core/session.dart';
+import 'package:kok_app/core/auth/domain/auth_state.dart';
+import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'app_test.dart' as helpers;
+
+class _PreviewAuthController extends AuthController {
+  bool freezeBootstrap = false;
+
+  void setPreviewState(AuthState nextState) {
+    state = nextState;
+  }
+
+  @override
+  Future<void> bootstrap() async {
+    if (freezeBootstrap) return;
+    return super.bootstrap();
+  }
+}
 
 void main() {
   testWidgets(
@@ -15,7 +30,15 @@ void main() {
       final icons = FontLoader('MaterialIcons')
         ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
       await icons.load();
-      final container = await helpers.start(tester);
+
+      final previewController = _PreviewAuthController();
+      final container = await helpers.start(
+        tester,
+        overrides: [
+          authControllerProvider.overrideWith(() => previewController),
+        ],
+      );
+
       await tester.runAsync(() async {
         final context = tester.element(find.byType(KokApp));
         await precacheImage(
@@ -34,11 +57,13 @@ void main() {
         find.byType(KokApp),
         matchesGoldenFile('../previews/login.png'),
       );
-      await container
-          .read(sessionProvider.notifier)
-          .signIn('DEMO-001', 'kokgarut123', false);
+
+      await helpers.signInTestUser(container);
       await tester.pumpAndSettle();
+
       for (final entry in {
+        'session_startup': '/session',
+        'session_unavailable': '/session-unavailable',
         'home': '/home',
         'cabor': '/sports',
         'klub': '/clubs',
@@ -52,8 +77,27 @@ void main() {
         'perlu-perhatian': '/attention',
         'pencarian': '/search',
       }.entries) {
-        container.read(routerProvider).go(entry.value);
-        await tester.pumpAndSettle();
+        if (entry.key == 'session_startup') {
+          previewController.freezeBootstrap = true;
+          previewController.setPreviewState(const AuthBootstrapping());
+          container.read(routerProvider).go(entry.value);
+          await tester.pump(const Duration(milliseconds: 200));
+        } else if (entry.key == 'session_unavailable') {
+          previewController.setPreviewState(
+            const AuthTemporarilyUnavailable(
+              reason:
+                  'Aplikasi tidak dapat memvalidasi token sesi ke server. Periksa koneksi internet Anda atau masuk kembali.',
+            ),
+          );
+          container.read(routerProvider).go(entry.value);
+          await tester.pumpAndSettle();
+        } else {
+          previewController.freezeBootstrap = false;
+          await helpers.signInTestUser(container);
+          container.read(routerProvider).go(entry.value);
+          await tester.pumpAndSettle();
+        }
+
         await expectLater(
           find.byType(KokApp),
           matchesGoldenFile('../previews/${entry.key}.png'),
