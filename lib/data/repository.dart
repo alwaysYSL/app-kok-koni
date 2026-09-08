@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/auth/domain/auth_state.dart';
+import '../core/auth/presentation/auth_controller.dart';
 import 'models.dart';
 
 /// Replace this implementation when the SICABOR contract is available.
@@ -22,6 +24,41 @@ extension KokSnapshotDistrictExt on KokSnapshot {
   List<String> get sports => clubs.map((c) => c.sport).toSet().toList();
 }
 
+class SessionScope {
+  final String userId;
+  final String districtId;
+  final int generation;
+
+  const SessionScope({
+    required this.userId,
+    required this.districtId,
+    required this.generation,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SessionScope &&
+          userId == other.userId &&
+          districtId == other.districtId &&
+          generation == other.generation;
+
+  @override
+  int get hashCode => userId.hashCode ^ districtId.hashCode ^ generation.hashCode;
+}
+
+final sessionScopeProvider = Provider<SessionScope?>((ref) {
+  final authState = ref.watch(authControllerProvider);
+  if (authState is AuthSignedIn) {
+    return SessionScope(
+      userId: authState.user.id,
+      districtId: authState.user.districtId,
+      generation: authState.generation,
+    );
+  }
+  return null;
+});
+
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
@@ -38,9 +75,15 @@ final dioProvider = Provider<Dio>((ref) {
 final repositoryProvider = Provider<KokRepository>(
   (ref) => DemoKokRepository(),
 );
-final snapshotProvider = FutureProvider<KokSnapshot>(
-  (ref) => ref.watch(repositoryProvider).fetch(),
-);
+
+final snapshotProvider = FutureProvider<KokSnapshot>((ref) async {
+  final scope = ref.watch(sessionScopeProvider);
+  final repository = ref.watch(repositoryProvider);
+  if (scope != null) {
+    return repository.fetchDistrict(scope.districtId);
+  }
+  return repository.fetchDistrict('garut_kota');
+});
 
 class DemoKokRepository implements KokRepository {
   @override
