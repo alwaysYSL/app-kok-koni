@@ -30,7 +30,8 @@ class _SportsPageState extends State<SportsPage> {
     ),
     body: DataView(
       builder: (data) {
-        final allSports = data.clubs.map((c) => c.sport).toSet().toList()..sort();
+        final allSports = data.clubs.map((c) => c.sport).toSet().toList()
+          ..sort();
 
         final athletesPerSport = <String, List<SportPerson>>{};
         final coachesPerSport = <String, int>{};
@@ -57,13 +58,10 @@ class _SportsPageState extends State<SportsPage> {
           (sum, s) => sum + (athletesPerSport[s]?.length ?? 0),
         );
 
-        final maxCount = allSports.fold<int>(
-          1,
-          (max, s) {
-            final count = athletesPerSport[s]?.length ?? 0;
-            return count > max ? count : max;
-          },
-        );
+        final maxCount = allSports.fold<int>(1, (max, s) {
+          final count = athletesPerSport[s]?.length ?? 0;
+          return count > max ? count : max;
+        });
 
         final sortedSports = List<String>.from(allSports)
           ..sort((a, b) {
@@ -79,126 +77,129 @@ class _SportsPageState extends State<SportsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            // 1. Header Ringkas (Model 1)
-            _buildCompactHeader(allSports.length, totalAthletes),
-            const SizedBox(height: 14),
+              // 1. Header Ringkas (Model 1)
+              _buildCompactHeader(allSports.length, totalAthletes),
+              const SizedBox(height: 14),
 
-            // 2. Kartu Sebaran Atlet Horizontal (Format A)
-            _buildHorizontalDistributionCard(
-              context,
-              sortedSports,
-              athletesPerSport,
-              maxCount,
-            ),
-            const SizedBox(height: 16),
-
-            // 3. Direktori Cabor
-            const Text(
-              'Direktori cabor',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: KokColors.cardTitle,
+              // 2. Kartu Sebaran Atlet Horizontal (Format A)
+              _buildHorizontalDistributionCard(
+                context,
+                sortedSports,
+                athletesPerSport,
+                maxCount,
               ),
-            ),
-            const SizedBox(height: 10),
-            if (allSports.isEmpty)
-              const EmptyState(message: 'Belum ada cabang olahraga terdaftar.'),
-            ...allSports.map((sport) {
-              final displayName = _displaySportName(sport);
-              final clubs = clubsPerSport[sport] ?? [];
-              final athletes = athletesPerSport[sport] ?? [];
-              final coaches = coachesPerSport[sport] ?? 0;
-              final missingAthletes = athletes
-                  .where((a) => a.missingDocuments.isNotEmpty)
-                  .length;
+              const SizedBox(height: 16),
 
-              return Surface(
-                padding: const EdgeInsets.all(14),
-                onTap: () => context.push(
-                  '/sport/${Uri.encodeComponent(sport)}',
+              // 3. Direktori Cabor
+              const Text(
+                'Direktori cabor',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        SportAvatar(sport),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                displayName,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: KokColors.cardTitle,
+              ),
+              const SizedBox(height: 10),
+              if (allSports.isEmpty)
+                const EmptyState(
+                  message: 'Belum ada cabang olahraga terdaftar.',
+                ),
+              ...allSports.map((sport) {
+                final displayName = _displaySportName(sport);
+                final clubs = clubsPerSport[sport] ?? [];
+                final athletes = athletesPerSport[sport] ?? [];
+                final coaches = coachesPerSport[sport] ?? 0;
+                final missingAthletes = athletes
+                    .where((a) => a.missingDocuments.isNotEmpty)
+                    .length;
+
+                return Surface(
+                  padding: const EdgeInsets.all(14),
+                  onTap: () =>
+                      context.push('/sport/${Uri.encodeComponent(sport)}'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          SportAvatar(sport),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: KokColors.cardTitle,
+                                  ),
                                 ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    _buildMetricChip('${clubs.length} Klub'),
+                                    _buildMetricChip(
+                                      '${athletes.length} Atlet',
+                                    ),
+                                    _buildMetricChip('$coaches Pelatih'),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color: KokColors.bluePrimary,
+                          ),
+                        ],
+                      ),
+                      if (missingAthletes > 0) ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                size: 14,
+                                color: Color(0xFFDC2626),
                               ),
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 4,
-                                children: [
-                                  _buildMetricChip('${clubs.length} Klub'),
-                                  _buildMetricChip('${athletes.length} Atlet'),
-                                  _buildMetricChip('$coaches Pelatih'),
-                                ],
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  '$missingAthletes atlet berkas kurang',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 20,
-                          color: KokColors.bluePrimary,
-                        ),
                       ],
-                    ),
-                    if (missingAthletes > 0) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.warning_amber_rounded,
-                              size: 14,
-                              color: Color(0xFFDC2626),
-                            ),
-                            const SizedBox(width: 5),
-                            Flexible(
-                              child: Text(
-                                '$missingAthletes atlet berkas kurang',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFFDC2626),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
-                  ],
-                ),
-              );
-            }),
-          ],
-        ),
-      );
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
       },
     ),
   );
@@ -260,8 +261,9 @@ class _SportsPageState extends State<SportsPage> {
     Map<String, List<SportPerson>> athletesPerSport,
     int maxCount,
   ) {
-    final displayedSports =
-        _isExpanded ? sortedSports : sortedSports.take(5).toList();
+    final displayedSports = _isExpanded
+        ? sortedSports
+        : sortedSports.take(5).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -293,12 +295,12 @@ class _SportsPageState extends State<SportsPage> {
           ...displayedSports.map((sport) {
             final count = athletesPerSport[sport]?.length ?? 0;
             final palette = SportBrandPaletteResolver.resolve(sport);
-            final ratio = maxCount > 0 ? (count / maxCount).clamp(0.0, 1.0) : 0.0;
+            final ratio = maxCount > 0
+                ? (count / maxCount).clamp(0.0, 1.0)
+                : 0.0;
 
             return InkWell(
-              onTap: () => context.push(
-                '/sport/${Uri.encodeComponent(sport)}',
-              ),
+              onTap: () => context.push('/sport/${Uri.encodeComponent(sport)}'),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -329,7 +331,9 @@ class _SportsPageState extends State<SportsPage> {
                             ),
                           ),
                           FractionallySizedBox(
-                            widthFactor: ratio < 0.04 && count > 0 ? 0.04 : ratio,
+                            widthFactor: ratio < 0.04 && count > 0
+                                ? 0.04
+                                : ratio,
                             child: Container(
                               height: 12,
                               decoration: BoxDecoration(

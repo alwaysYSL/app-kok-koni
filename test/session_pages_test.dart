@@ -28,147 +28,176 @@ class _MockAuthController extends AuthController {
 }
 
 void main() {
-  testWidgets('SessionStartupPage merender branding KOK dan indikator pemuatan', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: SessionStartupPage(),
+  testWidgets(
+    'SessionStartupPage merender branding KOK dan indikator pemuatan',
+    (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: SessionStartupPage())),
+      );
+
+      expect(find.text('SISTEM INFORMASI KOORDINATOR'), findsOneWidget);
+      expect(find.text('KONI Kabupaten Garut'), findsOneWidget);
+      expect(find.text('Memeriksa sesi pengguna...'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SessionUnavailablePage menampilkan kartu kendala dan tombol aksi',
+    (tester) async {
+      var retryCalled = false;
+      var logoutCalled = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionUnavailablePage(
+            reason: 'Koneksi ke server terputus.',
+            onRetry: () => retryCalled = true,
+            onSignOut: () => logoutCalled = true,
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('SISTEM INFORMASI KOORDINATOR'), findsOneWidget);
-    expect(find.text('KONI Kabupaten Garut'), findsOneWidget);
-    expect(find.text('Memeriksa sesi pengguna...'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-  });
+      expect(find.text('Koneksi Sesi Terganggu'), findsOneWidget);
+      expect(find.text('Koneksi ke server terputus.'), findsOneWidget);
 
-  testWidgets('SessionUnavailablePage menampilkan kartu kendala dan tombol aksi', (tester) async {
-    var retryCalled = false;
-    var logoutCalled = false;
+      await tester.tap(find.text('Coba Hubungkan Kembali'));
+      expect(retryCalled, isTrue);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SessionUnavailablePage(
-          reason: 'Koneksi ke server terputus.',
-          onRetry: () => retryCalled = true,
-          onSignOut: () => logoutCalled = true,
+      await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
+      expect(logoutCalled, isTrue);
+    },
+  );
+
+  testWidgets(
+    'Semua teks pada SessionStartupPage memiliki ukuran font >= 12px',
+    (tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(child: MaterialApp(home: SessionStartupPage())),
+      );
+
+      final textWidgets = tester.widgetList<Text>(find.byType(Text));
+      expect(textWidgets, isNotEmpty);
+      for (final text in textWidgets) {
+        final fontSize = text.style?.fontSize;
+        expect(fontSize, isNotNull);
+        expect(
+          fontSize!,
+          greaterThanOrEqualTo(12.0),
+          reason:
+              'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize',
+        );
+      }
+    },
+  );
+
+  testWidgets(
+    'Semua teks pada SessionUnavailablePage memiliki ukuran font >= 12px dan judul kartu cardTitle',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: SessionUnavailablePage()),
+      );
+
+      final textWidgets = tester.widgetList<Text>(find.byType(Text));
+      expect(textWidgets, isNotEmpty);
+      for (final text in textWidgets) {
+        final fontSize = text.style?.fontSize;
+        expect(fontSize, isNotNull);
+        expect(
+          fontSize!,
+          greaterThanOrEqualTo(12.0),
+          reason:
+              'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize',
+        );
+      }
+
+      final titleText = tester.widget<Text>(
+        find.text('Koneksi Sesi Terganggu'),
+      );
+      expect(titleText.style?.color, KokColors.cardTitle);
+    },
+  );
+
+  testWidgets(
+    'SessionUnavailablePage memicu retrySession dan logout pada authController jika callback tidak disuplai',
+    (tester) async {
+      final mockController = _MockAuthController();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(() => mockController),
+          ],
+          child: const MaterialApp(home: SessionUnavailablePage()),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Koneksi Sesi Terganggu'), findsOneWidget);
-    expect(find.text('Koneksi ke server terputus.'), findsOneWidget);
-
-    await tester.tap(find.text('Coba Hubungkan Kembali'));
-    expect(retryCalled, isTrue);
-
-    await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
-    expect(logoutCalled, isTrue);
-  });
-
-  testWidgets('Semua teks pada SessionStartupPage memiliki ukuran font >= 12px', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: SessionStartupPage(),
+      expect(
+        find.textContaining(
+          'Aplikasi tidak dapat memvalidasi token sesi ke server',
         ),
-      ),
-    );
+        findsOneWidget,
+      );
 
-    final textWidgets = tester.widgetList<Text>(find.byType(Text));
-    expect(textWidgets, isNotEmpty);
-    for (final text in textWidgets) {
-      final fontSize = text.style?.fontSize;
-      expect(fontSize, isNotNull);
-      expect(fontSize!, greaterThanOrEqualTo(12.0),
-          reason: 'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize');
-    }
-  });
+      await tester.tap(find.text('Coba Hubungkan Kembali'));
+      expect(mockController.retryCalled, isTrue);
 
-  testWidgets('Semua teks pada SessionUnavailablePage memiliki ukuran font >= 12px dan judul kartu cardTitle', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: SessionUnavailablePage(),
-      ),
-    );
+      await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
+      expect(mockController.logoutCalled, isTrue);
+    },
+  );
 
-    final textWidgets = tester.widgetList<Text>(find.byType(Text));
-    expect(textWidgets, isNotEmpty);
-    for (final text in textWidgets) {
-      final fontSize = text.style?.fontSize;
-      expect(fontSize, isNotNull);
-      expect(fontSize!, greaterThanOrEqualTo(12.0),
-          reason: 'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize');
-    }
+  testWidgets(
+    'SessionSigningOutPage menampilkan teks Mengeluarkan Akun dan pattern KOK',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SessionSigningOutPage()));
 
-    final titleText = tester.widget<Text>(find.text('Koneksi Sesi Terganggu'));
-    expect(titleText.style?.color, KokColors.cardTitle);
-  });
+      expect(find.text('Mengeluarkan Akun'), findsOneWidget);
+      expect(
+        find.text('Membersihkan sesi lokal dan mengamankan data...'),
+        findsOneWidget,
+      );
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    },
+  );
 
-  testWidgets('SessionUnavailablePage memicu retrySession dan logout pada authController jika callback tidak disuplai', (tester) async {
-    final mockController = _MockAuthController();
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authControllerProvider.overrideWith(() => mockController),
-        ],
-        child: const MaterialApp(
-          home: SessionUnavailablePage(),
+  testWidgets(
+    'SessionUnavailablePage menampilkan custom reason saat diberikan',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionUnavailablePage(
+            reason: 'Penyimpanan hardware keystore tidak merespons.',
+            onRetry: () {},
+            onSignOut: () {},
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.textContaining('Aplikasi tidak dapat memvalidasi token sesi ke server'), findsOneWidget);
+      expect(
+        find.text('Penyimpanan hardware keystore tidak merespons.'),
+        findsOneWidget,
+      );
+    },
+  );
 
-    await tester.tap(find.text('Coba Hubungkan Kembali'));
-    expect(mockController.retryCalled, isTrue);
+  testWidgets(
+    'Semua teks pada SessionSigningOutPage memiliki ukuran font >= 12px',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: SessionSigningOutPage()));
 
-    await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
-    expect(mockController.logoutCalled, isTrue);
-  });
-
-  testWidgets('SessionSigningOutPage menampilkan teks Mengeluarkan Akun dan pattern KOK', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: SessionSigningOutPage(),
-      ),
-    );
-
-    expect(find.text('Mengeluarkan Akun'), findsOneWidget);
-    expect(find.text('Membersihkan sesi lokal dan mengamankan data...'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-  });
-
-  testWidgets('SessionUnavailablePage menampilkan custom reason saat diberikan', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SessionUnavailablePage(
-          reason: 'Penyimpanan hardware keystore tidak merespons.',
-          onRetry: () {},
-          onSignOut: () {},
-        ),
-      ),
-    );
-
-    expect(find.text('Penyimpanan hardware keystore tidak merespons.'), findsOneWidget);
-  });
-
-  testWidgets('Semua teks pada SessionSigningOutPage memiliki ukuran font >= 12px', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: SessionSigningOutPage(),
-      ),
-    );
-
-    final textWidgets = tester.widgetList<Text>(find.byType(Text));
-    expect(textWidgets, isNotEmpty);
-    for (final text in textWidgets) {
-      final fontSize = text.style?.fontSize;
-      expect(fontSize, isNotNull);
-      expect(fontSize!, greaterThanOrEqualTo(12.0),
-          reason: 'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize');
-    }
-  });
+      final textWidgets = tester.widgetList<Text>(find.byType(Text));
+      expect(textWidgets, isNotEmpty);
+      for (final text in textWidgets) {
+        final fontSize = text.style?.fontSize;
+        expect(fontSize, isNotNull);
+        expect(
+          fontSize!,
+          greaterThanOrEqualTo(12.0),
+          reason:
+              'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize',
+        );
+      }
+    },
+  );
 }

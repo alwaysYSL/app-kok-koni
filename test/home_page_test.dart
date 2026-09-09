@@ -21,21 +21,28 @@ void main() {
     skNumber: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',
-    districtId: 'tarogong_kidul',
-    districtName: 'Kecamatan Tarogong Kidul',
+    scope: const AccessScope(
+      type: AccessScopeType.district,
+      id: 'tarogong_kidul',
+      name: 'Kecamatan Tarogong Kidul',
+    ),
     permissions: {'sports:read'},
   );
 
-  testWidgets('HomePage menampilkan nama pengurus dan wilayah secara dinamis', (tester) async {
+  testWidgets('HomePage menampilkan nama pengurus dan wilayah secara dinamis', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          authControllerProvider.overrideWith(() => _FakeHomeAuthController(cecepUser)),
-          snapshotProvider.overrideWith((ref) => DemoKokRepository().fetchDistrict('tarogong_kidul')),
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          snapshotProvider.overrideWith(
+            (ref) => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+          ),
         ],
-        child: const MaterialApp(
-          home: HomePage(),
-        ),
+        child: const MaterialApp(home: HomePage()),
       ),
     );
 
@@ -45,23 +52,28 @@ void main() {
     expect(find.textContaining('Kecamatan Tarogong Kidul'), findsWidgets);
   });
 
-  testWidgets('HomePage menampilkan label Terakhir Dimuat dengan format WIB yang jujur', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authControllerProvider.overrideWith(() => _FakeHomeAuthController(cecepUser)),
-          snapshotProvider.overrideWith((ref) => DemoKokRepository().fetchDistrict('tarogong_kidul')),
-        ],
-        child: const MaterialApp(
-          home: HomePage(),
+  testWidgets(
+    'HomePage menampilkan label Terakhir Dimuat dengan format WIB yang jujur',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeHomeAuthController(cecepUser),
+            ),
+            snapshotProvider.overrideWith(
+              (ref) => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+            ),
+          ],
+          child: const MaterialApp(home: HomePage()),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
-    expect(find.textContaining('WIB'), findsWidgets);
-    expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsNothing);
-  });
+      expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
+      expect(find.textContaining('WIB'), findsWidgets);
+      expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsNothing);
+    },
+  );
 }

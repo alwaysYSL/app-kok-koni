@@ -56,10 +56,7 @@ class ProfilePage extends ConsumerWidget {
         elevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: const Color(0xFFF1F5F9),
-            height: 1,
-          ),
+          child: Container(color: const Color(0xFFF1F5F9), height: 1),
         ),
       ),
       body: ListView(
@@ -240,7 +237,8 @@ class ProfilePage extends ConsumerWidget {
                   onPressed: () async {
                     final timeStr =
                         '${data.loadedAt.hour.toString().padLeft(2, '0')}:${data.loadedAt.minute.toString().padLeft(2, '0')}';
-                    final summaryText = '''
+                    final summaryText =
+                        '''
 REKAPITULASI DATA ${data.districtName.toUpperCase()}
 Waktu: $timeStr WIB
 Total Cabang Olahraga: $caborCount
@@ -578,12 +576,12 @@ class _ExecutiveProfileCard extends StatelessWidget {
     final name = user?.name ?? 'Pak Asep';
     final initials = user != null
         ? user!.name
-            .split(' ')
-            .where((s) => s.isNotEmpty)
-            .map((s) => s[0])
-            .take(2)
-            .join()
-            .toUpperCase()
+              .split(' ')
+              .where((s) => s.isNotEmpty)
+              .map((s) => s[0])
+              .take(2)
+              .join()
+              .toUpperCase()
         : 'PA';
     final district = user != null
         ? 'Koordinator · ${user!.districtName.replaceFirst('Kecamatan ', 'Kec. ')}'
@@ -774,10 +772,7 @@ class _SyncStatusCard extends ConsumerWidget {
           const SizedBox(height: 12),
           const Text(
             'Status koneksi: Data lokal tersinkronisasi dengan SICABOR Kabupaten Garut.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xFF6B7280),
-            ),
+            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
         ],
       ),
@@ -811,10 +806,7 @@ class _MenuTile extends StatelessWidget {
         Container(
           width: 42,
           height: 42,
-          decoration: BoxDecoration(
-            color: iconBg,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 22),
         ),
         const SizedBox(width: 14),
@@ -833,10 +825,7 @@ class _MenuTile extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF6B7280),
-                ),
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
               ),
             ],
           ),
@@ -907,10 +896,7 @@ class _ContactItem extends StatelessWidget {
         Container(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(
-            color: iconBg,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 20),
         ),
         const SizedBox(width: 12),

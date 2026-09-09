@@ -30,9 +30,7 @@ class _SessionStartupPageState extends ConsumerState<SessionStartupPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(
-              painter: const BrandHeaderPatternPainter(),
-            ),
+            child: CustomPaint(painter: const BrandHeaderPatternPainter()),
           ),
           SafeArea(
             child: Center(

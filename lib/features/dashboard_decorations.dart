@@ -20,18 +20,12 @@ class DashboardHeaderDecoration extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF07237B),
-            Color(0xFF03144B),
-          ],
+          colors: [Color(0xFF07237B), Color(0xFF03144B)],
         ),
       ),
       child: CustomPaint(
         painter: const DashboardHeaderPainter(),
-        child: Padding(
-          padding: padding,
-          child: child,
-        ),
+        child: Padding(padding: padding, child: child),
       ),
     );
   }
@@ -431,4 +425,3 @@ class BrandHeaderPatternPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

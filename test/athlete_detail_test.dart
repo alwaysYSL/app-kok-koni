@@ -22,7 +22,8 @@ Widget createTestApp({
     routes: [
       GoRoute(
         path: '/person/:id',
-        builder: (_, state) => AthleteDetailPage(id: state.pathParameters['id']!),
+        builder: (_, state) =>
+            AthleteDetailPage(id: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/home',
@@ -36,13 +37,8 @@ Widget createTestApp({
   addTearDown(router.dispose);
 
   return ProviderScope(
-    overrides: [
-      snapshotProvider.overrideWith((_) async => snapshot),
-    ],
-    child: MaterialApp.router(
-      theme: kokTheme(),
-      routerConfig: router,
-    ),
+    overrides: [snapshotProvider.overrideWith((_) async => snapshot)],
+    child: MaterialApp.router(theme: kokTheme(), routerConfig: router),
   );
 }
 
@@ -109,7 +105,9 @@ void main() {
 
         // 2. Profile identity
         expect(find.text('Atlet 1 · Voli Bina Muda'), findsOneWidget);
-        final nameText = tester.widget<Text>(find.text('Atlet 1 · Voli Bina Muda'));
+        final nameText = tester.widget<Text>(
+          find.text('Atlet 1 · Voli Bina Muda'),
+        );
         expect(nameText.style?.color, KokColors.cardTitle);
         expect(find.text('ID SICABOR · ATL-voli-atlet-0'), findsOneWidget);
 
@@ -273,32 +271,31 @@ void main() {
       },
     );
 
-    testWidgets(
-      'renders coach profile with lisensi kedaluwarsa status',
-      (tester) async {
-        final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
-        expect(data, isNotNull);
+    testWidgets('renders coach profile with lisensi kedaluwarsa status', (
+      tester,
+    ) async {
+      final repo = DemoKokRepository();
+      final data = await tester.runAsync(() => repo.fetch());
+      expect(data, isNotNull);
 
-        await tester.pumpWidget(
-          createTestApp(
-            snapshot: data!,
-            initialLocation: '/person/garuda-pelatih-0',
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        createTestApp(
+          snapshot: data!,
+          initialLocation: '/person/garuda-pelatih-0',
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Header title shows Detail Pelatih
-        expect(find.text('Detail Pelatih'), findsOneWidget);
+      // Header title shows Detail Pelatih
+      expect(find.text('Detail Pelatih'), findsOneWidget);
 
-        // Status badge: lisensi kedaluwarsa
-        expect(find.text('lisensi kedaluwarsa'), findsOneWidget);
+      // Status badge: lisensi kedaluwarsa
+      expect(find.text('lisensi kedaluwarsa'), findsOneWidget);
 
-        // Kelengkapan berkas has row for Lisensi
-        expect(find.text('Lisensi'), findsOneWidget);
-        expect(find.text('Kedaluwarsa'), findsOneWidget);
-      },
-    );
+      // Kelengkapan berkas has row for Lisensi
+      expect(find.text('Lisensi'), findsOneWidget);
+      expect(find.text('Kedaluwarsa'), findsOneWidget);
+    });
 
     testWidgets(
       'tapping Hubungi pengurus klub opens bottom sheet modal with secretariat details',
@@ -333,50 +330,45 @@ void main() {
       },
     );
 
-    testWidgets(
-      'displays MissingPage when athlete id is not found',
-      (tester) async {
-        final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
-        expect(data, isNotNull);
+    testWidgets('displays MissingPage when athlete id is not found', (
+      tester,
+    ) async {
+      final repo = DemoKokRepository();
+      final data = await tester.runAsync(() => repo.fetch());
+      expect(data, isNotNull);
 
-        await tester.pumpWidget(
-          createTestApp(
-            snapshot: data!,
-            initialLocation: '/person/non-existent-person',
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        createTestApp(
+          snapshot: data!,
+          initialLocation: '/person/non-existent-person',
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(find.byType(MissingPage), findsOneWidget);
-        expect(find.text('Data tidak ditemukan'), findsOneWidget);
-      },
-    );
+      expect(find.byType(MissingPage), findsOneWidget);
+      expect(find.text('Data tidak ditemukan'), findsOneWidget);
+    });
 
-    testWidgets(
-      'tapping share icon shows snackbar feedback',
-      (tester) async {
-        final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
-        expect(data, isNotNull);
+    testWidgets('tapping share icon shows snackbar feedback', (tester) async {
+      final repo = DemoKokRepository();
+      final data = await tester.runAsync(() => repo.fetch());
+      expect(data, isNotNull);
 
-        await tester.pumpWidget(
-          createTestApp(
-            snapshot: data!,
-            initialLocation: '/person/voli-atlet-0',
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        createTestApp(snapshot: data!, initialLocation: '/person/voli-atlet-0'),
+      );
+      await tester.pumpAndSettle();
 
-        await tester.tap(find.byIcon(Icons.share_outlined));
-        await tester.pump();
+      await tester.tap(find.byIcon(Icons.share_outlined));
+      await tester.pump();
 
-        expect(
-          find.text('Tautan profil Atlet 1 · Voli Bina Muda disalin ke clipboard.'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(
+        find.text(
+          'Tautan profil Atlet 1 · Voli Bina Muda disalin ke clipboard.',
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets(
       'profile card displays DashedDivider and overlapping avatar with border',
@@ -404,7 +396,10 @@ void main() {
                 w.decoration is BoxDecoration &&
                 (w.decoration! as BoxDecoration).shape == BoxShape.circle &&
                 (w.decoration! as BoxDecoration).border != null &&
-                ((w.decoration! as BoxDecoration).border! as Border).top.width == 3.5,
+                ((w.decoration! as BoxDecoration).border! as Border)
+                        .top
+                        .width ==
+                    3.5,
           ),
         );
         expect(avatarContainer, isNotNull);

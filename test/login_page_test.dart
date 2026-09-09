@@ -21,7 +21,9 @@ class _FakeTokenStorage implements AuthTokenStorage {
 }
 
 void main() {
-  testWidgets('LoginPage merender form, checkbox, dan opsi akun demo', (tester) async {
+  testWidgets('LoginPage merender form, checkbox, dan opsi akun demo', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -43,9 +45,7 @@ void main() {
           authRepositoryProvider.overrideWithValue(repo),
           rememberedSkStoreProvider.overrideWithValue(skStore),
         ],
-        child: const MaterialApp(
-          home: LoginPage(),
-        ),
+        child: const MaterialApp(home: LoginPage()),
       ),
     );
 

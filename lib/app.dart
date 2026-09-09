@@ -43,7 +43,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == '/login' ? null : '/login';
       }
 
-      const authGates = {'/login', '/session', '/session-unavailable', '/signing-out'};
+      const authGates = {
+        '/login',
+        '/session',
+        '/session-unavailable',
+        '/signing-out',
+      };
       if (authGates.contains(loc)) {
         return '/home';
       }
@@ -52,10 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     errorBuilder: (context, state) => const MissingPage(),
     routes: [
       GoRoute(path: '/login', builder: (_, s) => const LoginPage()),
-      GoRoute(
-        path: '/session',
-        builder: (_, _) => const SessionStartupPage(),
-      ),
+      GoRoute(path: '/session', builder: (_, _) => const SessionStartupPage()),
       GoRoute(
         path: '/signing-out',
         builder: (context, state) => const SessionSigningOutPage(),
@@ -119,10 +121,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/attention',
         builder: (_, s) => AttentionPage(type: s.uri.queryParameters['type']),
       ),
-      GoRoute(
-        path: '/search',
-        builder: (_, _) => const GlobalSearchPage(),
-      ),
+      GoRoute(path: '/search', builder: (_, _) => const GlobalSearchPage()),
     ],
   );
   ref.onDispose(() {

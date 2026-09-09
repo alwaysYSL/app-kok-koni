@@ -53,7 +53,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _error = null;
     });
     try {
-      final ok = await ref.read(authControllerProvider.notifier).login(
+      final ok = await ref
+          .read(authControllerProvider.notifier)
+          .login(
             skNumber: _sk.text.trim(),
             password: _password.text,
             staySignedIn: _staySignedIn,
@@ -106,7 +108,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 16),
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -145,7 +150,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 8),
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -184,7 +192,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 8),
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: const BorderSide(color: Color(0xFFFEE2E2)),
@@ -288,10 +299,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         const Text(
                           'Silakan masuk untuk melanjutkan',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
+                          style: TextStyle(fontSize: 14, color: Colors.white70),
                         ),
                       ],
                     ),
@@ -378,10 +386,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ),
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.trim().isEmpty
-                                        ? 'Nomor SK wajib diisi.'
-                                        : null,
+                                validator: (v) => v == null || v.trim().isEmpty
+                                    ? 'Nomor SK wajib diisi.'
+                                    : null,
                               ),
                               const SizedBox(height: 18),
                               const Text(
@@ -448,19 +455,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ),
                                   ),
                                 ),
-                                validator: (v) =>
-                                    v == null || v.isEmpty
-                                        ? 'Kata sandi wajib diisi.'
-                                        : null,
+                                validator: (v) => v == null || v.isEmpty
+                                    ? 'Kata sandi wajib diisi.'
+                                    : null,
                               ),
                               const SizedBox(height: 12),
                               // Checkbox 1: Ingat nomor SK (min tap target >= 44px)
                               ConstrainedBox(
-                                constraints: const BoxConstraints(minHeight: 44),
+                                constraints: const BoxConstraints(
+                                  minHeight: 44,
+                                ),
                                 child: InkWell(
                                   onTap: _busy
                                       ? null
-                                      : () => setState(() => _remember = !_remember),
+                                      : () => setState(
+                                          () => _remember = !_remember,
+                                        ),
                                   borderRadius: BorderRadius.circular(8),
                                   child: Row(
                                     children: [
@@ -473,7 +483,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                               MaterialTapTargetSize.shrinkWrap,
                                           activeColor: const Color(0xFF061A5C),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           side: const BorderSide(
                                             color: Color(0xFF9E9E9E),
@@ -502,7 +514,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               ),
                               // Checkbox 2: Tetap Masuk (min tap target >= 44px)
                               ConstrainedBox(
-                                constraints: const BoxConstraints(minHeight: 44),
+                                constraints: const BoxConstraints(
+                                  minHeight: 44,
+                                ),
                                 child: InkWell(
                                   onTap: _busy
                                       ? null
@@ -521,7 +535,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                               MaterialTapTargetSize.shrinkWrap,
                                           activeColor: const Color(0xFF061A5C),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                           ),
                                           side: const BorderSide(
                                             color: Color(0xFF9E9E9E),

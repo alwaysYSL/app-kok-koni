@@ -7,11 +7,7 @@ void main() {
   group('DashedDivider', () {
     testWidgets('renders with default values', (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: DashedDivider(),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: DashedDivider())),
       );
 
       final dividerFinder = find.byType(DashedDivider);
@@ -97,78 +93,89 @@ void main() {
   });
 
   group('SportAvatar', () {
-    testWidgets('renders Sepak Bola with light blue/blue thematic scheme', (tester) async {
+    testWidgets('renders Sepak Bola with light blue/blue thematic scheme', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Sepak Bola'),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: SportAvatar('Sepak Bola'))),
       );
 
       expect(find.byType(SportAvatar), findsOneWidget);
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
+        ),
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.borderRadius, BorderRadius.circular(12));
       expect(decoration.shape, BoxShape.rectangle);
       expect(decoration.color, const Color(0xFFE8F0FE));
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.sports_soccer_outlined));
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.sports_soccer_outlined),
+      );
       expect(icon.color, const Color(0xFF1B4F9E));
       expect(icon.size, 26);
     });
 
-    testWidgets('renders Bulu Tangkis with lavender/indigo thematic scheme', (tester) async {
+    testWidgets('renders Bulu Tangkis with lavender/indigo thematic scheme', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Bulu Tangkis'),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: SportAvatar('Bulu Tangkis'))),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
+        ),
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, const Color(0xFFEDE7F6));
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.sports_tennis_outlined));
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.sports_tennis_outlined),
+      );
       expect(icon.color, const Color(0xFF4338CA));
     });
 
-    testWidgets('renders Pencak Silat with soft orange/dark orange thematic scheme', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Pencak Silat'),
+    testWidgets(
+      'renders Pencak Silat with soft orange/dark orange thematic scheme',
+      (tester) async {
+        await tester.pumpWidget(
+          const MaterialApp(home: Scaffold(body: SportAvatar('Pencak Silat'))),
+        );
+
+        final container = tester.widget<Container>(
+          find.descendant(
+            of: find.byType(SportAvatar),
+            matching: find.byType(Container),
           ),
-        ),
+        );
+        final decoration = container.decoration as BoxDecoration;
+        expect(decoration.color, const Color(0xFFFBE9E7));
+
+        final icon = tester.widget<Icon>(
+          find.byIcon(Icons.sports_martial_arts_outlined),
+        );
+        expect(icon.color, const Color(0xFFD84315));
+      },
+    );
+
+    testWidgets('renders Renang with soft teal/dark teal thematic scheme', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: SportAvatar('Renang'))),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
-      );
-      final decoration = container.decoration as BoxDecoration;
-      expect(decoration.color, const Color(0xFFFBE9E7));
-
-      final icon = tester.widget<Icon>(find.byIcon(Icons.sports_martial_arts_outlined));
-      expect(icon.color, const Color(0xFFD84315));
-    });
-
-    testWidgets('renders Renang with soft teal/dark teal thematic scheme', (tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Renang'),
-          ),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
         ),
-      );
-
-      final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, const Color(0xFFE0F2F1));
@@ -177,45 +184,53 @@ void main() {
       expect(icon.color, const Color(0xFF00796B));
     });
 
-    testWidgets('renders Voli with soft amber/orange thematic scheme', (tester) async {
+    testWidgets('renders Voli with soft amber/orange thematic scheme', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Voli'),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: SportAvatar('Voli'))),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
+        ),
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, const Color(0xFFFFF8E1));
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.sports_volleyball_outlined));
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.sports_volleyball_outlined),
+      );
       expect(icon.color, const Color(0xFFF57C00));
     });
 
-    testWidgets('renders fallback sport with default KokColors scheme', (tester) async {
+    testWidgets('renders fallback sport with default KokColors scheme', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: SportAvatar('Olahraga Lain'),
-          ),
-        ),
+        const MaterialApp(home: Scaffold(body: SportAvatar('Olahraga Lain'))),
       );
 
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
+        ),
       );
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, KokColors.pale);
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.emoji_events_outlined));
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.emoji_events_outlined),
+      );
       expect(icon.color, KokColors.blue);
     });
 
-    testWidgets('supports custom size, iconSize, and color overrides', (tester) async {
+    testWidgets('supports custom size, iconSize, and color overrides', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(
@@ -231,7 +246,10 @@ void main() {
       );
 
       final container = tester.widget<Container>(
-        find.descendant(of: find.byType(SportAvatar), matching: find.byType(Container)),
+        find.descendant(
+          of: find.byType(SportAvatar),
+          matching: find.byType(Container),
+        ),
       );
       expect(container.constraints?.maxWidth, 56);
       expect(container.constraints?.maxHeight, 56);
@@ -239,7 +257,9 @@ void main() {
       final decoration = container.decoration as BoxDecoration;
       expect(decoration.color, Colors.black);
 
-      final icon = tester.widget<Icon>(find.byIcon(Icons.sports_soccer_outlined));
+      final icon = tester.widget<Icon>(
+        find.byIcon(Icons.sports_soccer_outlined),
+      );
       expect(icon.color, Colors.white);
       expect(icon.size, 32);
     });

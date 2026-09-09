@@ -24,31 +24,37 @@ void main() {
   });
 
   group('DemoAuthRepository Login', () {
-    test('login sukses akun Garut Kota (Pak Asep) dengan persistent session', () async {
-      final result = await repository.login(
-        skNumber: 'DEMO-001',
-        password: 'kokgarut123',
-        staySignedIn: true,
-      );
+    test(
+      'login sukses akun Garut Kota (Pak Asep) dengan persistent session',
+      () async {
+        final result = await repository.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+        );
 
-      expect(result.isSuccess, isTrue);
-      expect(result.user?.name, 'Pak Asep');
-      expect(result.user?.districtId, 'garut_kota');
-      expect(result.refreshToken, 'token_usr_garut_kota');
-    });
+        expect(result.isSuccess, isTrue);
+        expect(result.user?.name, 'Pak Asep');
+        expect(result.user?.districtId, 'garut_kota');
+        expect(result.refreshToken, 'token_usr_garut_kota');
+      },
+    );
 
-    test('login sukses akun Tarogong Kidul (Pak Cecep) tanpa persistent session', () async {
-      final result = await repository.login(
-        skNumber: 'DEMO-002',
-        password: 'koktarogong123',
-        staySignedIn: false,
-      );
+    test(
+      'login sukses akun Tarogong Kidul (Pak Cecep) tanpa persistent session',
+      () async {
+        final result = await repository.login(
+          skNumber: 'DEMO-002',
+          password: 'koktarogong123',
+          staySignedIn: false,
+        );
 
-      expect(result.isSuccess, isTrue);
-      expect(result.user?.name, 'Pak Cecep');
-      expect(result.user?.districtId, 'tarogong_kidul');
-      expect(result.refreshToken, isNull);
-    });
+        expect(result.isSuccess, isTrue);
+        expect(result.user?.name, 'Pak Cecep');
+        expect(result.user?.districtId, 'tarogong_kidul');
+        expect(result.refreshToken, isNull);
+      },
+    );
 
     test('kredensial salah mengembalikan pesan generik', () async {
       final result = await repository.login(
@@ -88,16 +94,19 @@ void main() {
       expect(result.isSuccess, isFalse);
     });
 
-    test('restoreSession menolak token acak atau tak dikenal dengan SessionExpiredFailure', () async {
-      final storage = InMemoryAuthTokenStorage();
-      await storage.saveRefreshToken('token_acak_palsu_123');
-      final repo = DemoAuthRepository(storage: storage);
+    test(
+      'restoreSession menolak token acak atau tak dikenal dengan SessionExpiredFailure',
+      () async {
+        final storage = InMemoryAuthTokenStorage();
+        await storage.saveRefreshToken('token_acak_palsu_123');
+        final repo = DemoAuthRepository(storage: storage);
 
-      final result = await repo.restoreSession();
-      expect(result.isSuccess, isFalse);
-      expect(result.failure, isA<SessionExpiredFailure>());
-      expect(result.user, isNull);
-    });
+        final result = await repo.restoreSession();
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<SessionExpiredFailure>());
+        expect(result.user, isNull);
+      },
+    );
 
     test('logout menghapus token dari storage', () async {
       await tokenStorage.saveRefreshToken('token_usr_garut_kota');
@@ -113,26 +122,36 @@ void main() {
       kokRepo = DemoKokRepository();
     });
 
-    test('fetchDistrict garut_kota menghasilkan 5 cabor dan 125 atlet', () async {
-      final snapshot = await kokRepo.fetchDistrict('garut_kota');
-      final athletes = snapshot.people.where((p) => p.role == 'Atlet').toList();
-      final sports = snapshot.clubs.map((c) => c.sport).toSet();
+    test(
+      'fetchDistrict garut_kota menghasilkan 5 cabor dan 125 atlet',
+      () async {
+        final snapshot = await kokRepo.fetchDistrict('garut_kota');
+        final athletes = snapshot.people
+            .where((p) => p.role == 'Atlet')
+            .toList();
+        final sports = snapshot.clubs.map((c) => c.sport).toSet();
 
-      expect(snapshot.clubs.length, 5);
-      expect(sports.length, 5);
-      expect(athletes.length, 125);
-      expect(snapshot.districtName, 'Kecamatan Garut Kota');
-    });
+        expect(snapshot.clubs.length, 5);
+        expect(sports.length, 5);
+        expect(athletes.length, 125);
+        expect(snapshot.districtName, 'Kecamatan Garut Kota');
+      },
+    );
 
-    test('fetchDistrict tarogong_kidul menghasilkan 4 cabor dan 88 atlet', () async {
-      final snapshot = await kokRepo.fetchDistrict('tarogong_kidul');
-      final athletes = snapshot.people.where((p) => p.role == 'Atlet').toList();
-      final sports = snapshot.clubs.map((c) => c.sport).toSet();
+    test(
+      'fetchDistrict tarogong_kidul menghasilkan 4 cabor dan 88 atlet',
+      () async {
+        final snapshot = await kokRepo.fetchDistrict('tarogong_kidul');
+        final athletes = snapshot.people
+            .where((p) => p.role == 'Atlet')
+            .toList();
+        final sports = snapshot.clubs.map((c) => c.sport).toSet();
 
-      expect(snapshot.clubs.length, 4);
-      expect(sports.length, 4);
-      expect(athletes.length, 88);
-      expect(snapshot.districtName, 'Kecamatan Tarogong Kidul');
-    });
+        expect(snapshot.clubs.length, 4);
+        expect(sports.length, 4);
+        expect(athletes.length, 88);
+        expect(snapshot.districtName, 'Kecamatan Tarogong Kidul');
+      },
+    );
   });
 }

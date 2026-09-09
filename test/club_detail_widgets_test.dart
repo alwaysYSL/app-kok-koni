@@ -88,7 +88,8 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Padding &&
-            widget.padding == const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            widget.padding ==
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       findsOneWidget,
     );

@@ -5,12 +5,7 @@ import '../data/models.dart';
 import '../data/repository.dart';
 import '../shared/widgets.dart';
 
-enum CommitteeSortOption {
-  defaultStructure,
-  nameAsc,
-  nameDesc,
-  divisionAsc,
-}
+enum CommitteeSortOption { defaultStructure, nameAsc, nameDesc, divisionAsc }
 
 List<CommitteeMember> filterCommittee(
   List<CommitteeMember> members, {
@@ -20,11 +15,13 @@ List<CommitteeMember> filterCommittee(
 }) {
   final q = query.trim().toLowerCase();
   final result = members.where((m) {
-    final matchesQuery = q.isEmpty ||
+    final matchesQuery =
+        q.isEmpty ||
         m.name.toLowerCase().contains(q) ||
         m.position.toLowerCase().contains(q) ||
         m.division.toLowerCase().contains(q);
-    final matchesDivision = division == null ||
+    final matchesDivision =
+        division == null ||
         division == 'all' ||
         division == 'Semua' ||
         m.division == division;
@@ -173,8 +170,9 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
   }
 
   void _showMemberDetailModal(BuildContext context, CommitteeMember m) {
-    final initial =
-        m.name.isNotEmpty ? m.name.substring(0, 1).toUpperCase() : '?';
+    final initial = m.name.isNotEmpty
+        ? m.name.substring(0, 1).toUpperCase()
+        : '?';
 
     showModalBottomSheet<void>(
       context: context,
@@ -247,7 +245,10 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
               ),
               const SizedBox(height: 20),
               Surface(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Column(
                   children: [
                     DetailRow('Jabatan', m.position),
@@ -304,10 +305,7 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                   onPressed: () => Navigator.pop(modalContext),
                   child: const Text(
                     'Tutup',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -386,8 +384,10 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
           );
 
           // Extract unique divisions
-          final uniqueDivisions =
-              data.committee.map((m) => m.division).toSet().toList();
+          final uniqueDivisions = data.committee
+              .map((m) => m.division)
+              .toSet()
+              .toList();
           final allChipItems = ['Semua', ...uniqueDivisions];
 
           return ListView(
@@ -508,15 +508,14 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                 child: Row(
                   children: allChipItems.map((div) {
                     final isAll = div == 'Semua';
-                    final isSelected = (_selectedDivision == null ||
+                    final isSelected =
+                        (_selectedDivision == null ||
                             _selectedDivision == 'Semua')
                         ? isAll
                         : _selectedDivision == div;
                     final count = isAll
                         ? data.committee.length
-                        : data.committee
-                            .where((m) => m.division == div)
-                            .length;
+                        : data.committee.where((m) => m.division == div).length;
                     final label = '$div $count';
 
                     return Padding(
@@ -615,19 +614,16 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
 }
 
 class CommitteeMemberCard extends StatelessWidget {
-  const CommitteeMemberCard({
-    super.key,
-    required this.member,
-    this.onTap,
-  });
+  const CommitteeMemberCard({super.key, required this.member, this.onTap});
 
   final CommitteeMember member;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final initial =
-        member.name.isNotEmpty ? member.name.substring(0, 1).toUpperCase() : '?';
+    final initial = member.name.isNotEmpty
+        ? member.name.substring(0, 1).toUpperCase()
+        : '?';
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -698,10 +694,7 @@ class CommitteeMemberCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Color(0xFF9CA3AF),
-                ),
+                const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF)),
               ],
             ),
           ),

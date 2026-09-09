@@ -14,9 +14,9 @@ class AuthResult {
   }) : failure = null;
 
   const AuthResult.failed(AuthFailure this.failure)
-      : user = null,
-        accessToken = null,
-        refreshToken = null;
+    : user = null,
+      accessToken = null,
+      refreshToken = null;
 
   bool get isSuccess => user != null;
 }

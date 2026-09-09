@@ -7,7 +7,8 @@ import 'models.dart';
 final class SessionRequiredException implements Exception {
   final String message;
   const SessionRequiredException([
-    this.message = 'Sesi terautentikasi aktif dibutuhkan untuk mengakses data keolahragaan.',
+    this.message =
+        'Sesi terautentikasi aktif dibutuhkan untuk mengakses data keolahragaan.',
   ]);
 
   @override
@@ -31,7 +32,10 @@ class CancelToken {
 /// There are deliberately no guessed HTTP endpoints or fabricated access tokens.
 abstract interface class KokRepository {
   Future<KokSnapshot> fetch();
-  Future<KokSnapshot> fetchDistrict(String districtId, {CancelToken? cancelToken});
+  Future<KokSnapshot> fetchDistrict(
+    String districtId, {
+    CancelToken? cancelToken,
+  });
 }
 
 typedef DistrictSnapshot = KokSnapshot;
@@ -67,7 +71,8 @@ class SessionScope {
           generation == other.generation;
 
   @override
-  int get hashCode => userId.hashCode ^ districtId.hashCode ^ generation.hashCode;
+  int get hashCode =>
+      userId.hashCode ^ districtId.hashCode ^ generation.hashCode;
 }
 
 final sessionScopeProvider = Provider<SessionScope?>((ref) {
@@ -75,7 +80,7 @@ final sessionScopeProvider = Provider<SessionScope?>((ref) {
   if (authState is AuthSignedIn) {
     return SessionScope(
       userId: authState.user.id,
-      districtId: authState.user.districtId,
+      districtId: authState.user.scope.id,
       generation: authState.generation,
     );
   }
@@ -99,28 +104,34 @@ final repositoryProvider = Provider<KokRepository>(
   (ref) => DemoKokRepository(),
 );
 
-final snapshotProvider = FutureProvider<KokSnapshot>((ref) async {
-  final scope = ref.watch(sessionScopeProvider);
-  if (scope == null) {
-    throw const SessionRequiredException();
-  }
+final snapshotProvider = FutureProvider<KokSnapshot>(
+  (ref) async {
+    final scope = ref.watch(sessionScopeProvider);
+    if (scope == null) {
+      throw const SessionRequiredException();
+    }
 
-  final repository = ref.watch(repositoryProvider);
-  final cancelToken = CancelToken();
-  ref.onDispose(() => cancelToken.cancel('Session changed or disposed'));
+    final repository = ref.watch(repositoryProvider);
+    final cancelToken = CancelToken();
+    ref.onDispose(() => cancelToken.cancel('Session changed or disposed'));
 
-  return repository.fetchDistrict(scope.districtId, cancelToken: cancelToken);
-}, retry: (retryCount, error) {
-  if (error is SessionRequiredException) return null;
-  return ProviderContainer.defaultRetry(retryCount, error);
-});
+    return repository.fetchDistrict(scope.districtId, cancelToken: cancelToken);
+  },
+  retry: (retryCount, error) {
+    if (error is SessionRequiredException) return null;
+    return ProviderContainer.defaultRetry(retryCount, error);
+  },
+);
 
 class DemoKokRepository implements KokRepository {
   @override
   Future<KokSnapshot> fetch() => fetchDistrict('garut_kota');
 
   @override
-  Future<KokSnapshot> fetchDistrict(String districtId, {CancelToken? cancelToken}) async {
+  Future<KokSnapshot> fetchDistrict(
+    String districtId, {
+    CancelToken? cancelToken,
+  }) async {
     if (cancelToken?.isCancelled ?? false) {
       throw Exception('Permintaan data dibatalkan: ${cancelToken?.reason}');
     }
@@ -171,7 +182,8 @@ class DemoKokRepository implements KokRepository {
           tkPeople.add(
             SportPerson(
               id: '${tkClubs[c].id}-atlet-$i',
-              name: 'Atlet ${i + 1} · ${tkClubs[c].name.replaceFirst('Klub ', '')}',
+              name:
+                  'Atlet ${i + 1} · ${tkClubs[c].name.replaceFirst('Klub ', '')}',
               clubId: tkClubs[c].id,
               role: 'Atlet',
               group: i.isEven ? 'U-18' : 'U-16',

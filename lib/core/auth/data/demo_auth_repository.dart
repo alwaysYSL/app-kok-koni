@@ -17,9 +17,17 @@ class DemoAuthRepository implements AuthRepository {
     skNumber: 'DEMO-001',
     fullName: 'Pak Asep',
     roleTitle: 'Koordinator Kecamatan',
-    districtId: 'garut_kota',
-    districtName: 'Kecamatan Garut Kota',
-    permissions: {'sports:read', 'clubs:read', 'members:read', 'reports:export'},
+    scope: const AccessScope(
+      type: AccessScopeType.district,
+      id: 'garut_kota',
+      name: 'Kecamatan Garut Kota',
+    ),
+    permissions: {
+      'sports:read',
+      'clubs:read',
+      'members:read',
+      'reports:export',
+    },
   );
 
   static final _tarogongKidulUser = UserPrincipal(
@@ -27,8 +35,11 @@ class DemoAuthRepository implements AuthRepository {
     skNumber: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',
-    districtId: 'tarogong_kidul',
-    districtName: 'Kecamatan Tarogong Kidul',
+    scope: const AccessScope(
+      type: AccessScopeType.district,
+      id: 'tarogong_kidul',
+      name: 'Kecamatan Tarogong Kidul',
+    ),
     permissions: {'sports:read', 'clubs:read', 'members:read'},
   );
 
@@ -37,9 +48,17 @@ class DemoAuthRepository implements AuthRepository {
     skNumber: 'DEMO-003',
     fullName: 'Ibu Rina',
     roleTitle: 'Tim Verifikator',
-    districtId: 'koni_kab',
-    districtName: 'KONI Kabupaten Garut',
-    permissions: {'sports:read', 'clubs:read', 'members:read', 'documents:verify'},
+    scope: const AccessScope(
+      type: AccessScopeType.county,
+      id: 'koni_kab',
+      name: 'KONI Kabupaten Garut',
+    ),
+    permissions: {
+      'sports:read',
+      'clubs:read',
+      'members:read',
+      'documents:verify',
+    },
   );
 
   DemoAuthRepository({
@@ -47,7 +66,10 @@ class DemoAuthRepository implements AuthRepository {
     AuthTokenStorage? tokenStorage,
     this.skStore,
     this.simulateLatency = true,
-  }) : tokenStorage = (storage ?? tokenStorage ?? (throw ArgumentError('storage or tokenStorage must be provided')));
+  }) : tokenStorage =
+           (storage ??
+           tokenStorage ??
+           (throw ArgumentError('storage or tokenStorage must be provided')));
 
   Future<void> _maybeDelay() async {
     if (simulateLatency) {
@@ -80,7 +102,8 @@ class DemoAuthRepository implements AuthRepository {
       return const AuthResult.failed(InvalidCredentialsFailure());
     }
 
-    final isGarutKota = matchedUser.id == 'usr_garut_kota' ||
+    final isGarutKota =
+        matchedUser.id == 'usr_garut_kota' ||
         matchedUser.id == 'usr-garut-kota-001' ||
         matchedUser.districtId == 'garut_kota';
 
@@ -90,9 +113,7 @@ class DemoAuthRepository implements AuthRepository {
           ? 'access_demo_garut_kota'
           : 'access_demo_tarogong_kidul',
       refreshToken: staySignedIn
-          ? (isGarutKota
-              ? 'token_usr_garut_kota'
-              : 'token_usr_tarogong_kidul')
+          ? (isGarutKota ? 'token_usr_garut_kota' : 'token_usr_tarogong_kidul')
           : null,
     );
   }
@@ -103,7 +124,9 @@ class DemoAuthRepository implements AuthRepository {
     final refreshToken = await tokenStorage.getRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) {
       return const AuthResult.failed(
-        SessionExpiredFailure('Tidak ada sesi yang tersimpan di perangkat ini.'),
+        SessionExpiredFailure(
+          'Tidak ada sesi yang tersimpan di perangkat ini.',
+        ),
       );
     }
 

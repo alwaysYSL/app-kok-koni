@@ -24,8 +24,9 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   );
 });
 
-final authControllerProvider =
-    NotifierProvider<AuthController, AuthState>(AuthController.new);
+final authControllerProvider = NotifierProvider<AuthController, AuthState>(
+  AuthController.new,
+);
 
 final currentUserProvider = Provider<UserPrincipal?>((ref) {
   final state = ref.watch(authControllerProvider);
@@ -74,13 +75,10 @@ class AuthController extends Notifier<AuthState> {
         state = AuthSignedIn(
           user: result.user!,
           generation: _sessionGeneration,
-          accessToken: result.accessToken,
         );
       } else {
         if (result.failure is NetworkTimeoutFailure) {
-          state = AuthTemporarilyUnavailable(
-            reason: result.failure!.message,
-          );
+          state = AuthTemporarilyUnavailable(reason: result.failure!.message);
         } else {
           state = const AuthSignedOut();
         }
@@ -144,7 +142,6 @@ class AuthController extends Notifier<AuthState> {
         state = AuthSignedIn(
           user: result.user!,
           generation: _sessionGeneration,
-          accessToken: result.accessToken,
         );
         return true;
       } else {

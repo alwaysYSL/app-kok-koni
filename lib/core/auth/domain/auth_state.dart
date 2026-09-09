@@ -1,4 +1,4 @@
-﻿import 'user_principal.dart';
+import 'user_principal.dart';
 
 sealed class AuthState {
   const AuthState();
@@ -17,27 +17,21 @@ class AuthSigningIn extends AuthState {
   const AuthSigningIn();
 }
 
-class AuthSignedIn extends AuthState {
+final class AuthSignedIn extends AuthState {
   final UserPrincipal user;
   final int generation;
-  final String? accessToken;
 
-  const AuthSignedIn({
-    required this.user,
-    required this.generation,
-    this.accessToken,
-  });
+  const AuthSignedIn({required this.user, required this.generation});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AuthSignedIn &&
           user == other.user &&
-          generation == other.generation &&
-          accessToken == other.accessToken;
+          generation == other.generation;
 
   @override
-  int get hashCode => user.hashCode ^ generation.hashCode ^ accessToken.hashCode;
+  int get hashCode => Object.hash(user, generation);
 }
 
 class AuthTemporarilyUnavailable extends AuthState {

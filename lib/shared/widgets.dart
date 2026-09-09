@@ -164,32 +164,30 @@ IconData sportIcon(String sport) => switch (sport) {
   _ => Icons.emoji_events_outlined,
 };
 
-({Color background, Color foreground}) sportThematicColors(String sport) => switch (sport) {
-  'Sepak Bola' => (
-    background: const Color(0xFFE8F0FE),
-    foreground: const Color(0xFF1B4F9E),
-  ),
-  'Bulu Tangkis' => (
-    background: const Color(0xFFEDE7F6),
-    foreground: const Color(0xFF4338CA),
-  ),
-  'Pencak Silat' => (
-    background: const Color(0xFFFBE9E7),
-    foreground: const Color(0xFFD84315),
-  ),
-  'Renang' => (
-    background: const Color(0xFFE0F2F1),
-    foreground: const Color(0xFF00796B),
-  ),
-  'Voli' => (
-    background: const Color(0xFFFFF8E1),
-    foreground: const Color(0xFFF57C00),
-  ),
-  _ => (
-    background: KokColors.pale,
-    foreground: KokColors.blue,
-  ),
-};
+({Color background, Color foreground}) sportThematicColors(String sport) =>
+    switch (sport) {
+      'Sepak Bola' => (
+        background: const Color(0xFFE8F0FE),
+        foreground: const Color(0xFF1B4F9E),
+      ),
+      'Bulu Tangkis' => (
+        background: const Color(0xFFEDE7F6),
+        foreground: const Color(0xFF4338CA),
+      ),
+      'Pencak Silat' => (
+        background: const Color(0xFFFBE9E7),
+        foreground: const Color(0xFFD84315),
+      ),
+      'Renang' => (
+        background: const Color(0xFFE0F2F1),
+        foreground: const Color(0xFF00796B),
+      ),
+      'Voli' => (
+        background: const Color(0xFFFFF8E1),
+        foreground: const Color(0xFFF57C00),
+      ),
+      _ => (background: KokColors.pale, foreground: KokColors.blue),
+    };
 
 class SportAvatar extends StatelessWidget {
   const SportAvatar(
@@ -245,7 +243,9 @@ class DashedDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : 0.0;
+        final width = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 0.0;
         return SizedBox(
           width: width,
           height: height,
@@ -279,7 +279,10 @@ class DashedDividerPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (dashWidth <= 0 || dashSpace <= 0 || strokeWidth <= 0 || size.width <= 0) {
+    if (dashWidth <= 0 ||
+        dashSpace <= 0 ||
+        strokeWidth <= 0 ||
+        size.width <= 0) {
       return;
     }
     final paint = Paint()

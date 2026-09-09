@@ -18,18 +18,12 @@ class LoginHeaderDecoration extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF07237B),
-            Color(0xFF03144B),
-          ],
+          colors: [Color(0xFF07237B), Color(0xFF03144B)],
         ),
       ),
       child: CustomPaint(
         painter: const LoginHeaderPainter(),
-        child: Padding(
-          padding: padding,
-          child: child,
-        ),
+        child: Padding(padding: padding, child: child),
       ),
     );
   }

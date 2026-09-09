@@ -68,8 +68,13 @@ class SportBrandPaletteResolver {
   static SportBrandPalette resolve(String sport) {
     final lower = sport.toLowerCase();
     if (lower.contains('silat')) return _silat;
-    if (lower.contains('tangkis') || lower.contains('badminton')) return _badminton;
-    if (lower.contains('sepak') || lower.contains('bola') && !lower.contains('voli')) return _football;
+    if (lower.contains('tangkis') || lower.contains('badminton')) {
+      return _badminton;
+    }
+    if (lower.contains('sepak') ||
+        lower.contains('bola') && !lower.contains('voli')) {
+      return _football;
+    }
     if (lower.contains('voli')) return _volleyball;
     if (lower.contains('renang')) return _swimming;
     return _fallback;

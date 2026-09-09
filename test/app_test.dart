@@ -77,12 +77,14 @@ Future<void> signInTestUser(
   String sk = 'DEMO-001',
   String password = 'kokgarut123',
 }) async {
-  await container.read(authControllerProvider.notifier).login(
-    skNumber: sk,
-    password: password,
-    staySignedIn: false,
-    rememberSk: false,
-  );
+  await container
+      .read(authControllerProvider.notifier)
+      .login(
+        skNumber: sk,
+        password: password,
+        staySignedIn: false,
+        rememberSk: false,
+      );
 }
 
 void main() {
@@ -397,86 +399,88 @@ void main() {
     }
   });
 
-  testWidgets('HomePage renders floating card, decorations, stats, and sections', (
-    tester,
-  ) async {
-    final container = await start(tester);
-    await signInTestUser(container);
-    await tester.pumpAndSettle();
+  testWidgets(
+    'HomePage renders floating card, decorations, stats, and sections',
+    (tester) async {
+      final container = await start(tester);
+      await signInTestUser(container);
+      await tester.pumpAndSettle();
 
-    // Check Header & Decorations
-    expect(find.byType(DashboardHeaderDecoration), findsOneWidget);
-    expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
-    expect(find.text('KOORDINATOR ORGANISASI KECAMATAN'), findsOneWidget);
-    expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
-    expect(find.text('Pak Asep · Koordinator Kecamatan'), findsOneWidget);
-    expect(find.text('PA'), findsOneWidget);
-    expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
+      // Check Header & Decorations
+      expect(find.byType(DashboardHeaderDecoration), findsOneWidget);
+      expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
+      expect(find.text('KOORDINATOR ORGANISASI KECAMATAN'), findsOneWidget);
+      expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+      expect(find.text('Pak Asep · Koordinator Kecamatan'), findsOneWidget);
+      expect(find.text('PA'), findsOneWidget);
+      expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
 
-    // Check Floating Stats Card
-    expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
-    expect(find.text('ATLET'), findsOneWidget);
-    expect(find.text('PELATIH'), findsOneWidget);
-    expect(find.text('KLUB'), findsOneWidget);
-    expect(find.text('OFFICIAL'), findsOneWidget);
+      // Check Floating Stats Card
+      expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
+      expect(find.text('ATLET'), findsOneWidget);
+      expect(find.text('PELATIH'), findsOneWidget);
+      expect(find.text('KLUB'), findsOneWidget);
+      expect(find.text('OFFICIAL'), findsOneWidget);
 
-    // Check Perlu Perhatian & Klub Sections
-    expect(find.text('Perlu Perhatian'), findsOneWidget);
-    expect(find.text('Klub di kecamatan'), findsOneWidget);
-    expect(find.text('Atlet berkas kurang'), findsOneWidget);
-    expect(find.text('Lisensi pelatih kedaluwarsa'), findsOneWidget);
-    expect(find.text('lihat semua >'), findsNWidgets(2));
+      // Check Perlu Perhatian & Klub Sections
+      expect(find.text('Perlu Perhatian'), findsOneWidget);
+      expect(find.text('Klub di kecamatan'), findsOneWidget);
+      expect(find.text('Atlet berkas kurang'), findsOneWidget);
+      expect(find.text('Lisensi pelatih kedaluwarsa'), findsOneWidget);
+      expect(find.text('lihat semua >'), findsNWidgets(2));
 
-    // Tap Profile avatar navigates to profile
-    await tester.tap(find.text('PA'));
-    await tester.pumpAndSettle();
-    expect(find.text('Ketua KOK'), findsNothing);
+      // Tap Profile avatar navigates to profile
+      await tester.tap(find.text('PA'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ketua KOK'), findsNothing);
 
-    // Go back to home and tap 'lihat semua >' on Perlu Perhatian
-    container.read(routerProvider).go('/home');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('lihat semua >').first);
-    await tester.pumpAndSettle();
-    expect(find.text('Perlu Perhatian (13)'), findsOneWidget);
-    expect(find.text('Semua 13'), findsOneWidget);
-    expect(find.text('Berkas Atlet 8'), findsOneWidget);
-    expect(find.text('Lisensi 5'), findsOneWidget);
-  });
+      // Go back to home and tap 'lihat semua >' on Perlu Perhatian
+      container.read(routerProvider).go('/home');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('lihat semua >').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Perlu Perhatian (13)'), findsOneWidget);
+      expect(find.text('Semua 13'), findsOneWidget);
+      expect(find.text('Berkas Atlet 8'), findsOneWidget);
+      expect(find.text('Lisensi 5'), findsOneWidget);
+    },
+  );
 
-  testWidgets('ClubsPage renders polished UI, sort modal, filter chips and dynamic count', (
-    tester,
-  ) async {
-    final container = await start(tester);
-    await signInTestUser(container);
-    await tester.pumpAndSettle();
+  testWidgets(
+    'ClubsPage renders polished UI, sort modal, filter chips and dynamic count',
+    (tester) async {
+      final container = await start(tester);
+      await signInTestUser(container);
+      await tester.pumpAndSettle();
 
-    container.read(routerProvider).go('/clubs');
-    await tester.pumpAndSettle();
+      container.read(routerProvider).go('/clubs');
+      await tester.pumpAndSettle();
 
-    // Verify dynamic count in AppBar and subtitle
-    expect(find.textContaining('Klub ('), findsOneWidget);
-    expect(find.textContaining('klub ·'), findsOneWidget);
+      // Verify dynamic count in AppBar and subtitle
+      expect(find.textContaining('Klub ('), findsOneWidget);
+      expect(find.textContaining('klub ·'), findsOneWidget);
 
-    // Verify filter chips
-    expect(find.text('Semua'), findsOneWidget);
-    expect(find.widgetWithText(FilterChipDropdown, 'Cabor'), findsOneWidget);
-    expect(find.widgetWithText(FilterChipDropdown, 'Status'), findsOneWidget);
-    expect(find.widgetWithText(FilterChipDropdown, 'Kel.'), findsOneWidget);
+      // Verify filter chips
+      expect(find.text('Semua'), findsOneWidget);
+      expect(find.widgetWithText(FilterChipDropdown, 'Cabor'), findsOneWidget);
+      expect(find.widgetWithText(FilterChipDropdown, 'Status'), findsOneWidget);
+      expect(find.widgetWithText(FilterChipDropdown, 'Kel.'), findsOneWidget);
 
-    // Verify sort button opens sort modal
-    await tester.tap(find.byIcon(Icons.swap_vert));
-    await tester.pumpAndSettle();
-    expect(find.text('Urutkan Klub'), findsOneWidget);
-    expect(find.text('Nama (A → Z)'), findsOneWidget);
-    expect(find.text('Jumlah Atlet Terbanyak'), findsOneWidget);
+      // Verify sort button opens sort modal
+      await tester.tap(find.byIcon(Icons.swap_vert));
+      await tester.pumpAndSettle();
+      expect(find.text('Urutkan Klub'), findsOneWidget);
+      expect(find.text('Nama (A → Z)'), findsOneWidget);
+      expect(find.text('Jumlah Atlet Terbanyak'), findsOneWidget);
 
-    // Tap sort by athletes
-    await tester.tap(find.text('Jumlah Atlet Terbanyak'));
-    await tester.pumpAndSettle();
+      // Tap sort by athletes
+      await tester.tap(find.text('Jumlah Atlet Terbanyak'));
+      await tester.pumpAndSettle();
 
-    // Modal should close
-    expect(find.text('Urutkan Klub'), findsNothing);
-  });
+      // Modal should close
+      expect(find.text('Urutkan Klub'), findsNothing);
+    },
+  );
 
   testWidgets(
     'Search flow: HomePage search bar navigates to /search, finds athlete, opens detail, and navigates back',
@@ -545,48 +549,49 @@ void main() {
       },
     );
 
-    testWidgets(
-      'Alur 2: Multi-Akun & Isolasi Cache Tarogong Kidul',
-      (tester) async {
-        final container = await start(tester);
-        expect(find.text('Masuk Akun'), findsOneWidget);
+    testWidgets('Alur 2: Multi-Akun & Isolasi Cache Tarogong Kidul', (
+      tester,
+    ) async {
+      final container = await start(tester);
+      expect(find.text('Masuk Akun'), findsOneWidget);
 
-        await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-002');
-        await tester.enterText(find.byType(TextFormField).at(1), 'koktarogong123');
-        await tester.ensureVisible(find.text('Masuk'));
-        await tester.tap(find.text('Masuk'));
-        await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-002');
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'koktarogong123',
+      );
+      await tester.ensureVisible(find.text('Masuk'));
+      await tester.tap(find.text('Masuk'));
+      await tester.pumpAndSettle();
 
-        expect(find.byType(HomePage), findsOneWidget);
-        expect(find.textContaining('Pak Cecep'), findsWidgets);
-        expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
+      expect(find.byType(HomePage), findsOneWidget);
+      expect(find.textContaining('Pak Cecep'), findsWidgets);
+      expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
 
-        container.read(routerProvider).go('/sports');
-        await tester.pumpAndSettle();
-        expect(find.text('Sepak Bola'), findsWidgets);
-        expect(find.text('Bulu Tangkis'), findsWidgets);
-        expect(find.text('Pencak Silat'), findsWidgets);
-        expect(find.text('Bola Voli'), findsWidgets);
-        expect(find.text('Renang'), findsNothing);
-        expect(find.text('Klub Garuda Muda'), findsNothing);
-      },
-    );
+      container.read(routerProvider).go('/sports');
+      await tester.pumpAndSettle();
+      expect(find.text('Sepak Bola'), findsWidgets);
+      expect(find.text('Bulu Tangkis'), findsWidgets);
+      expect(find.text('Pencak Silat'), findsWidgets);
+      expect(find.text('Bola Voli'), findsWidgets);
+      expect(find.text('Renang'), findsNothing);
+      expect(find.text('Klub Garuda Muda'), findsNothing);
+    });
 
-    testWidgets(
-      'Alur 3: Persistensi token auto-restore langsung ke /home',
-      (tester) async {
-        final container = await start(
-          tester,
-          initialToken: 'token_usr_garut_kota',
-        );
+    testWidgets('Alur 3: Persistensi token auto-restore langsung ke /home', (
+      tester,
+    ) async {
+      final container = await start(
+        tester,
+        initialToken: 'token_usr_garut_kota',
+      );
 
-        expect(find.text('Masuk Akun'), findsNothing);
-        expect(find.byType(HomePage), findsOneWidget);
-        expect(find.textContaining('Pak Asep'), findsWidgets);
-        expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
-        expect(container.read(currentUserProvider)?.name, 'Pak Asep');
-      },
-    );
+      expect(find.text('Masuk Akun'), findsNothing);
+      expect(find.byType(HomePage), findsOneWidget);
+      expect(find.textContaining('Pak Asep'), findsWidgets);
+      expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+      expect(container.read(currentUserProvider)?.name, 'Pak Asep');
+    });
 
     testWidgets(
       'Alur 4: Simulasi gangguan DEMO-TIMEOUT mengarahkan ke /session-unavailable',
@@ -594,7 +599,10 @@ void main() {
         final container = await start(tester);
         expect(find.text('Masuk Akun'), findsOneWidget);
 
-        await tester.enterText(find.byType(TextFormField).at(0), 'DEMO-TIMEOUT');
+        await tester.enterText(
+          find.byType(TextFormField).at(0),
+          'DEMO-TIMEOUT',
+        );
         await tester.enterText(find.byType(TextFormField).at(1), 'timeout123');
         await tester.ensureVisible(find.text('Masuk'));
         await tester.tap(find.text('Masuk'));
@@ -646,5 +654,3 @@ void main() {
     );
   });
 }
-
-

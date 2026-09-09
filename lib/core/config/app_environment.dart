@@ -1,8 +1,4 @@
-enum AppEnvironment {
-  demo,
-  staging,
-  production,
-}
+enum AppEnvironment { demo, staging, production }
 
 AppEnvironment get currentEnvironment {
   const envStr = String.fromEnvironment('APP_ENV', defaultValue: 'demo');

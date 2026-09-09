@@ -17,7 +17,8 @@ class SessionUnavailablePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final effectiveReason = reason ??
+    final effectiveReason =
+        reason ??
         'Aplikasi tidak dapat memvalidasi token sesi ke server. Periksa koneksi internet Anda atau masuk kembali.';
 
     return Scaffold(
@@ -88,7 +89,8 @@ class SessionUnavailablePage extends ConsumerWidget {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed: onRetry ??
+                      onPressed:
+                          onRetry ??
                           () => ref
                               .read(authControllerProvider.notifier)
                               .retrySession(),
@@ -114,9 +116,11 @@ class SessionUnavailablePage extends ConsumerWidget {
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton(
-                      onPressed: onSignOut ??
-                          () =>
-                              ref.read(authControllerProvider.notifier).logout(),
+                      onPressed:
+                          onSignOut ??
+                          () => ref
+                              .read(authControllerProvider.notifier)
+                              .logout(),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: KokColors.cardTitle,
                         side: const BorderSide(color: KokColors.borderGray),

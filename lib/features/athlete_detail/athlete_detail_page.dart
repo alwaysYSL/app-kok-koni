@@ -66,10 +66,7 @@ class AthleteDetailPage extends StatelessWidget {
               ],
             ),
           ),
-          bottomNavigationBar: _StickyBottomBar(
-            club: club,
-            palette: palette,
-          ),
+          bottomNavigationBar: _StickyBottomBar(club: club, palette: palette),
         );
       },
     );
@@ -107,9 +104,7 @@ class _HeaderAndCardSection extends StatelessWidget {
                 colors: [palette.headerStart, palette.headerEnd],
               ),
             ),
-            child: const CustomPaint(
-              painter: BrandHeaderPatternPainter(),
-            ),
+            child: const CustomPaint(painter: BrandHeaderPatternPainter()),
           ),
         ),
         Padding(
@@ -360,11 +355,7 @@ class _ProfileCard extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: 1,
-            height: 14,
-            color: const Color(0xFFE5E7EB),
-          ),
+          Container(width: 1, height: 14, color: const Color(0xFFE5E7EB)),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -528,8 +519,9 @@ class _DocumentChecklistSection extends StatelessWidget {
                     value: progress,
                     minHeight: 6,
                     backgroundColor: const Color(0xFFE5E7EB),
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(palette.headerStart),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      palette.headerStart,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -542,7 +534,9 @@ class _DocumentChecklistSection extends StatelessWidget {
                     ),
                   _buildDocRow(
                     doc: _standardDocs[i],
-                    isMissing: person.missingDocuments.contains(_standardDocs[i]),
+                    isMissing: person.missingDocuments.contains(
+                      _standardDocs[i],
+                    ),
                   ),
                 ],
                 if (person.role == 'Pelatih') ...[

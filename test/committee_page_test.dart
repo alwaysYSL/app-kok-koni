@@ -12,7 +12,8 @@ Widget buildTestableWidget({
   KokSnapshot? snapshot,
   GoRouter? router,
 }) {
-  final snap = snapshot ??
+  final snap =
+      snapshot ??
       KokSnapshot(
         clubs: const [],
         people: const [],
@@ -51,21 +52,16 @@ Widget buildTestableWidget({
         loadedAt: DateTime(2026, 9, 5),
       );
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/committee',
-        routes: [
-          GoRoute(path: '/committee', builder: (_, _) => child),
-        ],
+        routes: [GoRoute(path: '/committee', builder: (_, _) => child)],
       );
 
   return ProviderScope(
-    overrides: [
-      snapshotProvider.overrideWith((_) async => snap),
-    ],
-    child: MaterialApp.router(
-      routerConfig: appRouter,
-    ),
+    overrides: [snapshotProvider.overrideWith((_) async => snap)],
+    child: MaterialApp.router(routerConfig: appRouter),
   );
 }
 
@@ -80,23 +76,18 @@ Future<void> pumpCommitteePage(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/committee',
-        routes: [
-          GoRoute(path: '/committee', builder: (_, _) => child),
-        ],
+        routes: [GoRoute(path: '/committee', builder: (_, _) => child)],
       );
   if (router == null) {
     addTearDown(appRouter.dispose);
   }
 
   await tester.pumpWidget(
-    buildTestableWidget(
-      child: child,
-      snapshot: snapshot,
-      router: appRouter,
-    ),
+    buildTestableWidget(child: child, snapshot: snapshot, router: appRouter),
   );
   await tester.pumpAndSettle();
 }
@@ -232,9 +223,9 @@ void main() {
     expect(find.text('Urutkan Pengurus'), findsNothing);
 
     // Verify first card is Siti, last is Asep
-    final cards = tester.widgetList<CommitteeMemberCard>(
-      find.byType(CommitteeMemberCard),
-    ).toList();
+    final cards = tester
+        .widgetList<CommitteeMemberCard>(find.byType(CommitteeMemberCard))
+        .toList();
     expect(cards.first.member.name, 'Siti (contoh)');
     expect(cards.last.member.name, 'Asep (contoh)');
 
@@ -244,9 +235,9 @@ void main() {
     await tester.tap(find.text('Nama (A → Z)'));
     await tester.pumpAndSettle();
 
-    final cardsAsc = tester.widgetList<CommitteeMemberCard>(
-      find.byType(CommitteeMemberCard),
-    ).toList();
+    final cardsAsc = tester
+        .widgetList<CommitteeMemberCard>(find.byType(CommitteeMemberCard))
+        .toList();
     expect(cardsAsc.first.member.name, 'Asep (contoh)');
     expect(cardsAsc.last.member.name, 'Siti (contoh)');
   });

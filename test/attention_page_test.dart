@@ -12,7 +12,8 @@ Widget buildTestableWidget({
   KokSnapshot? snapshot,
   GoRouter? router,
 }) {
-  final snap = snapshot ??
+  final snap =
+      snapshot ??
       KokSnapshot(
         clubs: const [
           Club(
@@ -65,7 +66,8 @@ Widget buildTestableWidget({
         loadedAt: DateTime(2026, 9, 5),
       );
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/attention',
         routes: [
@@ -85,12 +87,8 @@ Widget buildTestableWidget({
       );
 
   return ProviderScope(
-    overrides: [
-      snapshotProvider.overrideWith((ref) async => snap),
-    ],
-    child: MaterialApp.router(
-      routerConfig: appRouter,
-    ),
+    overrides: [snapshotProvider.overrideWith((ref) async => snap)],
+    child: MaterialApp.router(routerConfig: appRouter),
   );
 }
 
@@ -105,7 +103,8 @@ Future<void> pumpAttentionPage(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/attention',
         routes: [
@@ -128,60 +127,60 @@ Future<void> pumpAttentionPage(
   }
 
   await tester.pumpWidget(
-    buildTestableWidget(
-      child: child,
-      snapshot: snapshot,
-      router: appRouter,
-    ),
+    buildTestableWidget(child: child, snapshot: snapshot, router: appRouter),
   );
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('AttentionPage renders dynamic title, info button, chips, and cards', (
-    tester,
-  ) async {
-    await pumpAttentionPage(tester);
+  testWidgets(
+    'AttentionPage renders dynamic title, info button, chips, and cards',
+    (tester) async {
+      await pumpAttentionPage(tester);
 
-    // Dynamic title: 2 docs + 1 license = 3 total
-    expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
+      // Dynamic title: 2 docs + 1 license = 3 total
+      expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
 
-    // Info button
-    expect(find.byIcon(Icons.info_outline), findsOneWidget);
+      // Info button
+      expect(find.byIcon(Icons.info_outline), findsOneWidget);
 
-    // 3 filter chips with counts
-    expect(find.text('Semua 3'), findsOneWidget);
-    expect(find.text('Berkas Atlet 2'), findsOneWidget);
-    expect(find.text('Lisensi 1'), findsOneWidget);
+      // 3 filter chips with counts
+      expect(find.text('Semua 3'), findsOneWidget);
+      expect(find.text('Berkas Atlet 2'), findsOneWidget);
+      expect(find.text('Lisensi 1'), findsOneWidget);
 
-    // Subheader
-    expect(find.text('Temuan kualitas data untuk koordinasi'), findsOneWidget);
+      // Subheader
+      expect(
+        find.text('Temuan kualitas data untuk koordinasi'),
+        findsOneWidget,
+      );
 
-    // Cards count
-    expect(find.byType(AttentionCard), findsNWidgets(3));
-    expect(find.text('Nama Atlet Dua'), findsOneWidget);
-    expect(find.text('Nama Atlet Lima'), findsOneWidget);
-    expect(find.text('Pelatih Satu'), findsOneWidget);
-    expect(find.text('Atlet Normal'), findsNothing);
+      // Cards count
+      expect(find.byType(AttentionCard), findsNWidgets(3));
+      expect(find.text('Nama Atlet Dua'), findsOneWidget);
+      expect(find.text('Nama Atlet Lima'), findsOneWidget);
+      expect(find.text('Pelatih Satu'), findsOneWidget);
+      expect(find.text('Atlet Normal'), findsNothing);
 
-    // Dashed dividers on cards
-    expect(find.byType(DashedDivider), findsNWidgets(3));
+      // Dashed dividers on cards
+      expect(find.byType(DashedDivider), findsNWidgets(3));
 
-    // Card details
-    expect(find.text('KK & Akta Kelahiran kurang'), findsOneWidget);
-    expect(find.text('Surat Sehat kurang'), findsOneWidget);
-    expect(find.text('Lisensi kedaluwarsa'), findsOneWidget);
-    expect(find.byIcon(Icons.error_outline), findsNWidgets(3));
+      // Card details
+      expect(find.text('KK & Akta Kelahiran kurang'), findsOneWidget);
+      expect(find.text('Surat Sehat kurang'), findsOneWidget);
+      expect(find.text('Lisensi kedaluwarsa'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsNWidgets(3));
 
-    // Footer note & demo note
-    expect(
-      find.text(
-        'Tindak lanjuti temuan di atas dengan menghubungi ketua pengurus klub bersangkutan.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.byType(DemoNote), findsOneWidget);
-  });
+      // Footer note & demo note
+      expect(
+        find.text(
+          'Tindak lanjuti temuan di atas dengan menghubungi ketua pengurus klub bersangkutan.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(DemoNote), findsOneWidget);
+    },
+  );
 
   testWidgets('Info button opens modal bottom sheet with coordination guide', (
     tester,
@@ -204,48 +203,52 @@ void main() {
     expect(find.text('Informasi Kualitas Data'), findsNothing);
   });
 
-  testWidgets('Switching filter chips updates active filter, title, and cards', (
-    tester,
-  ) async {
-    await pumpAttentionPage(tester);
+  testWidgets(
+    'Switching filter chips updates active filter, title, and cards',
+    (tester) async {
+      await pumpAttentionPage(tester);
 
-    // Initial state: Semua 3
-    expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
-    expect(find.byType(AttentionCard), findsNWidgets(3));
+      // Initial state: Semua 3
+      expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
+      expect(find.byType(AttentionCard), findsNWidgets(3));
 
-    // Tap 'Berkas Atlet 2'
-    await tester.tap(find.text('Berkas Atlet 2'));
-    await tester.pumpAndSettle();
+      // Tap 'Berkas Atlet 2'
+      await tester.tap(find.text('Berkas Atlet 2'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Perlu Perhatian (2)'), findsOneWidget);
-    expect(find.byType(AttentionCard), findsNWidgets(2));
-    expect(find.text('Nama Atlet Dua'), findsOneWidget);
-    expect(find.text('Nama Atlet Lima'), findsOneWidget);
-    expect(find.text('Pelatih Satu'), findsNothing);
+      expect(find.text('Perlu Perhatian (2)'), findsOneWidget);
+      expect(find.byType(AttentionCard), findsNWidgets(2));
+      expect(find.text('Nama Atlet Dua'), findsOneWidget);
+      expect(find.text('Nama Atlet Lima'), findsOneWidget);
+      expect(find.text('Pelatih Satu'), findsNothing);
 
-    // Tap 'Lisensi 1'
-    await tester.ensureVisible(find.text('Lisensi 1'));
-    await tester.tap(find.text('Lisensi 1'));
-    await tester.pumpAndSettle();
+      // Tap 'Lisensi 1'
+      await tester.ensureVisible(find.text('Lisensi 1'));
+      await tester.tap(find.text('Lisensi 1'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Perlu Perhatian (1)'), findsOneWidget);
-    expect(find.byType(AttentionCard), findsNWidgets(1));
-    expect(find.text('Pelatih Satu'), findsOneWidget);
-    expect(find.text('Nama Atlet Dua'), findsNothing);
+      expect(find.text('Perlu Perhatian (1)'), findsOneWidget);
+      expect(find.byType(AttentionCard), findsNWidgets(1));
+      expect(find.text('Pelatih Satu'), findsOneWidget);
+      expect(find.text('Nama Atlet Dua'), findsNothing);
 
-    // Tap back to 'Semua 3'
-    await tester.ensureVisible(find.text('Semua 3'));
-    await tester.tap(find.text('Semua 3'));
-    await tester.pumpAndSettle();
+      // Tap back to 'Semua 3'
+      await tester.ensureVisible(find.text('Semua 3'));
+      await tester.tap(find.text('Semua 3'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
-    expect(find.byType(AttentionCard), findsNWidgets(3));
-  });
+      expect(find.text('Perlu Perhatian (3)'), findsOneWidget);
+      expect(find.byType(AttentionCard), findsNWidgets(3));
+    },
+  );
 
   testWidgets('AttentionPage respects type parameter in constructor', (
     tester,
   ) async {
-    await pumpAttentionPage(tester, child: const AttentionPage(type: 'license'));
+    await pumpAttentionPage(
+      tester,
+      child: const AttentionPage(type: 'license'),
+    );
 
     // Opens with license filter directly
     expect(find.text('Perlu Perhatian (1)'), findsOneWidget);
@@ -264,9 +267,7 @@ void main() {
     expect(find.text('Person Detail: p1'), findsOneWidget);
   });
 
-  testWidgets('Shows EmptyState when no people match criteria', (
-    tester,
-  ) async {
+  testWidgets('Shows EmptyState when no people match criteria', (tester) async {
     final emptySnapshot = KokSnapshot(
       clubs: const [
         Club(
@@ -304,19 +305,20 @@ void main() {
     expect(find.byType(AttentionCard), findsNothing);
   });
 
-  testWidgets('Works seamlessly with DemoKokRepository snapshot (13 total, 8 docs, 5 licenses)', (
-    tester,
-  ) async {
-    final data = await tester.runAsync(() => DemoKokRepository().fetch());
-    await pumpAttentionPage(
-      tester,
-      child: const AttentionPage(),
-      snapshot: data,
-    );
+  testWidgets(
+    'Works seamlessly with DemoKokRepository snapshot (13 total, 8 docs, 5 licenses)',
+    (tester) async {
+      final data = await tester.runAsync(() => DemoKokRepository().fetch());
+      await pumpAttentionPage(
+        tester,
+        child: const AttentionPage(),
+        snapshot: data,
+      );
 
-    expect(find.text('Perlu Perhatian (13)'), findsOneWidget);
-    expect(find.text('Semua 13'), findsOneWidget);
-    expect(find.text('Berkas Atlet 8'), findsOneWidget);
-    expect(find.text('Lisensi 5'), findsOneWidget);
-  });
+      expect(find.text('Perlu Perhatian (13)'), findsOneWidget);
+      expect(find.text('Semua 13'), findsOneWidget);
+      expect(find.text('Berkas Atlet 8'), findsOneWidget);
+      expect(find.text('Lisensi 5'), findsOneWidget);
+    },
+  );
 }

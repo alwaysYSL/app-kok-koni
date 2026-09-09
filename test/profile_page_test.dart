@@ -30,8 +30,11 @@ final testUser = UserPrincipal(
   skNumber: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
-  districtId: 'garut_kota',
-  districtName: 'Kecamatan Garut Kota',
+  scope: const AccessScope(
+    type: AccessScopeType.district,
+    id: 'garut_kota',
+    name: 'Kecamatan Garut Kota',
+  ),
   permissions: {'sports:read'},
 );
 
@@ -40,8 +43,11 @@ final cecepUser = UserPrincipal(
   skNumber: 'DEMO-002',
   fullName: 'Pak Cecep',
   roleTitle: 'Koordinator Kecamatan',
-  districtId: 'tarogong_kidul',
-  districtName: 'Kecamatan Tarogong Kidul',
+  scope: const AccessScope(
+    type: AccessScopeType.district,
+    id: 'tarogong_kidul',
+    name: 'Kecamatan Tarogong Kidul',
+  ),
   permissions: {'sports:read'},
 );
 
@@ -53,7 +59,8 @@ Widget buildTestableProfileWidget({
   UserPrincipal? user,
 }) {
   final currentUser = user ?? testUser;
-  final snap = snapshot ??
+  final snap =
+      snapshot ??
       KokSnapshot(
         clubs: const [
           Club(
@@ -97,24 +104,23 @@ Widget buildTestableProfileWidget({
         loadedAt: DateTime(2026, 9, 7, 14, 30),
       );
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/profile',
-        routes: [
-          GoRoute(path: '/profile', builder: (_, _) => child),
-        ],
+        routes: [GoRoute(path: '/profile', builder: (_, _) => child)],
       );
 
   return ProviderScope(
     overrides: [
-      authControllerProvider.overrideWith(() => _FakeProfileAuthController(currentUser)),
+      authControllerProvider.overrideWith(
+        () => _FakeProfileAuthController(currentUser),
+      ),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
         preferencesProvider.overrideWithValue(preferences),
     ],
-    child: MaterialApp.router(
-      routerConfig: appRouter,
-    ),
+    child: MaterialApp.router(routerConfig: appRouter),
   );
 }
 
@@ -131,12 +137,11 @@ Future<void> pumpProfilePage(
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
 
-  final appRouter = router ??
+  final appRouter =
+      router ??
       GoRouter(
         initialLocation: '/profile',
-        routes: [
-          GoRoute(path: '/profile', builder: (_, _) => child),
-        ],
+        routes: [GoRoute(path: '/profile', builder: (_, _) => child)],
       );
   if (router == null) {
     addTearDown(appRouter.dispose);
@@ -161,48 +166,52 @@ void main() {
     SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
   });
 
-  testWidgets('ProfilePage menampilkan profil pengurus dan tombol logout di luar DataView bahkan jika snapshot error', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          authControllerProvider.overrideWith(() => _FakeProfileAuthController(testUser)),
-          snapshotProvider.overrideWith((ref) => throw Exception('Koneksi olahraga gagal')),
-        ],
-        child: const MaterialApp(
-          home: ProfilePage(),
+  testWidgets(
+    'ProfilePage menampilkan profil pengurus dan tombol logout di luar DataView bahkan jika snapshot error',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeProfileAuthController(testUser),
+            ),
+            snapshotProvider.overrideWith(
+              (ref) => throw Exception('Koneksi olahraga gagal'),
+            ),
+          ],
+          child: const MaterialApp(home: ProfilePage()),
         ),
-      ),
-    );
+      );
 
-    await tester.pump();
+      await tester.pump();
 
-    expect(find.text('Pak Asep'), findsOneWidget);
-    expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
-    expect(find.text('Keluar dari Akun'), findsOneWidget);
+      expect(find.text('Pak Asep'), findsOneWidget);
+      expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
+      expect(find.text('Keluar dari Akun'), findsOneWidget);
 
-    await tester.tap(find.text('Keluar dari Akun'));
-    await tester.pumpAndSettle();
-    expect(find.text('Keluar dari Akun?'), findsOneWidget);
-  });
+      await tester.tap(find.text('Keluar dari Akun'));
+      await tester.pumpAndSettle();
+      expect(find.text('Keluar dari Akun?'), findsOneWidget);
+    },
+  );
 
   group('ProfilePage Widget Tests', () {
-    testWidgets(
-      'renders AppBar with title Akun and executive profile card',
-      (tester) async {
-        final prefs = await SharedPreferences.getInstance();
-        await pumpProfilePage(tester, preferences: prefs);
+    testWidgets('renders AppBar with title Akun and executive profile card', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      await pumpProfilePage(tester, preferences: prefs);
 
-        // Header AppBar title
-        expect(find.text('Akun'), findsOneWidget);
+      // Header AppBar title
+      expect(find.text('Akun'), findsOneWidget);
 
-        // Executive Profile Card
-        expect(find.text('PA'), findsOneWidget);
-        expect(find.text('Pak Asep'), findsOneWidget);
-        expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
-        expect(find.text('AKSES READ-ONLY'), findsOneWidget);
-        expect(find.byType(CustomPaint), findsWidgets);
-      },
-    );
+      // Executive Profile Card
+      expect(find.text('PA'), findsOneWidget);
+      expect(find.text('Pak Asep'), findsOneWidget);
+      expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
+      expect(find.text('AKSES READ-ONLY'), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+    });
 
     test('AccountProfileCardPainter shouldRepaint returns false', () {
       const painter = AccountProfileCardPainter();
@@ -303,7 +312,10 @@ void main() {
         // Check contacts in bottom sheet
         expect(find.text('Helpdesk & Sekretariat KONI'), findsOneWidget);
         expect(find.textContaining('0812'), findsOneWidget);
-        expect(find.textContaining('sekretariat@konigarut.or.id'), findsOneWidget);
+        expect(
+          find.textContaining('sekretariat@konigarut.or.id'),
+          findsOneWidget,
+        );
         expect(find.textContaining('Ciateul'), findsOneWidget);
 
         // Close sheet
@@ -323,10 +335,7 @@ void main() {
 
         expect(find.text('PENGATURAN & APLIKASI'), findsOneWidget);
         expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
-        expect(
-          find.text('Preferensi sesi & memori nomor SK'),
-          findsOneWidget,
-        );
+        expect(find.text('Preferensi sesi & memori nomor SK'), findsOneWidget);
 
         // Tap Pengaturan Aplikasi
         await tester.tap(find.text('Pengaturan Aplikasi'));
@@ -349,20 +358,32 @@ void main() {
 
         // Tap Tentang Aplikasi
         expect(find.text('Tentang Aplikasi'), findsOneWidget);
-        expect(find.text('KOK Garut · Versi 0.1.0 (Prototipe)'), findsOneWidget);
+        expect(
+          find.text('KOK Garut · Versi 0.1.0 (Prototipe)'),
+          findsOneWidget,
+        );
 
         await tester.tap(find.text('Tentang Aplikasi'));
         await tester.pumpAndSettle();
 
-        expect(find.text('KOK — Koordinator Organisasi Kecamatan'), findsOneWidget);
-        expect(find.textContaining('KONI Kabupaten Garut & Dispora Garut'), findsOneWidget);
+        expect(
+          find.text('KOK — Koordinator Organisasi Kecamatan'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('KONI Kabupaten Garut & Dispora Garut'),
+          findsOneWidget,
+        );
 
         // Close about modal
         expect(find.text('Tutup'), findsOneWidget);
         await tester.tap(find.text('Tutup'));
         await tester.pumpAndSettle();
 
-        expect(find.text('KOK — Koordinator Organisasi Kecamatan'), findsNothing);
+        expect(
+          find.text('KOK — Koordinator Organisasi Kecamatan'),
+          findsNothing,
+        );
       },
     );
 
@@ -401,95 +422,88 @@ void main() {
       },
     );
 
-    testWidgets(
-      'tapping Ya Keluar in confirmation dialog revokes session',
-      (tester) async {
-        final prefs = await SharedPreferences.getInstance();
-        final container = ProviderContainer(
-          overrides: [
-            preferencesProvider.overrideWithValue(prefs),
-            authControllerProvider.overrideWith(() => _FakeProfileAuthController(testUser)),
-          ],
-        );
-        addTearDown(container.dispose);
-
-        final appRouter = GoRouter(
-          initialLocation: '/profile',
-          routes: [
-            GoRoute(
-              path: '/profile',
-              builder: (_, _) => const ProfilePage(),
-            ),
-          ],
-        );
-        addTearDown(appRouter.dispose);
-
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: MaterialApp.router(routerConfig: appRouter),
+    testWidgets('tapping Ya Keluar in confirmation dialog revokes session', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          preferencesProvider.overrideWithValue(prefs),
+          authControllerProvider.overrideWith(
+            () => _FakeProfileAuthController(testUser),
           ),
-        );
-        await tester.pumpAndSettle();
+        ],
+      );
+      addTearDown(container.dispose);
 
-        // Scroll and tap Keluar dari Akun
-        await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
-        await tester.tap(find.text('Keluar dari Akun'));
-        await tester.pumpAndSettle();
+      final appRouter = GoRouter(
+        initialLocation: '/profile',
+        routes: [
+          GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+        ],
+      );
+      addTearDown(appRouter.dispose);
 
-        // Tap Ya, Keluar
-        await tester.tap(find.text('Ya, Keluar'));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(routerConfig: appRouter),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // Session revoked in AuthController
-        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-      },
-    );
+      // Scroll and tap Keluar dari Akun
+      await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+      await tester.tap(find.text('Keluar dari Akun'));
+      await tester.pumpAndSettle();
 
-    testWidgets(
-      'renders footer note about kabupaten data coordination',
-      (tester) async {
-        final prefs = await SharedPreferences.getInstance();
-        await pumpProfilePage(tester, preferences: prefs);
+      // Tap Ya, Keluar
+      await tester.tap(find.text('Ya, Keluar'));
+      await tester.pumpAndSettle();
 
-        await tester.scrollUntilVisible(
-          find.text(
-            'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
-          ),
-          200,
-        );
-        expect(
-          find.text(
-            'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      // Session revoked in AuthController
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+    });
 
-    testWidgets(
-      'works seamlessly with DemoKokRepository snapshot',
-      (tester) async {
-        final data = await tester.runAsync(() => DemoKokRepository().fetch());
-        final prefs = await SharedPreferences.getInstance();
-        await pumpProfilePage(
-          tester,
-          snapshot: data,
-          preferences: prefs,
-        );
+    testWidgets('renders footer note about kabupaten data coordination', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      await pumpProfilePage(tester, preferences: prefs);
 
-        expect(find.text('Akun'), findsOneWidget);
-        expect(find.text('Pak Asep'), findsOneWidget);
-        expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
-        expect(find.textContaining('entri data'), findsOneWidget);
-      },
-    );
+      await tester.scrollUntilVisible(
+        find.text(
+          'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
+        ),
+        200,
+      );
+      expect(
+        find.text(
+          'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('works seamlessly with DemoKokRepository snapshot', (
+      tester,
+    ) async {
+      final data = await tester.runAsync(() => DemoKokRepository().fetch());
+      final prefs = await SharedPreferences.getInstance();
+      await pumpProfilePage(tester, snapshot: data, preferences: prefs);
+
+      expect(find.text('Akun'), findsOneWidget);
+      expect(find.text('Pak Asep'), findsOneWidget);
+      expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
+      expect(find.textContaining('entri data'), findsOneWidget);
+    });
 
     testWidgets(
       'Rekapitulasi menampilkan nama wilayah Tarogong Kidul secara dinamis saat akun Tarogong Kidul aktif',
       (tester) async {
-        final data =
-            await tester.runAsync(() => DemoKokRepository().fetchDistrict('tarogong_kidul'));
+        final data = await tester.runAsync(
+          () => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+        );
         final prefs = await SharedPreferences.getInstance();
 
         String? copiedText;
@@ -526,7 +540,9 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.text('Ringkasan data keolahragaan wilayah Kecamatan Tarogong Kidul.'),
+          find.text(
+            'Ringkasan data keolahragaan wilayah Kecamatan Tarogong Kidul.',
+          ),
           findsOneWidget,
         );
 
@@ -534,10 +550,15 @@ void main() {
         await tester.tap(find.text('Salin Teks Rekapitulasi'));
         await tester.pumpAndSettle();
 
-        expect(copiedText, contains('REKAPITULASI DATA KECAMATAN TAROGONG KIDUL'));
         expect(
           copiedText,
-          contains('Status: Terdaftar pada Sistem KOK Kecamatan Tarogong Kidul'),
+          contains('REKAPITULASI DATA KECAMATAN TAROGONG KIDUL'),
+        );
+        expect(
+          copiedText,
+          contains(
+            'Status: Terdaftar pada Sistem KOK Kecamatan Tarogong Kidul',
+          ),
         );
       },
     );

@@ -163,7 +163,9 @@ class _AttentionPageState extends State<AttentionPage> {
             color: isSelected ? const Color(0xFF1B4F9E) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isSelected ? const Color(0xFF1B4F9E) : const Color(0xFFE5E7EB),
+              color: isSelected
+                  ? const Color(0xFF1B4F9E)
+                  : const Color(0xFFE5E7EB),
               width: 1,
             ),
           ),
@@ -184,7 +186,9 @@ class _AttentionPageState extends State<AttentionPage> {
   Widget build(BuildContext context) {
     return DataView(
       builder: (data) {
-        final docCount = data.people.where((p) => p.missingDocuments.isNotEmpty).length;
+        final docCount = data.people
+            .where((p) => p.missingDocuments.isNotEmpty)
+            .length;
         final licenseCount = data.people.where((p) => p.expiredLicense).length;
         final totalCount = data.people
             .where((p) => p.missingDocuments.isNotEmpty || p.expiredLicense)
@@ -284,10 +288,7 @@ class _AttentionPageState extends State<AttentionPage> {
               const SizedBox(height: 14),
               const Text(
                 'Temuan kualitas data untuk koordinasi',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 12),
               if (filteredPeople.isEmpty)
@@ -310,10 +311,7 @@ class _AttentionPageState extends State<AttentionPage> {
                 child: Text(
                   'Tindak lanjuti temuan di atas dengan menghubungi ketua pengurus klub bersangkutan.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                  ),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -327,11 +325,7 @@ class _AttentionPageState extends State<AttentionPage> {
 }
 
 class AttentionCard extends StatelessWidget {
-  const AttentionCard({
-    super.key,
-    required this.person,
-    required this.club,
-  });
+  const AttentionCard({super.key, required this.person, required this.club});
 
   final SportPerson person;
   final Club club;

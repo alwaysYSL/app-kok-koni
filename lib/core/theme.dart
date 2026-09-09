@@ -4,6 +4,7 @@ abstract final class KokColors {
   // --- Palet Warna Resmi (Dokumen Wireframe Slide 10) ---
   /// Hitam (#141414) - Teks utama, judul kartu, garis tegas
   static const textPrimary = Color(0xFF141414);
+
   /// Alias semantik untuk teks judul pada kartu/baris daftar
   static const cardTitle = textPrimary;
 
@@ -63,11 +64,8 @@ ThemeData kokTheme() => ThemeData(
     ),
   ),
   actionIconTheme: ActionIconThemeData(
-    backButtonIconBuilder: (context) => const Icon(
-      Icons.chevron_left,
-      size: 28,
-      color: KokColors.cardTitle,
-    ),
+    backButtonIconBuilder: (context) =>
+        const Icon(Icons.chevron_left, size: 28, color: KokColors.cardTitle),
   ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(

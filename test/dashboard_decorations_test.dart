@@ -3,47 +3,51 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
 
 void main() {
-  testWidgets('AthletesSilhouetteGraphic and DashboardHeaderDecoration render successfully', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: Column(
-            children: [
-              DashboardHeaderDecoration(child: Text('Header')),
-              AthletesSilhouetteGraphic(width: 140, height: 100),
-            ],
+  testWidgets(
+    'AthletesSilhouetteGraphic and DashboardHeaderDecoration render successfully',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                DashboardHeaderDecoration(child: Text('Header')),
+                AthletesSilhouetteGraphic(width: 140, height: 100),
+              ],
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Header'), findsOneWidget);
-    expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
-    expect(find.byType(CustomPaint), findsWidgets);
-  });
+      expect(find.text('Header'), findsOneWidget);
+      expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
+      expect(find.byType(CustomPaint), findsWidgets);
+    },
+  );
 
-  testWidgets('DashboardHeaderDecoration respects custom padding and paints gradient', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: DashboardHeaderDecoration(
-            padding: EdgeInsets.all(32),
-            child: Text('Custom Padding Header'),
+  testWidgets(
+    'DashboardHeaderDecoration respects custom padding and paints gradient',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: DashboardHeaderDecoration(
+              padding: EdgeInsets.all(32),
+              child: Text('Custom Padding Header'),
+            ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('Custom Padding Header'), findsOneWidget);
-  });
+      expect(find.text('Custom Padding Header'), findsOneWidget);
+    },
+  );
 
-  testWidgets('AthletesSilhouetteGraphic renders with default size', (tester) async {
+  testWidgets('AthletesSilhouetteGraphic renders with default size', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: AthletesSilhouetteGraphic(),
-        ),
-      ),
+      const MaterialApp(home: Scaffold(body: AthletesSilhouetteGraphic())),
     );
 
     expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
@@ -59,32 +63,31 @@ void main() {
     expect(silhouettePainter1.shouldRepaint(silhouettePainter2), isFalse);
   });
 
-  testWidgets('BrandHeaderPatternPainter renders in CustomPaint and shouldRepaint returns false', (tester) async {
-    const painter1 = BrandHeaderPatternPainter();
-    const painter2 = BrandHeaderPatternPainter();
+  testWidgets(
+    'BrandHeaderPatternPainter renders in CustomPaint and shouldRepaint returns false',
+    (tester) async {
+      const painter1 = BrandHeaderPatternPainter();
+      const painter2 = BrandHeaderPatternPainter();
 
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: SizedBox(
-            width: 400,
-            height: 200,
-            child: CustomPaint(
-              painter: painter1,
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 200,
+              child: CustomPaint(painter: painter1),
             ),
           ),
         ),
-      ),
-    );
+      );
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) => widget is CustomPaint && widget.painter == painter1,
-      ),
-      findsOneWidget,
-    );
-    expect(painter1.shouldRepaint(painter2), isFalse);
-  });
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is CustomPaint && widget.painter == painter1,
+        ),
+        findsOneWidget,
+      );
+      expect(painter1.shouldRepaint(painter2), isFalse);
+    },
+  );
 }
-
-

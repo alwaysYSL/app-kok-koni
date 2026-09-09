@@ -16,8 +16,11 @@ final fakeGarutKotaUser = UserPrincipal(
   skNumber: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
-  districtId: 'garut_kota',
-  districtName: 'Kecamatan Garut Kota',
+  scope: const AccessScope(
+    type: AccessScopeType.district,
+    id: 'garut_kota',
+    name: 'Kecamatan Garut Kota',
+  ),
   permissions: {'sports:read', 'clubs:read', 'members:read', 'reports:export'},
 );
 
@@ -45,10 +48,7 @@ class CompleterAuthRepository implements AuthRepository {
   int loginCallCount = 0;
   int logoutCallCount = 0;
 
-  CompleterAuthRepository({
-    this.loginCompleter,
-    this.restoreCompleter,
-  });
+  CompleterAuthRepository({this.loginCompleter, this.restoreCompleter});
 
   @override
   Future<AuthResult> login({
@@ -135,30 +135,33 @@ void main() {
     expect((state as AuthSignedIn).user.name, 'Pak Asep');
   });
 
-  test('login sukses menaikkan session generation dan set AuthSignedIn', () async {
-    final container = ProviderContainer(
-      overrides: [
-        authTokenStorageProvider.overrideWithValue(tokenStorage),
-        authRepositoryProvider.overrideWithValue(authRepository),
-        rememberedSkStoreProvider.overrideWithValue(skStore),
-      ],
-    );
-    addTearDown(container.dispose);
+  test(
+    'login sukses menaikkan session generation dan set AuthSignedIn',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(tokenStorage),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedSkStoreProvider.overrideWithValue(skStore),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(authControllerProvider.notifier);
-    final success = await controller.login(
-      skNumber: 'DEMO-001',
-      password: 'kokgarut123',
-      staySignedIn: true,
-      rememberSk: true,
-    );
+      final controller = container.read(authControllerProvider.notifier);
+      final success = await controller.login(
+        skNumber: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberSk: true,
+      );
 
-    expect(success, isTrue);
-    final state = container.read(authControllerProvider);
-    expect(state, isA<AuthSignedIn>());
-    expect((state as AuthSignedIn).generation, greaterThan(0));
-    expect(await skStore.readSk(), 'DEMO-001');
-  });
+      expect(success, isTrue);
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthSignedIn>());
+      expect((state as AuthSignedIn).generation, greaterThan(0));
+      expect(await skStore.readSk(), 'DEMO-001');
+    },
+  );
 
   test('logout membersihkan sesi dan menaikkan generation counter', () async {
     final container = ProviderContainer(
@@ -177,82 +180,97 @@ void main() {
       staySignedIn: true,
       rememberSk: false,
     );
-    final gen1 = (container.read(authControllerProvider) as AuthSignedIn).generation;
+    final gen1 =
+        (container.read(authControllerProvider) as AuthSignedIn).generation;
 
     await controller.logout();
     expect(container.read(authControllerProvider), isA<AuthSignedOut>());
     expect(controller.currentGeneration, greaterThan(gen1));
   });
 
-  test('logout saat login masih berjalan membatalkan commit token dan menghasilkan AuthSignedOut', () async {
-    final loginCompleter = Completer<AuthResult>();
-    final fakeRepo = CompleterAuthRepository(loginCompleter: loginCompleter);
-    final fakeStorage = InMemoryAuthTokenStorage();
-    final fakeSkStore = InMemoryRememberedSkStore();
+  test(
+    'logout saat login masih berjalan membatalkan commit token dan menghasilkan AuthSignedOut',
+    () async {
+      final loginCompleter = Completer<AuthResult>();
+      final fakeRepo = CompleterAuthRepository(loginCompleter: loginCompleter);
+      final fakeStorage = InMemoryAuthTokenStorage();
+      final fakeSkStore = InMemoryRememberedSkStore();
 
-    final container = ProviderContainer(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(fakeRepo),
-        authTokenStorageProvider.overrideWithValue(fakeStorage),
-        rememberedSkStoreProvider.overrideWithValue(fakeSkStore),
-      ],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(fakeRepo),
+          authTokenStorageProvider.overrideWithValue(fakeStorage),
+          rememberedSkStoreProvider.overrideWithValue(fakeSkStore),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(authControllerProvider.notifier);
+      final controller = container.read(authControllerProvider.notifier);
 
-    // 1. Mulai login (asinkron tertahan)
-    final loginFuture = controller.login(
-      skNumber: 'DEMO-001',
-      password: 'password',
-      staySignedIn: true,
-      rememberSk: true,
-    );
-    expect(container.read(authControllerProvider), isA<AuthSigningIn>());
+      // 1. Mulai login (asinkron tertahan)
+      final loginFuture = controller.login(
+        skNumber: 'DEMO-001',
+        password: 'password',
+        staySignedIn: true,
+        rememberSk: true,
+      );
+      expect(container.read(authControllerProvider), isA<AuthSigningIn>());
 
-    // 2. Pengguna memanggil logout sebelum login selesai
-    await controller.logout();
-    expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      // 2. Pengguna memanggil logout sebelum login selesai
+      await controller.logout();
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
-    // 3. Selesaikan operasi login yang tertunda
-    loginCompleter.complete(
-      AuthResult.success(
-        user: fakeGarutKotaUser,
-        accessToken: 'acc_token',
-        refreshToken: 'token_usr_garut_kota',
-      ),
-    );
-    final loginResult = await loginFuture;
+      // 3. Selesaikan operasi login yang tertunda
+      loginCompleter.complete(
+        AuthResult.success(
+          user: fakeGarutKotaUser,
+          accessToken: 'acc_token',
+          refreshToken: 'token_usr_garut_kota',
+        ),
+      );
+      final loginResult = await loginFuture;
 
-    // 4. Verifikasi: login harus ditolak (return false), state tetap AuthSignedOut, storage token kosong
-    expect(loginResult, isFalse);
-    expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-    expect(await fakeStorage.getRefreshToken(), isNull);
-  });
+      // 4. Verifikasi: login harus ditolak (return false), state tetap AuthSignedOut, storage token kosong
+      expect(loginResult, isFalse);
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      expect(await fakeStorage.getRefreshToken(), isNull);
+    },
+  );
 
-  test('panggilan bootstrap ganda secara simultan hanya mengeksekusi satu kali (single-flight)', () async {
-    final bootstrapCompleter = Completer<AuthResult>();
-    final fakeRepo = CompleterAuthRepository(restoreCompleter: bootstrapCompleter);
+  test(
+    'panggilan bootstrap ganda secara simultan hanya mengeksekusi satu kali (single-flight)',
+    () async {
+      final bootstrapCompleter = Completer<AuthResult>();
+      final fakeRepo = CompleterAuthRepository(
+        restoreCompleter: bootstrapCompleter,
+      );
 
-    final container = ProviderContainer(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(fakeRepo),
-        authTokenStorageProvider.overrideWithValue(InMemoryAuthTokenStorage()),
-        rememberedSkStoreProvider.overrideWithValue(InMemoryRememberedSkStore()),
-      ],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(fakeRepo),
+          authTokenStorageProvider.overrideWithValue(
+            InMemoryAuthTokenStorage(),
+          ),
+          rememberedSkStoreProvider.overrideWithValue(
+            InMemoryRememberedSkStore(),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(authControllerProvider.notifier);
+      final controller = container.read(authControllerProvider.notifier);
 
-    final f1 = controller.bootstrap();
-    final f2 = controller.bootstrap();
+      final f1 = controller.bootstrap();
+      final f2 = controller.bootstrap();
 
-    expect(fakeRepo.restoreCallCount, equals(1));
+      expect(fakeRepo.restoreCallCount, equals(1));
 
-    bootstrapCompleter.complete(const AuthResult.failed(SessionExpiredFailure('None')));
-    await Future.wait([f1, f2]);
+      bootstrapCompleter.complete(
+        const AuthResult.failed(SessionExpiredFailure('None')),
+      );
+      await Future.wait([f1, f2]);
 
-    expect(fakeRepo.restoreCallCount, equals(1));
-  });
+      expect(fakeRepo.restoreCallCount, equals(1));
+    },
+  );
 }

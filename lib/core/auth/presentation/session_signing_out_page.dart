@@ -12,9 +12,7 @@ class SessionSigningOutPage extends StatelessWidget {
       body: Stack(
         children: [
           const Positioned.fill(
-            child: CustomPaint(
-              painter: BrandHeaderPatternPainter(),
-            ),
+            child: CustomPaint(painter: BrandHeaderPatternPainter()),
           ),
           SafeArea(
             child: Center(

@@ -22,9 +22,11 @@ class SportDetailPage extends ConsumerStatefulWidget {
 class _SportDetailPageState extends ConsumerState<SportDetailPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final TextEditingController _athleteSearchController = TextEditingController();
+  final TextEditingController _athleteSearchController =
+      TextEditingController();
 
-  int _analyticMode = 0; // 0: Kelompok Usia (BarChart), 1: Status Berkas (PieChart)
+  int _analyticMode =
+      0; // 0: Kelompok Usia (BarChart), 1: Status Berkas (PieChart)
   String _selectedAgeGroup = 'Semua';
   String _athleteQuery = '';
 
@@ -64,8 +66,11 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
     int coachCount = 0,
     int verifiedCount = 0,
   }) async {
-    final pct = athleteCount > 0 ? ((verifiedCount / athleteCount) * 100).round() : 100;
-    final summary = '''
+    final pct = athleteCount > 0
+        ? ((verifiedCount / athleteCount) * 100).round()
+        : 100;
+    final summary =
+        '''
 REKAPITULASI CABANG OLAHRAGA
 Cabang Olahraga : ${widget.sport}
 Wilayah         : Kecamatan Garut Kota
@@ -78,7 +83,9 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Rekapitulasi cabor ${widget.sport} berhasil disalin ke papan klip.'),
+        content: Text(
+          'Rekapitulasi cabor ${widget.sport} berhasil disalin ke papan klip.',
+        ),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -96,7 +103,9 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
         final clubIds = clubs.map((c) => c.id).toSet();
         final clubMap = {for (final c in clubs) c.id: c};
 
-        final peopleInSport = data.people.where((p) => clubIds.contains(p.clubId)).toList();
+        final peopleInSport = data.people
+            .where((p) => clubIds.contains(p.clubId))
+            .toList();
         final athletes = peopleInSport.where((p) => p.role == 'Atlet').toList();
         final coaches = peopleInSport
             .where((p) => p.role == 'Pelatih' || p.role == 'Official')
@@ -210,7 +219,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.chevron_left, size: 28, color: Colors.white),
+                      icon: const Icon(
+                        Icons.chevron_left,
+                        size: 28,
+                        color: Colors.white,
+                      ),
                       tooltip: 'Kembali',
                       onPressed: () {
                         if (context.canPop()) {
@@ -221,7 +234,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.share_outlined, size: 24, color: Colors.white),
+                      icon: const Icon(
+                        Icons.share_outlined,
+                        size: 24,
+                        color: Colors.white,
+                      ),
                       tooltip: 'Bagikan info cabor',
                       onPressed: () => _copySummary(
                         clubCount: clubCount,
@@ -278,7 +295,9 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     int coachCount,
     int verifiedCount,
   ) {
-    final pct = athleteCount > 0 ? ((verifiedCount / athleteCount) * 100).round() : 100;
+    final pct = athleteCount > 0
+        ? ((verifiedCount / athleteCount) * 100).round()
+        : 100;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -367,14 +386,13 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   }
 
   Widget _buildVerticalDivider() {
-    return Container(
-      width: 1,
-      height: 22,
-      color: const Color(0xFFE5E7EB),
-    );
+    return Container(width: 1, height: 22, color: const Color(0xFFE5E7EB));
   }
 
-  Widget _buildAnalyticsCard(SportBrandPalette palette, List<SportPerson> athletes) {
+  Widget _buildAnalyticsCard(
+    SportBrandPalette palette,
+    List<SportPerson> athletes,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -458,7 +476,10 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildAgeBarChart(SportBrandPalette palette, List<SportPerson> athletes) {
+  Widget _buildAgeBarChart(
+    SportBrandPalette palette,
+    List<SportPerson> athletes,
+  ) {
     final u14 = athletes.where((a) => _getAgeCategory(a) == 'U-14').length;
     final u16 = athletes.where((a) => _getAgeCategory(a) == 'U-16').length;
     final u18 = athletes.where((a) => _getAgeCategory(a) == 'U-18').length;
@@ -476,7 +497,10 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
           enabled: true,
           touchTooltipData: BarTouchTooltipData(
             getTooltipColor: (_) => KokColors.navy,
-            tooltipPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            tooltipPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 4,
+            ),
             tooltipMargin: 6,
             fitInsideHorizontally: true,
             fitInsideVertically: true,
@@ -486,15 +510,23 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
               final count = rod.toY.toInt();
               return BarTooltipItem(
                 '$groupName: $count atlet',
-                const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
               );
             },
           ),
         ),
         titlesData: FlTitlesData(
           show: true,
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -549,8 +581,13 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildDocumentPieChart(SportBrandPalette palette, List<SportPerson> athletes) {
-    final verifiedCount = athletes.where((a) => a.verified && a.missingDocuments.isEmpty).length;
+  Widget _buildDocumentPieChart(
+    SportBrandPalette palette,
+    List<SportPerson> athletes,
+  ) {
+    final verifiedCount = athletes
+        .where((a) => a.verified && a.missingDocuments.isEmpty)
+        .length;
     final missingCount = athletes.length - verifiedCount;
 
     final missingDocs = <String>{};
@@ -570,7 +607,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
               sections: [
                 PieChartSectionData(
                   color: const Color(0xFF16A34A),
-                  value: (verifiedCount > 0 ? verifiedCount : (missingCount == 0 ? 1 : 0)).toDouble(),
+                  value:
+                      (verifiedCount > 0
+                              ? verifiedCount
+                              : (missingCount == 0 ? 1 : 0))
+                          .toDouble(),
                   title: athletes.isEmpty
                       ? '100%'
                       : '${((verifiedCount / (athletes.isEmpty ? 1 : athletes.length)) * 100).round()}%',
@@ -604,9 +645,15 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendRow(const Color(0xFF16A34A), 'Lengkap: $verifiedCount atlet'),
+              _buildLegendRow(
+                const Color(0xFF16A34A),
+                'Lengkap: $verifiedCount atlet',
+              ),
               const SizedBox(height: 4),
-              _buildLegendRow(KokColors.red, 'Berkas Kurang: $missingCount atlet'),
+              _buildLegendRow(
+                KokColors.red,
+                'Berkas Kurang: $missingCount atlet',
+              ),
               if (missingDocs.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -667,9 +714,15 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildClubsTab(List<Club> clubs, KokSnapshot data, SportBrandPalette palette) {
+  Widget _buildClubsTab(
+    List<Club> clubs,
+    KokSnapshot data,
+    SportBrandPalette palette,
+  ) {
     if (clubs.isEmpty) {
-      return const EmptyState(message: 'Belum ada klub terdaftar pada cabor ini.');
+      return const EmptyState(
+        message: 'Belum ada klub terdaftar pada cabor ini.',
+      );
     }
 
     return ListView.builder(
@@ -730,7 +783,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: KokColors.muted, size: 20),
+                const Icon(
+                  Icons.chevron_right,
+                  color: KokColors.muted,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -753,7 +810,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             onChanged: (val) => setState(() => _athleteQuery = val),
             decoration: InputDecoration(
               hintText: 'Cari nama atlet...',
-              prefixIcon: const Icon(Icons.search, size: 20, color: KokColors.muted),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: KokColors.muted,
+              ),
               suffixIcon: _athleteQuery.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
@@ -763,7 +824,10 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       },
                     )
                   : null,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
               isDense: true,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -792,13 +856,17 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   labelStyle: TextStyle(
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? palette.chartColor : KokColors.cardTitle,
+                    color: isSelected
+                        ? palette.chartColor
+                        : KokColors.cardTitle,
                   ),
                   backgroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: BorderSide(
-                      color: isSelected ? palette.chartColor : const Color(0xFFE5E7EB),
+                      color: isSelected
+                          ? palette.chartColor
+                          : const Color(0xFFE5E7EB),
                     ),
                   ),
                 ),
@@ -809,7 +877,9 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
         const SizedBox(height: 6),
         Expanded(
           child: athletes.isEmpty
-              ? const EmptyState(message: 'Tidak ada atlet yang sesuai dengan filter.')
+              ? const EmptyState(
+                  message: 'Tidak ada atlet yang sesuai dengan filter.',
+                )
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                   itemCount: athletes.length,
@@ -917,9 +987,14 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildCoachesTab(List<SportPerson> coaches, SportBrandPalette palette) {
+  Widget _buildCoachesTab(
+    List<SportPerson> coaches,
+    SportBrandPalette palette,
+  ) {
     if (coaches.isEmpty) {
-      return const EmptyState(message: 'Belum ada pelatih terdaftar pada cabor ini.');
+      return const EmptyState(
+        message: 'Belum ada pelatih terdaftar pada cabor ini.',
+      );
     }
 
     return ListView.builder(
@@ -978,7 +1053,10 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: coach.expiredLicense
                         ? const Color(0xFFFFE7E7)
@@ -1053,11 +1131,12 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: const Color(0xFFF4F6FA),
-      child: tabBar,
-    );
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: const Color(0xFFF4F6FA), child: tabBar);
   }
 
   @override

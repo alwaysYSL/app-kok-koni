@@ -1,4 +1,4 @@
-﻿sealed class AuthFailure {
+sealed class AuthFailure {
   final String message;
   const AuthFailure(this.message);
 }
@@ -11,7 +11,8 @@ class InvalidCredentialsFailure extends AuthFailure {
 
 class NetworkTimeoutFailure extends AuthFailure {
   const NetworkTimeoutFailure([
-    super.message = 'Koneksi ke server autentikasi terputus. Silakan coba lagi.',
+    super.message =
+        'Koneksi ke server autentikasi terputus. Silakan coba lagi.',
   ]);
 }
 

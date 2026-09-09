@@ -14,7 +14,8 @@ void main() {
           snapshotProvider.overrideWith((ref) => DemoKokRepository().fetch()),
         ],
         child: MaterialApp.router(
-          routerConfig: router ??
+          routerConfig:
+              router ??
               GoRouter(
                 initialLocation: '/sport/$sport',
                 routes: [
@@ -26,9 +27,8 @@ void main() {
                   ),
                   GoRoute(
                     path: '/club/:id',
-                    builder: (_, s) => Scaffold(
-                      body: Text('Club: ${s.pathParameters['id']}'),
-                    ),
+                    builder: (_, s) =>
+                        Scaffold(body: Text('Club: ${s.pathParameters['id']}')),
                   ),
                   GoRoute(
                     path: '/person/:id',
@@ -42,7 +42,9 @@ void main() {
       );
     }
 
-    testWidgets('renders sport dynamic header, floating stats card, and tabs', (tester) async {
+    testWidgets('renders sport dynamic header, floating stats card, and tabs', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(360, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -57,50 +59,60 @@ void main() {
       expect(find.byType(TabBar), findsOneWidget);
     });
 
-    testWidgets('renders analytic fl_chart and toggles between age groups and document status', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(360, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets(
+      'renders analytic fl_chart and toggles between age groups and document status',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(buildSubject(sport: 'Sepak Bola'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildSubject(sport: 'Sepak Bola'));
+        await tester.pumpAndSettle();
 
-      expect(find.text('Kelompok Usia'), findsOneWidget);
-      expect(find.text('Status Berkas'), findsOneWidget);
-      expect(find.byType(BarChart), findsOneWidget);
+        expect(find.text('Kelompok Usia'), findsOneWidget);
+        expect(find.text('Status Berkas'), findsOneWidget);
+        expect(find.byType(BarChart), findsOneWidget);
 
-      await tester.tap(find.text('Status Berkas'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Status Berkas'));
+        await tester.pumpAndSettle();
 
-      expect(find.byType(PieChart), findsOneWidget);
-    });
+        expect(find.byType(PieChart), findsOneWidget);
+      },
+    );
 
-    testWidgets('switches to Atlet tab, filters age group, and taps athlete to open detail', (tester) async {
-      await tester.binding.setSurfaceSize(const Size(360, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets(
+      'switches to Atlet tab, filters age group, and taps athlete to open detail',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(buildSubject(sport: 'Sepak Bola'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(buildSubject(sport: 'Sepak Bola'));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Atlet').first);
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
 
-      expect(find.byType(TextField), findsOneWidget);
-      expect(find.text('Semua'), findsWidgets);
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Semua'), findsWidgets);
 
-      await tester.tap(find.text('U-16'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('U-16'));
+        await tester.pumpAndSettle();
 
-      final firstPerson = find.descendant(
-        of: find.byType(TabBarView),
-        matching: find.textContaining('Atlet'),
-      ).first;
-      await tester.tap(firstPerson);
-      await tester.pumpAndSettle();
+        final firstPerson = find
+            .descendant(
+              of: find.byType(TabBarView),
+              matching: find.textContaining('Atlet'),
+            )
+            .first;
+        await tester.tap(firstPerson);
+        await tester.pumpAndSettle();
 
-      expect(find.textContaining('Person:'), findsOneWidget);
-    });
+        expect(find.textContaining('Person:'), findsOneWidget);
+      },
+    );
 
-    testWidgets('switches to Pelatih tab and taps coach to open detail', (tester) async {
+    testWidgets('switches to Pelatih tab and taps coach to open detail', (
+      tester,
+    ) async {
       await tester.binding.setSurfaceSize(const Size(360, 1000));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -110,10 +122,12 @@ void main() {
       await tester.tap(find.text('Pelatih').first);
       await tester.pumpAndSettle();
 
-      final coachFinder = find.descendant(
-        of: find.byType(TabBarView),
-        matching: find.textContaining('Pelatih'),
-      ).first;
+      final coachFinder = find
+          .descendant(
+            of: find.byType(TabBarView),
+            matching: find.textContaining('Pelatih'),
+          )
+          .first;
       await tester.tap(coachFinder);
       await tester.pumpAndSettle();
 

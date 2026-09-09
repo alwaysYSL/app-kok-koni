@@ -73,11 +73,22 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
             style: const TextStyle(fontSize: 14.5, color: KokColors.cardTitle),
             decoration: InputDecoration(
               hintText: 'Cari nama atlet, pelatih, klub, cabor...',
-              hintStyle: const TextStyle(color: KokColors.muted, fontSize: 13.5),
-              prefixIcon: const Icon(Icons.search, size: 20, color: KokColors.muted),
+              hintStyle: const TextStyle(
+                color: KokColors.muted,
+                fontSize: 13.5,
+              ),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: KokColors.muted,
+              ),
               suffixIcon: _query.isNotEmpty
                   ? IconButton(
-                      icon: const Icon(Icons.close, size: 18, color: KokColors.muted),
+                      icon: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: KokColors.muted,
+                      ),
                       onPressed: () {
                         _searchController.clear();
                         setState(() => _query = '');
@@ -136,7 +147,9 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                 selectedColor: KokColors.bluePrimary,
                 backgroundColor: Colors.white,
                 side: BorderSide(
-                  color: isSelected ? KokColors.bluePrimary : const Color(0xFFE5E7EB),
+                  color: isSelected
+                      ? KokColors.bluePrimary
+                      : const Color(0xFFE5E7EB),
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -158,7 +171,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
       children: [
         const SizedBox(height: 12),
         const Center(
-          child: Icon(Icons.manage_search_rounded, size: 48, color: KokColors.blueMedium),
+          child: Icon(
+            Icons.manage_search_rounded,
+            size: 48,
+            color: KokColors.blueMedium,
+          ),
         ),
         const SizedBox(height: 12),
         const Text(
@@ -174,7 +191,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
         const Text(
           'Ketik nama atlet, pelatih, klub, atau cabang olahraga untuk menemukan data secara cepat.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: KokColors.textSecondary, height: 1.4),
+          style: TextStyle(
+            fontSize: 13,
+            color: KokColors.textSecondary,
+            height: 1.4,
+          ),
         ),
         const SizedBox(height: 24),
         const Text(
@@ -192,7 +213,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
           runSpacing: 8,
           children: sports.map((sport) {
             return ActionChip(
-              avatar: Icon(sportIcon(sport), size: 16, color: KokColors.bluePrimary),
+              avatar: Icon(
+                sportIcon(sport),
+                size: 16,
+                color: KokColors.bluePrimary,
+              ),
               label: Text(sport),
               labelStyle: const TextStyle(
                 fontSize: 13,
@@ -201,7 +226,9 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
               ),
               backgroundColor: Colors.white,
               side: const BorderSide(color: Color(0xFFE5E7EB)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               onPressed: () {
                 _searchController.text = sport;
                 setState(() => _query = sport);
@@ -219,9 +246,12 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
 
     // 1. Match Athletes & Coaches
     final matchedPeople = data.people.where((p) {
-      final club = clubsById[p.clubId] ?? Club(id: p.clubId, name: '', sport: '', village: '');
+      final club =
+          clubsById[p.clubId] ??
+          Club(id: p.clubId, name: '', sport: '', village: '');
 
-      final matchesText = p.name.toLowerCase().contains(q) ||
+      final matchesText =
+          p.name.toLowerCase().contains(q) ||
           club.name.toLowerCase().contains(q) ||
           club.sport.toLowerCase().contains(q) ||
           p.group.toLowerCase().contains(q);
@@ -239,10 +269,10 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
     // 2. Match Clubs
     final matchedClubs = switch (_selectedCategory) {
       SearchCategory.all || SearchCategory.clubs => data.clubs.where((c) {
-          return c.name.toLowerCase().contains(q) ||
-              c.sport.toLowerCase().contains(q) ||
-              c.village.toLowerCase().contains(q);
-        }).toList(),
+        return c.name.toLowerCase().contains(q) ||
+            c.sport.toLowerCase().contains(q) ||
+            c.village.toLowerCase().contains(q);
+      }).toList(),
       _ => <Club>[],
     };
 
@@ -250,12 +280,13 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
     final allSports = data.clubs.map((c) => c.sport).toSet().toList();
     final matchedSports = switch (_selectedCategory) {
       SearchCategory.all || SearchCategory.sports => allSports.where((s) {
-          return s.toLowerCase().contains(q);
-        }).toList(),
+        return s.toLowerCase().contains(q);
+      }).toList(),
       _ => <String>[],
     };
 
-    final totalCount = matchedPeople.length + matchedClubs.length + matchedSports.length;
+    final totalCount =
+        matchedPeople.length + matchedClubs.length + matchedSports.length;
 
     if (totalCount == 0) {
       return Center(
@@ -264,7 +295,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.search_off_rounded, size: 52, color: KokColors.muted),
+              const Icon(
+                Icons.search_off_rounded,
+                size: 52,
+                color: KokColors.muted,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Tidak ditemukan hasil untuk "$_query"',
@@ -303,7 +338,9 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
           ),
         ),
         ...matchedClubs.map((c) {
-          final athletesCount = data.people.where((p) => p.clubId == c.id && p.role == 'Atlet').length;
+          final athletesCount = data.people
+              .where((p) => p.clubId == c.id && p.role == 'Atlet')
+              .length;
           return _buildClubResultCard(c, athletesCount);
         }),
         ...matchedSports.map((s) {
@@ -315,7 +352,9 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
           return _buildSportResultCard(s, clubsCount, athletesCount);
         }),
         ...matchedPeople.map((p) {
-          final club = clubsById[p.clubId] ?? Club(id: p.clubId, name: 'Klub', sport: '', village: '');
+          final club =
+              clubsById[p.clubId] ??
+              Club(id: p.clubId, name: 'Klub', sport: '', village: '');
           final palette = ClubBrandPaletteResolver.resolve(club);
           return _buildPersonResultCard(p, club, palette);
         }),
@@ -323,10 +362,18 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
     );
   }
 
-  Widget _buildPersonResultCard(SportPerson person, Club club, ClubBrandPalette palette) {
+  Widget _buildPersonResultCard(
+    SportPerson person,
+    Club club,
+    ClubBrandPalette palette,
+  ) {
     final isAthlete = person.role == 'Atlet';
-    final roleBg = isAthlete ? const Color(0xFFD1FAE5) : const Color(0xFFE0E7FF);
-    final roleFg = isAthlete ? const Color(0xFF059669) : const Color(0xFF3730A3);
+    final roleBg = isAthlete
+        ? const Color(0xFFD1FAE5)
+        : const Color(0xFFE0E7FF);
+    final roleFg = isAthlete
+        ? const Color(0xFF059669)
+        : const Color(0xFF3730A3);
 
     return Card(
       elevation: 0,
@@ -349,7 +396,9 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                 decoration: BoxDecoration(
                   color: palette.fallbackAvatar,
                   shape: BoxShape.circle,
-                  border: Border.all(color: palette.headerStart.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: palette.headerStart.withValues(alpha: 0.3),
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -381,7 +430,10 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: roleBg,
                             borderRadius: BorderRadius.circular(6),
@@ -443,7 +495,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Icon(sportIcon(club.sport), size: 22, color: KokColors.bluePrimary),
+                child: Icon(
+                  sportIcon(club.sport),
+                  size: 22,
+                  color: KokColors.bluePrimary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -482,7 +538,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
     );
   }
 
-  Widget _buildSportResultCard(String sport, int clubsCount, int athletesCount) {
+  Widget _buildSportResultCard(
+    String sport,
+    int clubsCount,
+    int athletesCount,
+  ) {
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
@@ -506,7 +566,11 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
-                child: Icon(sportIcon(sport), size: 22, color: KokColors.bluePrimary),
+                child: Icon(
+                  sportIcon(sport),
+                  size: 22,
+                  color: KokColors.bluePrimary,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

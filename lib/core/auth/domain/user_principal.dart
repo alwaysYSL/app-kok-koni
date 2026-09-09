@@ -1,59 +1,100 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
+
+enum AccessScopeType { district, county }
 
 @immutable
-class UserPrincipal {
+final class AccessScope {
+  const AccessScope({required this.type, required this.id, required this.name});
+
+  final AccessScopeType type;
+  final String id;
+  final String name;
+
+  Map<String, dynamic> toJson() => {'type': type.name, 'id': id, 'name': name};
+
+  factory AccessScope.fromJson(dynamic value) {
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('AccessScope harus berupa JSON object');
+    }
+    final rawType = value['type'];
+    final rawId = value['id'];
+    final rawName = value['name'];
+    final type = rawType is String
+        ? AccessScopeType.values.asNameMap()[rawType]
+        : null;
+    if (type == null ||
+        rawId is! String ||
+        rawId.trim().isEmpty ||
+        rawName is! String ||
+        rawName.trim().isEmpty) {
+      throw const FormatException('AccessScope tidak valid');
+    }
+    return AccessScope(type: type, id: rawId, name: rawName);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AccessScope && other.type == type && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(type, id);
+}
+
+@immutable
+final class UserPrincipal {
+  UserPrincipal({
+    required this.id,
+    required this.skNumber,
+    required this.fullName,
+    required this.roleTitle,
+    required this.scope,
+    this.profileImageUrl,
+    Set<String> permissions = const {},
+  }) : permissions = Set.unmodifiable(permissions);
+
   final String id;
   final String skNumber;
   final String fullName;
   final String roleTitle;
-  final String districtId;
-  final String districtName;
+  final AccessScope scope;
   final String? profileImageUrl;
   final Set<String> permissions;
 
-  UserPrincipal({
-    required this.id,
-    required this.skNumber,
-    String? fullName,
-    String? roleTitle,
-    String? name,
-    String? role,
-    required this.districtId,
-    required this.districtName,
-    this.profileImageUrl,
-    Set<String> permissions = const {},
-  })  : fullName = fullName ?? name ?? '',
-        roleTitle = roleTitle ?? role ?? '',
-        permissions = Set.unmodifiable(permissions);
-
+  @Deprecated('Gunakan principal.fullName')
   String get name => fullName;
+
+  @Deprecated('Gunakan principal.roleTitle')
   String get role => roleTitle;
+
+  @Deprecated('Gunakan principal.scope.id')
+  String get districtId => scope.id;
+
+  @Deprecated('Gunakan principal.scope.name')
+  String get districtName => scope.name;
 
   bool hasPermission(String permission) => permissions.contains(permission);
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is UserPrincipal &&
-        other.id == id &&
-        other.skNumber == skNumber &&
-        other.fullName == fullName &&
-        other.roleTitle == roleTitle &&
-        other.districtId == districtId &&
-        other.districtName == districtName &&
-        other.profileImageUrl == profileImageUrl &&
-        setEquals(other.permissions, permissions);
-  }
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is UserPrincipal &&
+          other.id == id &&
+          other.skNumber == skNumber &&
+          other.fullName == fullName &&
+          other.roleTitle == roleTitle &&
+          other.scope == scope &&
+          other.profileImageUrl == profileImageUrl &&
+          setEquals(other.permissions, permissions);
 
   @override
   int get hashCode => Object.hash(
-        id,
-        skNumber,
-        fullName,
-        roleTitle,
-        districtId,
-        districtName,
-        profileImageUrl,
-        Object.hashAllUnordered(permissions),
-      );
+    id,
+    skNumber,
+    fullName,
+    roleTitle,
+    scope,
+    profileImageUrl,
+    Object.hashAllUnordered(permissions),
+  );
 }

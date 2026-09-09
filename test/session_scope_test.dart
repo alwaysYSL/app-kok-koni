@@ -9,30 +9,33 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_token_storage_test.dart';
 
 void main() {
-  test('Regression Audit: Remembered SK tidak memulihkan sesi autentikasi', () async {
-    SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
-    final prefs = await SharedPreferences.getInstance();
-    final tokenStorage = InMemoryAuthTokenStorage();
-    final skStore = RememberedSkStore(prefs);
-    final authRepo = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+  test(
+    'Regression Audit: Remembered SK tidak memulihkan sesi autentikasi',
+    () async {
+      SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
+      final prefs = await SharedPreferences.getInstance();
+      final tokenStorage = InMemoryAuthTokenStorage();
+      final skStore = RememberedSkStore(prefs);
+      final authRepo = DemoAuthRepository(
+        tokenStorage: tokenStorage,
+        skStore: skStore,
+        simulateLatency: false,
+      );
 
-    final container = ProviderContainer(
-      overrides: [
-        authRepositoryProvider.overrideWithValue(authRepo),
-        rememberedSkStoreProvider.overrideWithValue(skStore),
-      ],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(authRepo),
+          rememberedSkStoreProvider.overrideWithValue(skStore),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    await container.read(authControllerProvider.notifier).bootstrap();
-    expect(await skStore.readSk(), 'DEMO-001');
-    expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-    expect(container.read(sessionScopeProvider), isNull);
-  });
+      await container.read(authControllerProvider.notifier).bootstrap();
+      expect(await skStore.readSk(), 'DEMO-001');
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      expect(container.read(sessionScopeProvider), isNull);
+    },
+  );
 
   test('SessionScope mengisolasi snapshot data antar akun kecamatan', () async {
     final tokenStorage = InMemoryAuthTokenStorage();
@@ -88,13 +91,16 @@ void main() {
     expect(snapshotCecep.clubs.length, 4);
   });
 
-  test('snapshotProvider melempar SessionRequiredException saat sessionScope bernilai null', () async {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
+  test(
+    'snapshotProvider melempar SessionRequiredException saat sessionScope bernilai null',
+    () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-    expect(
-      () => container.read(snapshotProvider.future),
-      throwsA(isA<SessionRequiredException>()),
-    );
-  });
+      expect(
+        () => container.read(snapshotProvider.future),
+        throwsA(isA<SessionRequiredException>()),
+      );
+    },
+  );
 }

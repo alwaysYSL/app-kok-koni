@@ -250,7 +250,10 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                 child: TextField(
                   controller: _search,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF17191D)),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF17191D),
+                  ),
                   decoration: InputDecoration(
                     hintText: 'Cari nama klub...',
                     hintStyle: const TextStyle(
@@ -298,7 +301,9 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: !hasActiveFilter ? KokColors.blue : Colors.white,
+                          color: !hasActiveFilter
+                              ? KokColors.blue
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: !hasActiveFilter
                               ? null
@@ -323,10 +328,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                       FilterChipDropdown(
                         label: 'Cabor',
                         value: _sport,
-                        options: data.clubs
-                            .map((c) => c.sport)
-                            .toSet()
-                            .toList()
+                        options: data.clubs.map((c) => c.sport).toSet().toList()
                           ..sort(),
                         onChanged: (v) => setState(() => _sport = v),
                       ),
@@ -343,10 +345,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                       label: 'Kelurahan',
                       value: _village,
                       displayValue: _village ?? 'Kel.',
-                      options: data.clubs
-                          .map((c) => c.village)
-                          .toSet()
-                          .toList()
+                      options: data.clubs.map((c) => c.village).toSet().toList()
                         ..sort(),
                       onChanged: (v) => setState(() => _village = v),
                     ),
@@ -412,7 +411,9 @@ class FilterChipDropdown extends StatelessWidget {
                   'Semua $label',
                   style: TextStyle(
                     fontWeight: !isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: !isSelected ? KokColors.blue : const Color(0xFF17191D),
+                    color: !isSelected
+                        ? KokColors.blue
+                        : const Color(0xFF17191D),
                   ),
                 ),
               ),
@@ -434,8 +435,12 @@ class FilterChipDropdown extends StatelessWidget {
                   child: Text(
                     o,
                     style: TextStyle(
-                      fontWeight: value == o ? FontWeight.w700 : FontWeight.w500,
-                      color: value == o ? KokColors.blue : const Color(0xFF17191D),
+                      fontWeight: value == o
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: value == o
+                          ? KokColors.blue
+                          : const Color(0xFF17191D),
                     ),
                   ),
                 ),
@@ -613,4 +618,3 @@ class ClubTile extends StatelessWidget {
     );
   }
 }
-

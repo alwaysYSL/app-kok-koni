@@ -9,7 +9,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class FailingFlutterSecureStorage implements FlutterSecureStorage {
   @override
-  dynamic noSuchMethod(Invocation invocation) => throw Exception('Hardware keystore unavailable');
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw Exception('Hardware keystore unavailable');
 }
 
 class InMemoryAuthTokenStorage implements AuthTokenStorage {
@@ -43,35 +44,55 @@ class InMemoryAuthTokenStorage implements AuthTokenStorage {
 
 void main() {
   group('AuthTokenStorage', () {
-    test('menyimpan, membaca, dan menghapus refresh token secara benar', () async {
-      final storage = InMemoryAuthTokenStorage();
-      expect(await storage.readRefreshToken(), isNull);
+    test(
+      'menyimpan, membaca, dan menghapus refresh token secara benar',
+      () async {
+        final storage = InMemoryAuthTokenStorage();
+        expect(await storage.readRefreshToken(), isNull);
 
-      await storage.saveRefreshToken('test_refresh_token_xyz');
-      expect(await storage.readRefreshToken(), 'test_refresh_token_xyz');
+        await storage.saveRefreshToken('test_refresh_token_xyz');
+        expect(await storage.readRefreshToken(), 'test_refresh_token_xyz');
 
-      await storage.clear();
-      expect(await storage.readRefreshToken(), isNull);
-    });
+        await storage.clear();
+        expect(await storage.readRefreshToken(), isNull);
+      },
+    );
 
     test('menangani exception storage tanpa crash tak terkendali', () async {
       final storage = InMemoryAuthTokenStorage()..shouldThrow = true;
       expect(() => storage.readRefreshToken(), throwsException);
     });
 
-    test('SecureAuthTokenStorage melempar StorageException saat platform storage gagal', () async {
-      final failingStorage = SecureAuthTokenStorage(storage: FailingFlutterSecureStorage());
-      expect(() => failingStorage.getRefreshToken(), throwsA(isA<StorageException>()));
-      expect(() => failingStorage.saveRefreshToken('dummy'), throwsA(isA<StorageException>()));
-      expect(() => failingStorage.clear(), throwsA(isA<StorageException>()));
-    });
+    test(
+      'SecureAuthTokenStorage melempar StorageException saat platform storage gagal',
+      () async {
+        final failingStorage = SecureAuthTokenStorage(
+          storage: FailingFlutterSecureStorage(),
+        );
+        expect(
+          () => failingStorage.getRefreshToken(),
+          throwsA(isA<StorageException>()),
+        );
+        expect(
+          () => failingStorage.saveRefreshToken('dummy'),
+          throwsA(isA<StorageException>()),
+        );
+        expect(() => failingStorage.clear(), throwsA(isA<StorageException>()));
+      },
+    );
 
     test('StorageException memformat pesan dan penyebab dengan benar', () {
       const err1 = StorageException('Gagal akses');
       expect(err1.toString(), 'Gagal akses');
 
-      final err2 = StorageException('Gagal akses', Exception('Keystore locked'));
-      expect(err2.toString(), contains('Gagal akses (Penyebab: Exception: Keystore locked)'));
+      final err2 = StorageException(
+        'Gagal akses',
+        Exception('Keystore locked'),
+      );
+      expect(
+        err2.toString(),
+        contains('Gagal akses (Penyebab: Exception: Keystore locked)'),
+      );
     });
   });
 
@@ -96,8 +117,11 @@ void main() {
         skNumber: 'DEMO-001',
         fullName: 'Pak Asep',
         roleTitle: 'Koordinator',
-        districtId: 'garut_kota',
-        districtName: 'Kecamatan Garut Kota',
+        scope: const AccessScope(
+          type: AccessScopeType.district,
+          id: 'garut_kota',
+          name: 'Kecamatan Garut Kota',
+        ),
         permissions: {'sports:read', 'reports:export'},
       );
 
