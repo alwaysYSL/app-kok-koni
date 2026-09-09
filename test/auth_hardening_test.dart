@@ -70,6 +70,40 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
   String throwMessage = 'Hardware keystore error';
 
   @override
+  Future<StoredCredential?> read() async {
+    if (shouldThrow) throw StorageException(throwMessage);
+    if (token == null) return null;
+    return StoredCredential(credentialId: 'legacy', refreshToken: token!);
+  }
+
+  @override
+  Future<void> write(StoredCredential credential) async {
+    if (shouldThrow) throw StorageException(throwMessage);
+    token = credential.refreshToken;
+  }
+
+  @override
+  Future<bool> clearIfOwnedBy(String credentialId) async {
+    if (shouldThrow) throw StorageException(throwMessage);
+    if (token != null) {
+      token = null;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> forceClearForRecovery() async {
+    if (shouldThrow) throw StorageException(throwMessage);
+    token = null;
+  }
+
+  @override
+  Future<void> migrateLegacyStorage() async {
+    if (shouldThrow) throw StorageException(throwMessage);
+  }
+
+  @override
   Future<String?> getRefreshToken() async {
     if (shouldThrow) throw StorageException(throwMessage);
     return token;
@@ -143,7 +177,10 @@ void main() {
         final storage = _InMemoryTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
 
         final container = ProviderContainer(
           overrides: [
@@ -201,7 +238,10 @@ void main() {
         final storage = _InMemoryTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
 
         final container = ProviderContainer(
           overrides: [
@@ -277,7 +317,10 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final storage = _InMemoryTokenStorage();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
 
         final container = ProviderContainer(
           overrides: [
@@ -333,7 +376,10 @@ void main() {
           ..throwMessage = 'Penyimpanan hardware keystore tidak merespons.';
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
         final repo = DemoAuthRepository(
           tokenStorage: storage,
           skStore: skStore,
@@ -372,7 +418,10 @@ void main() {
         await storage.saveRefreshToken('token_acak_palsu_99999');
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
 
         final repo = DemoAuthRepository(
           tokenStorage: storage,
@@ -468,7 +517,10 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final storage = _InMemoryTokenStorage();
-        final skStore = RememberedSkStore(prefs);
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
         final authRepo = DemoAuthRepository(
           tokenStorage: storage,
           skStore: skStore,

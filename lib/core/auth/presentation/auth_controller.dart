@@ -1,20 +1,42 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../../config/app_environment.dart';
 import '../../preferences.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
 import '../data/demo_auth_repository.dart';
 import '../data/remembered_sk_store.dart';
+import '../data/session_metadata_store.dart';
 import '../domain/auth_failure.dart';
 import '../domain/auth_state.dart';
 import '../domain/user_principal.dart';
 
 final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {
-  return SecureAuthTokenStorage();
+  return SecureAuthTokenStorage(
+    store: const FlutterSecureKeyValStore(
+      FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+      ),
+    ),
+    key: 'kok.auth.v2.${currentEnvironment.name}.credential',
+  );
+});
+
+final sessionMetadataStoreProvider = Provider<SessionMetadataStore>((ref) {
+  final prefs = ref.watch(preferencesProvider);
+  return SharedPrefsSessionMetadataStore(
+    prefs: prefs,
+    key: 'kok.auth.v2.${currentEnvironment.name}.metadata',
+  );
 });
 
 final rememberedSkStoreProvider = Provider<RememberedSkStore>((ref) {
   final prefs = ref.watch(preferencesProvider);
-  return RememberedSkStore(prefs);
+  return RememberedSkStore(
+    prefs: prefs,
+    key: 'kok.auth.v2.${currentEnvironment.name}.remembered_sk',
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

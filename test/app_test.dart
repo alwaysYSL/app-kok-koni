@@ -22,6 +22,31 @@ import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
 class _FakeTokenStorage implements AuthTokenStorage {
   String? _token;
+
+  @override
+  Future<StoredCredential?> read() async => _token != null
+      ? StoredCredential(credentialId: 'legacy', refreshToken: _token!)
+      : null;
+
+  @override
+  Future<void> write(StoredCredential credential) async =>
+      _token = credential.refreshToken;
+
+  @override
+  Future<bool> clearIfOwnedBy(String credentialId) async {
+    if (_token != null) {
+      _token = null;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> forceClearForRecovery() async => _token = null;
+
+  @override
+  Future<void> migrateLegacyStorage() async {}
+
   @override
   Future<String?> getRefreshToken() async => _token;
   @override
@@ -49,7 +74,7 @@ Future<ProviderContainer> start(
   if (initialToken != null) {
     await tokenStorage.saveRefreshToken(initialToken);
   }
-  final skStore = RememberedSkStore(prefs);
+  final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
   final authRepo = DemoAuthRepository(
     tokenStorage: tokenStorage,
     skStore: skStore,

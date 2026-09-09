@@ -10,6 +10,31 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeTokenStorage implements AuthTokenStorage {
   String? token;
+
+  @override
+  Future<StoredCredential?> read() async => token != null
+      ? StoredCredential(credentialId: 'legacy', refreshToken: token!)
+      : null;
+
+  @override
+  Future<void> write(StoredCredential credential) async =>
+      token = credential.refreshToken;
+
+  @override
+  Future<bool> clearIfOwnedBy(String credentialId) async {
+    if (token != null) {
+      token = null;
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> forceClearForRecovery() async => token = null;
+
+  @override
+  Future<void> migrateLegacyStorage() async {}
+
   @override
   Future<String?> getRefreshToken() async => token;
   @override
@@ -32,7 +57,7 @@ void main() {
     SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
     final prefs = await SharedPreferences.getInstance();
     final tokenStorage = _FakeTokenStorage();
-    final skStore = RememberedSkStore(prefs);
+    final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
     final repo = DemoAuthRepository(
       tokenStorage: tokenStorage,
       skStore: skStore,

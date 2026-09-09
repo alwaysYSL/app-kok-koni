@@ -12,10 +12,15 @@ void main() {
   test(
     'Regression Audit: Remembered SK tidak memulihkan sesi autentikasi',
     () async {
-      SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
+      SharedPreferences.setMockInitialValues({
+        'test_remembered_sk': 'DEMO-001',
+      });
       final prefs = await SharedPreferences.getInstance();
       final tokenStorage = InMemoryAuthTokenStorage();
-      final skStore = RememberedSkStore(prefs);
+      final skStore = RememberedSkStore(
+        prefs: prefs,
+        key: 'test_remembered_sk',
+      );
       final authRepo = DemoAuthRepository(
         tokenStorage: tokenStorage,
         skStore: skStore,
@@ -41,7 +46,7 @@ void main() {
     final tokenStorage = InMemoryAuthTokenStorage();
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final skStore = RememberedSkStore(prefs);
+    final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
     final authRepo = DemoAuthRepository(
       tokenStorage: tokenStorage,
       skStore: skStore,

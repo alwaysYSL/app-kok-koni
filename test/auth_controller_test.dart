@@ -92,7 +92,7 @@ void main() {
     tokenStorage = InMemoryAuthTokenStorage();
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    skStore = RememberedSkStore(prefs);
+    skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
     authRepository = DemoAuthRepository(
       tokenStorage: tokenStorage,
       skStore: skStore,
