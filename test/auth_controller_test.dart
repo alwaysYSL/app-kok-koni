@@ -1463,6 +1463,43 @@ void main() {
     );
 
     test(
+      'login nonpersisten: jika penulisan metadata gagal -> state AuthTemporarilyUnavailable dan return failed',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final container = ProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        metadataStore.shouldThrowOnWrite = true;
+
+        final result = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: false,
+          rememberSk: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.status, equals(AuthCommandStatus.failed));
+        expect(
+          container.read(authControllerProvider),
+          isA<AuthTemporarilyUnavailable>(),
+        );
+        expect(controller.activeRemoteHandle, isNull);
+      },
+    );
+
+    test(
       'login persisten: menulis pending, token storage, restore-enabled, menyimpan activeCredentialId',
       () async {
         final storage = FakeAuthTokenStorage();
@@ -2091,6 +2128,49 @@ void main() {
         final success = await controller.retryLocalCredentialCleanup();
         expect(success, isFalse);
         expect(storage.forceClearCallCount, equals(1));
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+      },
+    );
+
+    // FT-08b: Force clear melempar exception saat recovery
+    test(
+      'FT-08b: Force clear melempar exception saat recovery -> metadata tidak ditulis clean, state failed dan return false',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+
+        final container = ProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        // Paksa ke signed-out failed
+        storage.shouldThrowOnRead = true;
+        await controller.bootstrap();
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+
+        storage.shouldThrowOnRead = false;
+        storage.shouldThrowOnForceClear = true;
+
+        final success = await controller.retryLocalCredentialCleanup();
+        expect(success, isFalse);
+        expect(storage.forceClearCallCount, equals(0));
+        expect(
+          metadataStore.lastWritten,
+          isNot(equals(const SessionMetadata.signedOutClean())),
+        );
         expect(
           container.read(authControllerProvider),
           equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),

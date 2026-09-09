@@ -465,9 +465,6 @@ class AuthController extends Notifier<AuthState> {
     }
 
     if (currentEpoch != _operationEpoch) {
-      if (currentEpoch == _operationEpoch) {
-        _signInPhase = SignInPhase.idle;
-      }
       return const AuthCommandResult(
         status: AuthCommandStatus.cancelled,
         errorMessage: 'Login dibatalkan.',
@@ -508,7 +505,17 @@ class AuthController extends Notifier<AuthState> {
         _signInPhase = SignInPhase.committing;
 
         if (!staySignedIn) {
-          await metadataStore.write(const SessionMetadata.signedOutClean());
+          try {
+            await metadataStore.write(const SessionMetadata.signedOutClean());
+          } catch (_) {
+            state = const AuthTemporarilyUnavailable(
+              reason: 'Gagal mengamankan status sesi.',
+            );
+            return const AuthCommandResult(
+              status: AuthCommandStatus.failed,
+              errorMessage: 'Gagal mengamankan status sesi.',
+            );
+          }
           _activeRemoteHandle = result.remoteHandle ?? result.sessionHandle;
           _activeCredentialId = null;
           _sessionGeneration++;
@@ -774,11 +781,17 @@ class AuthController extends Notifier<AuthState> {
       }
 
       var metadataCleanOk = false;
-      try {
-        await metadataStore.write(const SessionMetadata.signedOutClean());
-        metadataCleanOk = true;
-      } catch (_) {
-        metadataCleanOk = false;
+      if (forceClearOk) {
+        try {
+          await metadataStore.write(const SessionMetadata.signedOutClean());
+          metadataCleanOk = true;
+        } catch (_) {
+          metadataCleanOk = false;
+        }
+      }
+
+      if (!metadataCleanOk) {
+        await _tryWriteFailedMetadata(metadataStore);
       }
 
       final success = forceClearOk && metadataCleanOk;

@@ -157,6 +157,7 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
 
 class _FakeSessionMetadataStore implements SessionMetadataStore {
   SessionMetadata? metadata;
+  SessionMetadata? lastWritten;
   bool shouldThrowOnRead = false;
   bool shouldThrowOnWrite = false;
   int? throwOnWriteCallIndex;
@@ -179,6 +180,7 @@ class _FakeSessionMetadataStore implements SessionMetadataStore {
       throw const StorageException('Metadata write error');
     }
     metadata = meta;
+    lastWritten = meta;
   }
 
   @override
@@ -1174,6 +1176,55 @@ void main() {
         final recovered = await controller.retryLocalCredentialCleanup();
         expect(recovered, isFalse);
         expect(storage.forceClearCallCount, equals(1));
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+      },
+    );
+
+    // FT-08b: Force clear melempar exception saat recovery
+    test(
+      'FT-08b: Force clear melempar exception saat recovery -> metadata tidak ditulis clean, state failed dan return false',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore();
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        // Force state failed dari read error
+        storage.shouldThrowOnRead = true;
+        await controller.bootstrap();
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+
+        storage.shouldThrowOnRead = false;
+        storage.shouldThrowOnForceClear = true;
+
+        final recovered = await controller.retryLocalCredentialCleanup();
+        expect(recovered, isFalse);
+        expect(storage.forceClearCallCount, equals(0));
+        expect(
+          metadataStore.lastWritten,
+          isNot(equals(const SessionMetadata.signedOutClean())),
+        );
         expect(
           container.read(authControllerProvider),
           equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
