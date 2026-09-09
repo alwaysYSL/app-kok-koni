@@ -7,44 +7,47 @@ import 'remembered_sk_store.dart';
 
 class DemoAuthRepository implements AuthRepository {
   final AuthTokenStorage tokenStorage;
-  final RememberedSkStore skStore;
+  final RememberedSkStore? skStore;
   final bool simulateLatency;
 
-  static const _garutKotaUser = UserPrincipal(
+  AuthTokenStorage get storage => tokenStorage;
+
+  static final _garutKotaUser = UserPrincipal(
     id: 'usr-garut-kota-001',
     skNumber: 'DEMO-001',
-    name: 'Pak Asep',
-    role: 'Koordinator Kecamatan',
+    fullName: 'Pak Asep',
+    roleTitle: 'Koordinator Kecamatan',
     districtId: 'garut_kota',
     districtName: 'Kecamatan Garut Kota',
     permissions: {'sports:read', 'clubs:read', 'members:read', 'reports:export'},
   );
 
-  static const _tarogongKidulUser = UserPrincipal(
+  static final _tarogongKidulUser = UserPrincipal(
     id: 'usr-tarogong-kidul-002',
     skNumber: 'DEMO-002',
-    name: 'Pak Cecep',
-    role: 'Koordinator Kecamatan',
+    fullName: 'Pak Cecep',
+    roleTitle: 'Koordinator Kecamatan',
     districtId: 'tarogong_kidul',
     districtName: 'Kecamatan Tarogong Kidul',
     permissions: {'sports:read', 'clubs:read', 'members:read'},
   );
 
-  static const _koniKabUser = UserPrincipal(
+  static final _koniKabUser = UserPrincipal(
     id: 'usr-koni-kab-003',
     skNumber: 'DEMO-003',
-    name: 'Ibu Rina',
-    role: 'Tim Verifikator',
+    fullName: 'Ibu Rina',
+    roleTitle: 'Tim Verifikator',
     districtId: 'koni_kab',
     districtName: 'KONI Kabupaten Garut',
     permissions: {'sports:read', 'clubs:read', 'members:read', 'documents:verify'},
   );
 
   DemoAuthRepository({
-    required this.tokenStorage,
-    required this.skStore,
+    AuthTokenStorage? storage,
+    AuthTokenStorage? tokenStorage,
+    this.skStore,
     this.simulateLatency = true,
-  });
+  }) : tokenStorage = (storage ?? tokenStorage ?? (throw ArgumentError('storage or tokenStorage must be provided')));
 
   Future<void> _maybeDelay() async {
     if (simulateLatency) {
@@ -77,44 +80,50 @@ class DemoAuthRepository implements AuthRepository {
       return const AuthResult.failed(InvalidCredentialsFailure());
     }
 
-    if (staySignedIn) {
-      await tokenStorage.saveRefreshToken('token_${matchedUser.id}');
-    } else {
-      await tokenStorage.clear();
-    }
+    final isGarutKota = matchedUser.id == 'usr_garut_kota' ||
+        matchedUser.id == 'usr-garut-kota-001' ||
+        matchedUser.districtId == 'garut_kota';
 
     return AuthResult.success(
       user: matchedUser,
-      accessToken: 'demo_access_token_${matchedUser.id}',
+      accessToken: isGarutKota
+          ? 'access_demo_garut_kota'
+          : 'access_demo_tarogong_kidul',
+      refreshToken: staySignedIn
+          ? (isGarutKota
+              ? 'token_usr_garut_kota'
+              : 'token_usr_tarogong_kidul')
+          : null,
     );
   }
 
   @override
   Future<AuthResult> restoreSession() async {
     await _maybeDelay();
-    final token = await tokenStorage.readRefreshToken();
-    if (token == null) {
+    final refreshToken = await tokenStorage.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) {
       return const AuthResult.failed(
-        SessionExpiredFailure('Tidak ada sesi tersimpan.'),
+        SessionExpiredFailure('Tidak ada sesi yang tersimpan di perangkat ini.'),
       );
     }
 
-    if (token.contains('tarogong')) {
-      return const AuthResult.success(
-        user: _tarogongKidulUser,
-        accessToken: 'restored_token_tarogong',
-      );
-    } else if (token.contains('koni')) {
-      return const AuthResult.success(
-        user: _koniKabUser,
-        accessToken: 'restored_token_koni',
-      );
-    } else {
-      return const AuthResult.success(
+    if (refreshToken == 'token_usr_garut_kota') {
+      return AuthResult.success(
         user: _garutKotaUser,
-        accessToken: 'restored_token_garut_kota',
+        accessToken: 'access_demo_garut_kota',
+        refreshToken: refreshToken,
+      );
+    } else if (refreshToken == 'token_usr_tarogong_kidul') {
+      return AuthResult.success(
+        user: _tarogongKidulUser,
+        accessToken: 'access_demo_tarogong_kidul',
+        refreshToken: refreshToken,
       );
     }
+
+    return const AuthResult.failed(
+      SessionExpiredFailure('Sesi Anda tidak valid atau telah kedaluwarsa.'),
+    );
   }
 
   @override

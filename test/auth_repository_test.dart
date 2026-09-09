@@ -34,7 +34,7 @@ void main() {
       expect(result.isSuccess, isTrue);
       expect(result.user?.name, 'Pak Asep');
       expect(result.user?.districtId, 'garut_kota');
-      expect(await tokenStorage.readRefreshToken(), isNotNull);
+      expect(result.refreshToken, 'token_usr_garut_kota');
     });
 
     test('login sukses akun Tarogong Kidul (Pak Cecep) tanpa persistent session', () async {
@@ -47,7 +47,7 @@ void main() {
       expect(result.isSuccess, isTrue);
       expect(result.user?.name, 'Pak Cecep');
       expect(result.user?.districtId, 'tarogong_kidul');
-      expect(await tokenStorage.readRefreshToken(), isNull);
+      expect(result.refreshToken, isNull);
     });
 
     test('kredensial salah mengembalikan pesan generik', () async {
@@ -86,6 +86,17 @@ void main() {
     test('restore session gagal saat storage kosong', () async {
       final result = await repository.restoreSession();
       expect(result.isSuccess, isFalse);
+    });
+
+    test('restoreSession menolak token acak atau tak dikenal dengan SessionExpiredFailure', () async {
+      final storage = InMemoryAuthTokenStorage();
+      await storage.saveRefreshToken('token_acak_palsu_123');
+      final repo = DemoAuthRepository(storage: storage);
+
+      final result = await repo.restoreSession();
+      expect(result.isSuccess, isFalse);
+      expect(result.failure, isA<SessionExpiredFailure>());
+      expect(result.user, isNull);
     });
 
     test('logout menghapus token dari storage', () async {

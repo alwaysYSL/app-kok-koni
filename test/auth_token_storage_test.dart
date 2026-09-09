@@ -1,13 +1,26 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class FailingFlutterSecureStorage implements FlutterSecureStorage {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw Exception('Hardware keystore unavailable');
+}
+
 class InMemoryAuthTokenStorage implements AuthTokenStorage {
   String? _token;
   bool shouldThrow = false;
+
+  @override
+  Future<String?> getRefreshToken() async {
+    if (shouldThrow) throw Exception('Keystore locked');
+    return _token;
+  }
 
   @override
   Future<String?> readRefreshToken() async {
@@ -45,6 +58,21 @@ void main() {
       final storage = InMemoryAuthTokenStorage()..shouldThrow = true;
       expect(() => storage.readRefreshToken(), throwsException);
     });
+
+    test('SecureAuthTokenStorage melempar StorageException saat platform storage gagal', () async {
+      final failingStorage = SecureAuthTokenStorage(storage: FailingFlutterSecureStorage());
+      expect(() => failingStorage.getRefreshToken(), throwsA(isA<StorageException>()));
+      expect(() => failingStorage.saveRefreshToken('dummy'), throwsA(isA<StorageException>()));
+      expect(() => failingStorage.clear(), throwsA(isA<StorageException>()));
+    });
+
+    test('StorageException memformat pesan dan penyebab dengan benar', () {
+      const err1 = StorageException('Gagal akses');
+      expect(err1.toString(), 'Gagal akses');
+
+      final err2 = StorageException('Gagal akses', Exception('Keystore locked'));
+      expect(err2.toString(), contains('Gagal akses (Penyebab: Exception: Keystore locked)'));
+    });
   });
 
   group('RememberedSkStore', () {
@@ -63,11 +91,11 @@ void main() {
 
   group('UserPrincipal & AuthState', () {
     test('UserPrincipal memeriksa permissions dengan benar', () {
-      const user = UserPrincipal(
+      final user = UserPrincipal(
         id: 'usr-1',
         skNumber: 'DEMO-001',
-        name: 'Pak Asep',
-        role: 'Koordinator',
+        fullName: 'Pak Asep',
+        roleTitle: 'Koordinator',
         districtId: 'garut_kota',
         districtName: 'Kecamatan Garut Kota',
         permissions: {'sports:read', 'reports:export'},
