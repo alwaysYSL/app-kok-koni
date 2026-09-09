@@ -1,34 +1,34 @@
 # Desain Remediasi Penguatan Arsitektur Autentikasi & Siklus Sesi (Tahap A Patch 2)
 
 Tanggal: 2026-09-09  
-Status: Proposed  
-Penulis: Pair Programming (Antigravity & User)  
-Dokumen Rujukan: [docs/audit-auth-review-tahap1-kedua.md](file:///f:/Kuliah%20Bullshit/KP/Kerja-Praktik-Koni-KOK/docs/audit-auth-review-tahap1-kedua.md) (Temuan R2-01 s/d R2-07, Temuan Bagian 5)
+Status: Approved for Implementation Planning  
+Penulis: Pengembang & Reviewer Teknis  
+Dokumen Rujukan: `docs/audit-auth-review-tahap1-kedua.md` (Temuan R2-01 s/d R2-07, Temuan Bagian 5)
 
 ---
 
 ## 1. Latar Belakang & Sasaran Remediasi
 
-Berdasarkan hasil audit tahap kedua pada `docs/audit-auth-review-tahap1-kedua.md`, revisi sebelumnya telah berhasil menutup temuan A-01 (Guard State Transisi) dan A-08 (Dua Sumber Sesi Ganda) secara sempurna, serta meletakkan fondasi awal untuk temuan lainnya. Namun, terdapat 7 temuan *blocker* (R2-01 s/d R2-07) dan catatan konsistensi Bagian 5 yang harus diselesaikan tuntas agar Tahap A memenuhi standar keamanan enterprise dan *crash-consistency*:
+Berdasarkan hasil audit tahap kedua pada `docs/audit-auth-review-tahap1-kedua.md`, revisi sebelumnya telah berhasil menutup temuan A-01 (Guard State Transisi) dan A-08 (Dua Sumber Sesi Ganda) secara sempurna. Dokumen ini menetapkan target *robustness* dan kesiapan integrasi guna menyelesaikan 7 temuan *blocker* (R2-01 s/d R2-07) dan catatan konsistensi Bagian 5:
 
-1. **R2-01 (Race Commit/Clear Token & Ownership):** Operasi login *stale* yang mengeksekusi `clear()` global berisiko menghapus token milik login baru. Mutasi storage lokal belum diserialisasi dan masih terdapat pemeriksaan tipe runtime (`repo is DemoAuthRepository`).
-2. **R2-02 (Logout Storage Failure & Penanganan State):** Kegagalan menghapus token saat logout tidak memiliki status bertipe dan dapat memicu *unhandled Future error*. Pada restart berikutnya, token yang gagal dihapus dapat secara diam-diam me-restore sesi pengguna (*silent re-login*).
-3. **R2-03 (Konsistensi Akun DEMO-003):** Akun `DEMO-003` (Ibu Rina · KONI Kab) secara tidak sengaja dipetakan ke token Tarogong Kidul dan berubah menjadi Pak Cecep saat aplikasi di-restart. Scope kabupaten belum dibedakan dari scope kecamatan.
-4. **R2-04 (Mutasi Auth Paralel & Matriks Transisi):** Controller belum memiliki matriks transisi state yang legal, sehingga pemanggilan login saat bootstrapping atau signing-out belum diblokir secara terstruktur.
-5. **R2-05 (Rekursi Interface Storage & Namespace Key):** `AuthTokenStorage` memiliki mutual recursion default (`getRefreshToken` memanggil `readRefreshToken` dan sebaliknya) dan key storage belum memiliki namespace kanonis terversi per environment.
-6. **R2-06 (Kontrak Repository & Cancellation End-to-End):** Nama `CancelToken` bentrok dengan Dio, metode `fetch()` tanpa scope masih terbuka di antarmuka repository, dan belum ada bukti pengujian delayed fetch lintas sesi (A $\rightarrow$ B).
-7. **R2-07 (Composition Root & Deployment Profile):** Konfigurasi environment belum mengontrol komposisi dependensi aktual. Kombinasi mode auth dan data belum diatur secara independen.
-8. **Bagian 5 (Sisa Klaim SICABOR & Penegakan Izin):** Masih tersisa klaim "SINKRONISASI DATA SICABOR" pada UI, kontak belum ditandai status verifikasinya, README belum akurat per platform, dan izin `reports:export` belum ditegakkan pada aksi penyalinan rekapitulasi.
+1. **R2-01 (Race Commit/Clear Token & Ownership):** Operasi login *stale* dilarang menjalankan pembersihan global. Penulisan dan penghapusan storage diserialisasi, dan kepemilikan credential dilindungi dengan ID unik per sesi.
+2. **R2-02 (Logout Storage Failure & Penanganan State):** Kegagalan menghapus token memiliki status bertipe `LocalCleanupStatus`, dipersistensikan sebagai record metadata nonrahasia `SessionMetadata`, dan UI menunggu proses logout tanpa unhandled Future.
+3. **R2-03 (Konsistensi Akun DEMO-003):** Akun `DEMO-003` (Ibu Rina · KONI Kab) memiliki token persisten exact (`token_usr_koni_kab`), scope kabupaten terpisah (`AccessScopeType.county`), dan fixture gabungan 5 cabang olahraga se-Kabupaten Garut.
+4. **R2-04 (Mutasi Auth Paralel & Matriks Transisi):** Controller menerapkan matriks transisi state legal dengan operasi eksplisit `cancelSignIn()`.
+5. **R2-05 (Rekursi Interface Storage & Namespace Kanonis):** `AuthTokenStorage` disederhanakan tanpa rekursi, menggunakan namespace terversi per environment (`kok.auth.v2.<env>.credential`).
+6. **R2-06 (Kontrak Repository & Cancellation End-to-End):** Abstraksi `RequestCancellation` dengan notifikasi, peniadaan `fetch()` tanpa scope, dan verifikasi generasi pasca-`await` via `DataRequestContext`.
+7. **R2-07 (Composition Root & Deployment Profile):** `DeploymentProfile` memisahkan konfigurasi environment, auth mode, dan data mode, serta langsung menghasilkan dependency aktual melalui `AppComposition`.
+8. **Bagian 5 (Sisa Klaim SICABOR & Penegakan Izin):** Pembersihan sisa klaim SICABOR pada UI, perbaikan deskripsi platform pada README, dan penegakan izin `reports:export` pada aksi penyalinan rekapitulasi.
 
 ---
 
-## 2. Batasan Global (Global Constraints)
+## 2. Batasan Global & Target Penerimaan (Global Constraints & Acceptance Targets)
 
 - **Ukuran Tipografi:** Seluruh teks pada komponen antarmuka berukuran font $\ge 12\text{px}$.
 - **Warna & Aksen:** Warna judul kartu utama konsisten menggunakan `KokColors.cardTitle` (`#141414`).
 - **Navigasi:** Tombol kembali menggunakan `Icons.chevron_left` dengan `size: 28` dan warna `KokColors.cardTitle`. Struktur 5 tab navigasi bawah tetap utuh.
-- **Fail-Closed Principle:** Segala bentuk anomali metadata, konfigurasi produksi tidak sah, atau data tanpa sesi aktif ditolak keras (*fail-closed*).
-- **Static Analysis & Testing:** `flutter analyze` 0 issues dan `flutter test` 100% lulus.
+- **Fail-Closed Principle:** Segala bentuk anomali metadata, konfigurasi produksi tidak sah, atau pembacaan data tanpa sesi aktif ditolak keras (*fail-closed*).
+- **Target Penerimaan:** `flutter analyze` 0 issues dan seluruh test suite lulus 100%.
 
 ---
 
@@ -59,66 +59,101 @@ final class AuthSignedOut extends AuthState {
 }
 ```
 
-#### B. `SessionMetadataStore` (SharedPreferences Non-Rahasia)
-Menyimpan penanda status restore dan cleanup secara persisten:
+#### B. `SessionMetadata` Tunggal & `SessionMetadataStore`
+Metadata sesi nonrahasia diserialisasi sebagai satu record JSON utuh di `SharedPreferences`:
 ```dart
-abstract interface class SessionMetadataStore {
-  Future<bool> isRestoreAllowed();
-  Future<bool> isCleanupPending();
+final class SessionMetadata {
+  final int schemaVersion;
+  final bool restoreAllowed;
+  final LocalCleanupStatus cleanupStatus;
+  final String? expectedCredentialId;
 
-  Future<void> blockRestoreForCleanup();
-  Future<void> allowRestore();
-  Future<void> markCleanupComplete();
+  const SessionMetadata({
+    required this.schemaVersion,
+    required this.restoreAllowed,
+    required this.cleanupStatus,
+    this.expectedCredentialId,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'schemaVersion': schemaVersion,
+    'restoreAllowed': restoreAllowed,
+    'cleanupStatus': cleanupStatus.name,
+    'expectedCredentialId': expectedCredentialId,
+  };
+
+  factory SessionMetadata.fromJson(Map<String, dynamic> json) {
+    return SessionMetadata(
+      schemaVersion: json['schemaVersion'] as int? ?? 1,
+      restoreAllowed: json['restoreAllowed'] as bool? ?? false,
+      cleanupStatus: LocalCleanupStatus.values.asNameMap()[json['cleanupStatus']] ?? LocalCleanupStatus.failed,
+      expectedCredentialId: json['expectedCredentialId'] as String?,
+    );
+  }
+}
+
+abstract interface class SessionMetadataStore {
+  Future<SessionMetadata?> read();
+  Future<void> write(SessionMetadata metadata);
+  Future<void> clear();
 }
 ```
-Keys: `auth.restore_allowed` (bool) dan `auth.cleanup_pending` (bool).  
-**Aturan Bootstrap Fail-Closed:** Auto-login hanya diizinkan jika:
-`restore_allowed == true` AND `cleanup_pending == false` AND refresh token ada dan valid.  
-Jika metadata tidak tersedia, rusak, atau bernilai tidak dikenal, auto-login langsung ditolak.
+
+**Aturan Bootstrap Fail-Closed:**
+Auto-login hanya diizinkan jika seluruh kondisi terpenuhi:
+1. `metadata != null`
+2. `metadata.restoreAllowed == true`
+3. `metadata.cleanupStatus == LocalCleanupStatus.clean`
+4. `storedCredential != null`
+5. `metadata.expectedCredentialId == storedCredential.credentialId`
+6. `storedCredential.refreshToken` berhasil divalidasi oleh repository.
+
+Jika metadata tidak ada, rusak, tidak lengkap, atau `expectedCredentialId` tidak cocok dengan token di storage: **jangan lakukan auto-login**, set status ke `cleanupStatus: LocalCleanupStatus.failed`.
 
 #### C. Urutan Logout Crash-Consistent
-1. Catat referensi internal session/token untuk remote revocation.
+1. Simpan referensi internal session untuk remote revocation.
 2. Naikkan `_operationEpoch` dan `_sessionGeneration`.
 3. Eviksi token in-memory dan data principal.
 4. Set state sinkron $\rightarrow$ `const AuthSigningOut()`.
-5. Tulis metadata persisten: `restore_allowed = false`, `cleanup_pending = true` (**sebelum** mencoba menghapus token fisik).
-6. Eksekusi `tokenStorage.clearIfOwnedBy(...)` melalui antrean mutasi storage.
-7. Jika sukses: `cleanup_pending = false`, state $\rightarrow$ `AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean)`.
-8. Jika gagal (`StorageException`): pertahankan `restore_allowed = false`, `cleanup_pending = true`, state $\rightarrow$ `AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)`.
-9. Kembalikan `LogoutResult`:
-   ```dart
-   final class LogoutResult {
-     const LogoutResult({
-       required this.localSessionClosed,
-       required this.credentialCleared,
-       required this.remoteRevoked,
-       this.message,
-     });
+5. Tulis metadata persisten: `restoreAllowed = false`, `cleanupStatus = LocalCleanupStatus.pending`, `expectedCredentialId = null` (**ditulis sebelum mencoba menghapus token di secure storage**).
+6. Panggil `repo.revokeSession(remoteHandle)` (hasil pada mode demo: `RemoteRevocationResult.notApplicable`).
+7. Eksekusi `tokenStorage.clearIfOwnedBy(credentialId)` melalui antrean mutasi storage.
+8. Jika sukses: tulis metadata `cleanupStatus = LocalCleanupStatus.clean`, ubah state $\rightarrow$ `AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean)`.
+9. Jika gagal (`StorageException`): pertahankan `cleanupStatus = LocalCleanupStatus.failed`, ubah state $\rightarrow$ `AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)`.
+10. Kembalikan `LogoutResult`:
+    ```dart
+    final class LogoutResult {
+      const LogoutResult({
+        required this.localSessionClosed,
+        required this.credentialCleared,
+        required this.remoteRevoked,
+        this.message,
+      });
 
-     final bool localSessionClosed;
-     final bool credentialCleared;
-     final bool remoteRevoked; // false pada mode demo
-     final String? message;
-   }
-   ```
+      final bool localSessionClosed;
+      final bool credentialCleared;
+      final bool remoteRevoked;
+      final String? message;
+    }
+    ```
 
 #### D. Urutan Persistent Login Crash-Consistent
-1. Tulis metadata: `restore_allowed = false`.
-2. Simpan refresh token ke secure storage di bawah mutation lock.
-3. Pastikan operation epoch masih sama.
-4. Tulis metadata: `cleanup_pending = false`, `restore_allowed = true`.
-5. Publikasikan `AuthSignedIn`.
+1. Tulis metadata: `restoreAllowed = false`, `cleanupStatus = LocalCleanupStatus.pending`.
+2. Generate UUID acak `credentialId`.
+3. Tulis `StoredCredential(credentialId: credentialId, refreshToken: token)` ke secure storage di bawah mutation lock.
+4. Pastikan operation epoch masih sama.
+5. Tulis metadata: `restoreAllowed = true`, `cleanupStatus = LocalCleanupStatus.clean`, `expectedCredentialId = credentialId`.
+6. Publikasikan `AuthSignedIn`.
 
 #### E. Perilaku UI & Tombol "Coba Bersihkan Lagi"
-- Pada `ProfilePage` dan `SessionUnavailablePage`, `await ref.read(authControllerProvider.notifier).logout()` ditangani secara asinkron dengan visual tombol dinonaktifkan selama proses.
-- Pada `LoginPage`, jika `cleanupStatus == LocalCleanupStatus.failed`, tampilkan banner amber ringkas:
+- Pada `ProfilePage` dan `SessionUnavailablePage`, seluruh pemanggilan logout menggunakan `await` dengan visual tombol dinonaktifkan.
+- Pada `LoginPage`, jika `cleanupStatus == LocalCleanupStatus.failed`, tampilkan banner amber:
   > **Pembersihan sesi belum selesai.** Akses data telah dikunci, tetapi kredensial lokal belum berhasil dihapus dari perangkat ini. Coba bersihkan kembali sebelum masuk menggunakan akun lain.
-- Aksi tombol *"Coba Bersihkan Lagi"* memanggil operasi idempoten:
+- Tombol *"Coba Bersihkan Lagi"* memanggil operasi idempoten:
   ```dart
   Future<bool> retryLocalCredentialCleanup();
   ```
-  Operasi ini dijalankan melalui mutation queue, menghapus token, memperbarui metadata, dan mengaktifkan kembali login jika sukses.
-- Selama `cleanupStatus == failed`, auto-login, opsi "Tetap Masuk", dan login akun lain diblokir demi keamanan.
+  Operasi ini berjalan di bawah mutation queue, memanggil `forceClearForRecovery()`, memperbarui metadata, dan mengaktifkan kembali login jika berhasil. Selama status failed, login akun lain dan auto-restore diblokir.
 
 ---
 
@@ -127,17 +162,17 @@ Jika metadata tidak tersedia, rusak, atau bernilai tidak dikenal, auto-login lan
 #### A. Pola Dua Fase Operasi
 1. **Fase 1: Reserve**
    - Validasi matriks transisi state saat ini.
-   - Ubah state secara sinkron (misal ke `AuthSigningIn`).
-   - Buat ticket/epoch operasi.
+   - Set state sinkron sebelum `await` pertama (misal `AuthSigningIn`).
+   - Buat tiket/epoch operasi.
 2. **Fase 2: Execute (Di Luar Lock)**
-   - Eksekusi request jaringan/kredensial (`repo.login` atau validasi remote). Lock storage **tidak ditahan** selama pemanggilan jaringan agar logout dapat segera memotong login lambat.
+   - Eksekusi request jaringan/kredensial (`repo.login`). Lock storage lokal **tidak ditahan** selama pemanggilan jaringan agar operasi `cancelSignIn()` atau `logout()` dapat segera memutus proses.
 3. **Fase 3: Commit (Di Bawah Mutation Queue)**
    - Masuk antrean serial `_mutationQueue`.
-   - Validasi ulang ticket dan epoch saat mendapatkan lock.
-   - Tulis credential record / metadata.
+   - Validasi ulang tiket dan epoch saat mendapatkan lock.
+   - Tulis credential record dan metadata.
    - Publikasikan state akhir.
 
-#### B. Matriks Transisi Legal & `AuthCommandResult`
+#### B. Matriks Transisi Legal, Pembatalan Login, & `AuthCommandResult`
 ```dart
 sealed class AuthCommandResult {
   const AuthCommandResult();
@@ -159,17 +194,26 @@ enum AuthCommandRejection {
 }
 ```
 
-Aturan Transisi:
-- `AuthBootstrapping` $\rightarrow$ hanya penyelesaian internal; `login`/`logout` ditolak (`operationInProgress`).
-- `AuthSignedOut(clean)` $\rightarrow$ menerima `login()`.
-- `AuthSignedOut(failed)` $\rightarrow$ menolak `login()` (`cleanupRequired`); hanya menerima `retryLocalCredentialCleanup()`.
-- `AuthSigningIn` $\rightarrow$ menolak login baru (`operationInProgress`).
-- `AuthSignedIn` $\rightarrow$ menerima `logout()`; menolak `login()` (`invalidState`).
-- `AuthSigningOut` $\rightarrow$ menolak seluruh `login()` atau `bootstrap()` (`operationInProgress`).
-- `AuthTemporarilyUnavailable` $\rightarrow$ menerima `retrySession()` dan `logout()`.
+Operasi Pembatalan Sign-In Eksplisit:
+```dart
+Future<AuthCommandResult> cancelSignIn();
+```
+Alur:
+- Naikkan `_operationEpoch`.
+- Batalkan request jaringan bila memungkinkan.
+- Ubah state kembali ke `AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean)`.
+- Respons login lama yang datang kemudian ditolak dan dilarang masuk fase commit.
+
+Matriks Transisi:
+- `AuthBootstrapping`: hanya penyelesaian internal; `login`/`logout` ditolak (`operationInProgress`).
+- `AuthSignedOut(clean)`: menerima `login()`.
+- `AuthSignedOut(failed)`: menolak `login()` (`cleanupRequired`); hanya menerima `retryLocalCredentialCleanup()`.
+- `AuthSigningIn`: menerima `cancelSignIn()`; menolak login baru (`operationInProgress`).
+- `AuthSignedIn`: menerima `logout()`; menolak `login()` (`invalidState`).
+- `AuthSigningOut`: menolak seluruh `login()` atau `bootstrap()` (`operationInProgress`).
+- `AuthTemporarilyUnavailable`: menerima `retrySession()` dan `logout()`.
 
 #### C. Credential Record & Token Ownership Guard Berbasis ID
-Untuk mencegah operasi stale menghapus credential milik sesi baru:
 ```dart
 final class StoredCredential {
   const StoredCredential({
@@ -185,10 +229,26 @@ final class StoredCredential {
     'refreshToken': refreshToken,
   };
 
-  factory StoredCredential.fromJson(Map<String, dynamic> json) => StoredCredential(
-    credentialId: json['credentialId'] as String,
-    refreshToken: json['refreshToken'] as String,
-  );
+  factory StoredCredential.fromJson(dynamic json) {
+    if (json is! Map<String, dynamic>) {
+      throw const FormatException('Format credential harus berupa JSON object');
+    }
+    final credId = json['credentialId'];
+    final token = json['refreshToken'];
+    if (credId is! String || credId.trim().isEmpty || credId.length > 128) {
+      throw const FormatException('credentialId tidak valid');
+    }
+    if (token is! String || token.trim().isEmpty || token.length > 512) {
+      throw const FormatException('refreshToken tidak valid');
+    }
+    return StoredCredential(
+      credentialId: credId,
+      refreshToken: token,
+    );
+  }
+
+  @override
+  String toString() => 'StoredCredential(credentialId: $credentialId, refreshToken: [PROTECTED])';
 }
 ```
 Kontrak Storage:
@@ -200,24 +260,32 @@ abstract interface class AuthTokenStorage {
   Future<void> forceClearForRecovery();
 }
 ```
-Jika Login A mendeteksi epoch berubah setelah menulis credential, Login A hanya memanggil `clearIfOwnedBy(credentialA.credentialId)`. Jika Login B sudah menimpa dengan `credentialB`, pemanggilan Login A tidak menghapus token B.
 
 ---
 
 ### 3.3 Interface Storage Bersih, Namespace Kanonis, & Konsistensi DEMO-003 (Menutup R2-03 & R2-05)
 
 #### A. Namespace Kanonis & Versi Skema
-Format key secure storage:
+Key secure storage diparameterkan:
 ```text
 kok.auth.v2.demo.credential
 kok.auth.v2.staging.credential
 kok.auth.v2.production.credential
 ```
-Migrasi fail-closed: key lama `v1_kok_refresh_token` dihapus secara *best-effort* saat startup tanpa melakukan silent auto-login.
+Migrasi fail-closed: key lama `v1_kok_refresh_token` dihapus secara *best-effort* saat startup tanpa melakukan auto-login.
 
-#### B. Kepemilikan Storage oleh Controller
-`DemoAuthRepository` tidak lagi membaca secure storage sendiri. Kontrak repositori disederhanakan:
+#### B. Kepemilikan Storage oleh Controller & Revocation Kontrak
+`AuthRepository` tidak lagi membaca secure storage atau metadataStore. Kontrak repositori:
 ```dart
+enum RemoteRevocationStatus { revoked, notApplicable, failed }
+
+final class RemoteRevocationResult {
+  final RemoteRevocationStatus status;
+  final String? message;
+  const RemoteRevocationResult(this.status, [this.message]);
+  factory RemoteRevocationResult.notApplicable() => const RemoteRevocationResult(RemoteRevocationStatus.notApplicable);
+}
+
 abstract interface class AuthRepository {
   Future<AuthResult> login({
     required String skNumber,
@@ -229,10 +297,9 @@ abstract interface class AuthRepository {
 
   Future<AuthResult> refreshToken(String refreshToken);
 
-  Future<void> logout();
+  Future<RemoteRevocationResult> revokeSession(String refreshToken);
 }
 ```
-Controller membaca `StoredCredential` dari `AuthTokenStorage`, lalu meneruskan `credential.refreshToken` ke `repo.restoreSession(token)`. Seluruh pemeriksaan tipe runtime `repo is DemoAuthRepository` dihapus tuntas.
 
 #### C. Pemetaan Presisi 3 Akun Demo & Scope Kabupaten
 Tabel pemetaan eksklusif pada `DemoAuthRepository`:
@@ -245,10 +312,7 @@ final demoSessionsByToken = <String, UserPrincipal>{
 ```
 Abstraksi `AccessScope`:
 ```dart
-enum AccessScopeType {
-  district,
-  county,
-}
+enum AccessScopeType { district, county }
 
 final class AccessScope {
   const AccessScope({
@@ -279,7 +343,7 @@ Pemetaan Akun:
 - `DEMO-003` $\rightarrow$ `usr_koni_kab` $\rightarrow$ token: `token_usr_koni_kab`, scope: `county` / `koni_kab` / `Kabupaten Garut`.
 
 Dataset Kabupaten di `DemoKokRepository`:
-Mengembalikan data 9 cabang olahraga (gabungan unik Garut Kota dan Tarogong Kidul), 9 klub, 213 atlet, dan 18 pelatih dengan ID unik dan integritas referensi klub valid. Unknown scope melempar `UnsupportedScopeException(scope.id)` tanpa fallback ke Garut Kota.
+Mengembalikan data gabungan keolahragaan tingkat Kabupaten Garut: **5 cabang olahraga unik** (Sepak Bola, Bola Voli, Bulu Tangkis, Bola Basket, Atletik), 9 klub, 213 atlet, dan 18 pelatih. Seluruh data dihitung dinamis dari fixture, bukan hardcode. Unknown scope melempar `UnsupportedScopeException(scope.id)`.
 
 ---
 
@@ -298,6 +362,13 @@ final class StaleSessionResultException implements Exception {
   const StaleSessionResultException();
   @override
   String toString() => 'Hasil data diabaikan karena sesi telah berganti.';
+}
+
+final class UnsupportedScopeException implements Exception {
+  final String scopeId;
+  const UnsupportedScopeException(this.scopeId);
+  @override
+  String toString() => 'Scope tidak didukung: $scopeId';
 }
 
 final class RequestCancellation {
@@ -336,7 +407,7 @@ final class RequestCancellationController {
 }
 ```
 
-#### B. Kontrak Repository & Eliminasi Unscoped Fetch
+#### B. Kontrak Repository Murni
 Metode `fetch()` tanpa scope dihapus permanen. Kontrak murni:
 ```dart
 abstract interface class KokRepository {
@@ -351,11 +422,13 @@ abstract interface class KokRepository {
 ```dart
 final class DataRequestContext {
   const DataRequestContext({
+    required this.environment,
     required this.userId,
     required this.scope,
     required this.generation,
   });
 
+  final AppEnvironment environment;
   final String userId;
   final AccessScope scope;
   final int generation;
@@ -364,50 +437,32 @@ final class DataRequestContext {
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is DataRequestContext &&
+          other.environment == environment &&
           other.userId == userId &&
           other.scope == scope &&
           other.generation == generation;
 
   @override
-  int get hashCode => Object.hash(userId, scope, generation);
+  int get hashCode => Object.hash(environment, userId, scope, generation);
 }
 
 final sessionDataContextProvider = Provider<DataRequestContext?>((ref) {
   final authState = ref.watch(authControllerProvider);
+  final profile = ref.watch(deploymentProfileProvider);
   if (authState is! AuthSignedIn) return null;
   return DataRequestContext(
+    environment: profile.environment,
     userId: authState.user.id,
     scope: authState.user.scope,
     generation: authState.generation,
   );
 });
-
-final snapshotProvider = FutureProvider<KokSnapshot>((ref) async {
-  final requestContext = ref.watch(sessionDataContextProvider);
-  if (requestContext == null) {
-    throw const SessionRequiredException();
-  }
-
-  final controller = RequestCancellationController();
-  ref.onDispose(() => controller.cancel('Session changed or provider disposed'));
-
-  final repository = ref.read(repositoryProvider);
-  final result = await repository.fetchScope(
-    requestContext.scope,
-    cancellation: controller.token,
-  );
-
-  controller.token.throwIfCancelled();
-
-  final currentContext = ref.read(sessionDataContextProvider);
-  if (currentContext != requestContext) {
-    throw const StaleSessionResultException();
-  }
-
-  return result;
-});
 ```
-`RequestCancelledException` dan `StaleSessionResultException` diperlakukan sebagai lifecycle normal (tidak memicu auto-retry dan tidak memicu notifikasi error jaringan).
+`snapshotProvider` tidak melakukan auto-retry untuk:
+- `SessionRequiredException`
+- `RequestCancelledException`
+- `StaleSessionResultException`
+- `UnsupportedScopeException`
 
 ---
 
@@ -465,24 +520,33 @@ final class AppComposition {
   final AuthRepository authRepository;
   final KokRepository kokRepository;
   final AuthTokenStorage tokenStorage;
+  final SessionMetadataStore sessionMetadataStore;
+  final RememberedSkStore rememberedSkStore;
 
   const AppComposition({
     required this.profile,
     required this.authRepository,
     required this.kokRepository,
     required this.tokenStorage,
+    required this.sessionMetadataStore,
+    required this.rememberedSkStore,
   });
 
-  factory AppComposition.fromProfile(DeploymentProfile profile, {SharedPreferences? prefs}) {
+  factory AppComposition.fromProfile(
+    DeploymentProfile profile, {
+    required SharedPreferences preferences,
+  }) {
+    profile.validate();
+
     final tokenStorage = SecureAuthTokenStorage(
       namespace: 'kok.auth.v2.${profile.environment.name}.credential',
     );
+    final metadataStore = SharedPrefsSessionMetadataStore(preferences);
+    final skStore = SharedPrefsRememberedSkStore(preferences);
 
     final AuthRepository authRepo;
     if (profile.authMode == AuthMode.demo) {
-      authRepo = DemoAuthRepository(
-        metadataStore: prefs != null ? SharedPrefsSessionMetadataStore(prefs) : null,
-      );
+      authRepo = DemoAuthRepository();
     } else {
       throw StateError('RemoteAuthRepository belum diimplementasikan untuk Tahap A.');
     }
@@ -499,6 +563,8 @@ final class AppComposition {
       authRepository: authRepo,
       kokRepository: kokRepo,
       tokenStorage: tokenStorage,
+      sessionMetadataStore: metadataStore,
+      rememberedSkStore: skStore,
     );
   }
 }
@@ -514,21 +580,22 @@ Di `lib/features/profile_page.dart`:
 #### C. Pembersihan Label SICABOR & Perapian Teks
 - `profile_page.dart:73`: `"SINKRONISASI DATA SICABOR"` diubah menjadi `"STATUS SISTEM DATA KOK"`.
 - `profile_page.dart:775–776`: Diubah menjadi `"Data demo lokal—belum terhubung dengan SICABOR."`
-- Kontak narahubung: Ditandai dengan keterangan jujur `"Kontak demo/belum diverifikasi—jangan digunakan untuk pemulihan akun."`
-- `README.md`: Diperbarui dengan deskripsi akurat mekanisme secure storage per platform (Android EncryptedSharedPreferences/Keystore, iOS Keychain, Web unencrypted fallback warning).
+- Kontak narahubung: Ditandai dengan keterangan `"Kontak demo/belum diverifikasi—jangan digunakan untuk pemulihan akun."`
+- `README.md`: Diperbarui dengan deskripsi akurat per platform:
+  > Opsi "Tetap Masuk" menyimpan token sesi demo sintetis melalui secure-storage adapter platform. Password tidak disimpan. Pemulihan sesi hanya dilakukan jika metadata mengizinkan restore, cleanup sebelumnya selesai, dan token demo berhasil divalidasi. Web secure storage tidak memiliki tingkat assurance yang sama dengan Keychain/Keystore dan tetap dibatasi untuk mode demo sampai strategi autentikasi web disepakati.
 
 ---
 
 ## 4. Rencana Verifikasi & Matriks Pengujian Regresi
 
-Setiap komponen dilengkapi dengan pengujian regresi spesifik pada `test/auth_hardening_remediation_test.dart` dan pembaruan pada `test/app_test.dart`:
+Pengujian regresi ditempatkan di `test/auth_hardening_remediation_test.dart` dan pembaruan pada `test/app_test.dart`:
 
 | Kategori | Skenario Pengujian |
 |---|---|
-| **Storage & Cleanup** | 1. Logout clear berhasil $\rightarrow$ state signed-out bersih, token kosong, restore diblokir.<br>2. Logout clear gagal $\rightarrow$ data langsung terkunci, `cleanupStatus == failed`, token tidak dipakai auto-login.<br>3. Restart setelah clear gagal $\rightarrow$ bootstrap membaca `cleanup_pending`, menolak auto-login, menampilkan peringatan di `LoginPage`.<br>4. `retryLocalCredentialCleanup()` berhasil $\rightarrow$ token terhapus, metadata bersih, login diaktifkan.<br>5. `retryLocalCredentialCleanup()` gagal $\rightarrow$ status tetap failed, auto-restore tetap diblokir.<br>6. Double logout tap $\rightarrow$ hanya satu operasi cleanup dijalankan.<br>7. Login saat cleanup berlangsung $\rightarrow$ ditolak dengan `AuthCommandRejected(cleanupRequired)`.<br>8. Crash sebelum `restore_allowed = true` $\rightarrow$ token orphaned tidak dipakai auto-login. |
-| **Concurrency & Ownership** | 9. Logout memutus login jaringan yang menggantung tanpa menunggu lock.<br>10. Revalidasi tiket operasi pasca-antrean $\rightarrow$ commit ditolak jika epoch berubah.<br>11. Delayed token write A vs Login B $\rightarrow$ `clearIfOwnedBy(credentialA)` tidak menghapus token B.<br>12. Exception pada antrean $\rightarrow$ lock dilepas tanpa deadlock. |
-| **DEMO-003 & Scope** | 13. Login `DEMO-003` dengan Tetap Masuk $\rightarrow$ dispose container $\rightarrow$ bootstrap baru $\rightarrow$ identitas tetap Ibu Rina (`usr_koni_kab`), bukan Pak Cecep.<br>14. Snapshot `DEMO-003` memuat data kabupaten 9 cabor (213 atlet, 18 pelatih) dengan ID unik.<br>15. Unknown scope melempar `UnsupportedScopeException` tanpa fallback ke Garut Kota.<br>16. Migrasi legacy key `v1_kok_refresh_token` fail-closed (tidak auto-login). |
-| **Data Cancellation** | 17. Cancellation idempotent (dua kali cancel tidak melempar).<br>18. Delayed fetch A tertahan $\rightarrow$ switch ke user B $\rightarrow$ request A dibatalkan, data B tidak tercemar.<br>19. Scope/generation berubah tanpa transport batal $\rightarrow$ stale-result guard menolak respons lama.<br>20. Cancellation & Stale exceptions tidak memicu retry otomatis. |
+| **Storage & Cleanup** | 1. Logout clear berhasil $\rightarrow$ state signed-out bersih, token kosong, metadata `restoreAllowed = false, cleanupStatus = clean`.<br>2. Logout clear gagal $\rightarrow$ data terkunci, `cleanupStatus == failed`, metadata `restoreAllowed = false, cleanupStatus = failed`, token tidak dipakai auto-login.<br>3. Restart setelah clear gagal $\rightarrow$ bootstrap membaca metadata `cleanupStatus == failed`, menolak auto-login, menampilkan peringatan di `LoginPage`.<br>4. `retryLocalCredentialCleanup()` berhasil $\rightarrow$ token terhapus, metadata bersih, login diaktifkan.<br>5. `retryLocalCredentialCleanup()` gagal $\rightarrow$ status tetap failed, auto-restore tetap diblokir.<br>6. Double logout tap $\rightarrow$ hanya satu operasi cleanup dijalankan.<br>7. Login saat cleanup berlangsung $\rightarrow$ ditolak dengan `AuthCommandRejected(cleanupRequired)`.<br>8. Crash sebelum `restoreAllowed = true` $\rightarrow$ token orphaned tidak dipakai auto-login. |
+| **Concurrency & Ownership** | 9. `cancelSignIn()` memutus login jaringan yang menggantung $\rightarrow$ state kembali ke `AuthSignedOut(clean)`, respons login lama tidak pernah masuk commit.<br>10. Revalidasi tiket operasi pasca-antrean $\rightarrow$ commit ditolak jika epoch berubah.<br>11. Storage ownership test: credential B tersimpan $\rightarrow$ `clearIfOwnedBy(credentialA.credentialId)` mengembalikan false $\rightarrow$ credential B tetap utuh.<br>12. Exception pada antrean $\rightarrow$ lock dilepas tanpa deadlock. |
+| **DEMO-003 & Scope** | 13. Login `DEMO-003` dengan Tetap Masuk $\rightarrow$ dispose container $\rightarrow$ bootstrap baru $\rightarrow$ identitas tetap Ibu Rina (`usr_koni_kab`), bukan Pak Cecep.<br>14. Snapshot `DEMO-003` memuat data kabupaten 5 cabor unik (9 klub, 213 atlet, 18 pelatih) yang dihitung dari fixture.<br>15. Unknown scope melempar `UnsupportedScopeException` tanpa fallback ke Garut Kota.<br>16. Migrasi legacy key `v1_kok_refresh_token` fail-closed (tidak auto-login). |
+| **Data Cancellation** | 17. Cancellation idempotent (dua kali cancel tidak melempar dan reason pertama tetap berlaku).<br>18. Delayed fetch A tertahan $\rightarrow$ switch ke user B $\rightarrow$ request A dibatalkan, data B tidak tercemar.<br>19. Scope/generation berubah tanpa transport batal $\rightarrow$ stale-result guard menolak respons lama.<br>20. Cancellation, Stale, & UnsupportedScope exceptions tidak memicu retry otomatis. |
 | **Composition & Permissions** | 21. Production composition menghasilkan adapter remote; jika belum ada $\rightarrow$ fail-closed saat startup.<br>22. `dataMode.remote + authMode.demo` ditolak pada seluruh environment.<br>23. Pengguna tanpa `reports:export` (DEMO-002) diblokir dari aksi salin rekap.<br>24. Seluruh codebase UI bebas dari klaim palsu "sudah tersinkronisasi SICABOR". |
 
 ---
@@ -537,8 +604,8 @@ Setiap komponen dilengkapi dengan pengujian regresi spesifik pada `test/auth_har
 
 - Seluruh 7 temuan *blocker* (R2-01 s/d R2-07) dan catatan Bagian 5 tertutup tuntas.
 - Mutasi storage lokal diserialisasi penuh dengan token ownership guard berbasis ID.
-- Kegagalan cleanup storage dipersistensikan sebagai metadata fail-closed dan memiliki alur retry yang aman.
+- Kegagalan cleanup storage dipersistensikan sebagai metadata `SessionMetadata` fail-closed dan memiliki alur retry yang aman.
 - Ketiga akun demo (`DEMO-001`, `DEMO-002`, `DEMO-003`) memiliki identitas, token persisten, dan dataset yang konsisten setelah restart.
 - Kontrak repository data tidak memiliki pintu belakang tanpa scope dan kebal terhadap *delayed cross-account responses*.
 - `DeploymentProfile` dan `AppComposition` menjamin isolasi konfigurasi produksi yang fail-closed.
-- `flutter analyze` 0 issues dan seluruh pengujian (180+ tests) lulus 100%.
+- `flutter analyze` 0 issues dan seluruh test suite lulus 100%.
