@@ -10,7 +10,7 @@ import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
-import 'package:kok_app/core/session.dart';
+import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/clubs_page.dart';
@@ -22,6 +22,8 @@ import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
 class _FakeTokenStorage implements AuthTokenStorage {
   String? _token;
+  @override
+  Future<String?> getRefreshToken() async => _token;
   @override
   Future<String?> readRefreshToken() async => _token;
   @override
@@ -81,7 +83,6 @@ Future<void> signInTestUser(
     staySignedIn: false,
     rememberSk: false,
   );
-  await container.read(sessionProvider.notifier).signIn(sk, password, false);
 }
 
 void main() {
@@ -413,7 +414,7 @@ void main() {
     expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
 
     // Check Floating Stats Card
-    expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsOneWidget);
+    expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
     expect(find.text('ATLET'), findsOneWidget);
     expect(find.text('PELATIH'), findsOneWidget);
     expect(find.text('KLUB'), findsOneWidget);
@@ -610,6 +611,40 @@ void main() {
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
       },
     );
+
+    testWidgets(
+      'Alur 5: Transisi logout dan guard rute mengarahkan ke /signing-out saat sesi dibersihkan',
+      (tester) async {
+        final container = await start(tester);
+        await signInTestUser(container);
+        await tester.pumpAndSettle();
+
+        // Saat signed in, mencoba akses /signing-out harus dialihkan ke /home
+        container.read(routerProvider).go('/signing-out');
+        await tester.pumpAndSettle();
+        expect(find.byType(HomePage), findsOneWidget);
+
+        // Buka profile dan logout
+        container.read(routerProvider).go('/profile');
+        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await tester.tap(find.text('Keluar dari Akun'));
+        await tester.pumpAndSettle();
+        expect(find.text('Keluar dari Akun?'), findsOneWidget);
+
+        await tester.tap(find.text('Ya, Keluar'));
+        await tester.pump();
+        await tester.pumpAndSettle();
+        expect(find.text('Masuk Akun'), findsOneWidget);
+
+        // Verifikasi upaya akses rute internal setelah logout tetap ditolak ke /login
+        container.read(routerProvider).go('/club/garuda');
+        await tester.pumpAndSettle();
+        expect(find.text('Masuk Akun'), findsOneWidget);
+        expect(find.text('Klub Garuda Muda'), findsNothing);
+      },
+    );
   });
 }
+
 

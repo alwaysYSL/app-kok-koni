@@ -11,6 +11,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 class _FakeTokenStorage implements AuthTokenStorage {
   String? token;
   @override
+  Future<String?> getRefreshToken() async => token;
+  @override
   Future<String?> readRefreshToken() async => token;
   @override
   Future<void> saveRefreshToken(String t) async => token = t;

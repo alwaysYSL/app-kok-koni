@@ -39,7 +39,7 @@ void main() {
 
     expect(find.text('SISTEM INFORMASI KOORDINATOR'), findsOneWidget);
     expect(find.text('KONI Kabupaten Garut'), findsOneWidget);
-    expect(find.text('Memverifikasi sesi aman...'), findsOneWidget);
+    expect(find.text('Memeriksa sesi pengguna...'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 

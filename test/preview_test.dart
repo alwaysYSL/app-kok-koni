@@ -63,6 +63,7 @@ void main() {
 
       for (final entry in {
         'session_startup': '/session',
+        'session_signing_out': '/signing-out',
         'session_unavailable': '/session-unavailable',
         'home': '/home',
         'cabor': '/sports',
@@ -80,6 +81,11 @@ void main() {
         if (entry.key == 'session_startup') {
           previewController.freezeBootstrap = true;
           previewController.setPreviewState(const AuthBootstrapping());
+          container.read(routerProvider).go(entry.value);
+          await tester.pump(const Duration(milliseconds: 200));
+        } else if (entry.key == 'session_signing_out') {
+          previewController.freezeBootstrap = true;
+          previewController.setPreviewState(const AuthSigningOut());
           container.read(routerProvider).go(entry.value);
           await tester.pump(const Duration(milliseconds: 200));
         } else if (entry.key == 'session_unavailable') {

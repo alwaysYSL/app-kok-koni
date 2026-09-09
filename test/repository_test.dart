@@ -1,7 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kok_app/core/session.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/data/models.dart';
 
@@ -186,25 +183,4 @@ void main() {
     expect(data.people.where((p) => p.missingDocuments.isNotEmpty).length, 8);
     expect(data.people.where((p) => p.expiredLicense).length, 5);
   });
-
-  test(
-    'Reject invalid login; remember only SK; logout revokes session',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final container = ProviderContainer(
-        overrides: [preferencesProvider.overrideWithValue(prefs)],
-      );
-      addTearDown(container.dispose);
-      final session = container.read(sessionProvider.notifier);
-      expect(await session.signIn('DEMO-001', 'wrong', true), isFalse);
-      expect(container.read(sessionProvider), isFalse);
-      expect(await session.signIn('DEMO-001', 'kokgarut123', true), isTrue);
-      expect(prefs.getKeys(), {'remembered_sk'});
-      session.signOut();
-      expect(container.read(sessionProvider), isFalse);
-      expect(await session.signIn('DEMO-001', 'kokgarut123', false), isTrue);
-      expect(prefs.getKeys(), isEmpty);
-    },
-  );
 }
