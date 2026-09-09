@@ -173,7 +173,7 @@ class _IssueBadge extends StatelessWidget {
       label,
       style: const TextStyle(
         color: KokColors.red,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w800,
       ),
     ),

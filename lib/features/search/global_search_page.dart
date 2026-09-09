@@ -201,7 +201,7 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
         const Text(
           'SARAN CABANG OLAHRAGA',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: KokColors.textSecondary,
             letterSpacing: 0.8,
@@ -330,7 +330,7 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
           child: Text(
             'DITEMUKAN $totalCount HASIL',
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: KokColors.textSecondary,
               letterSpacing: 0.8,
@@ -442,7 +442,7 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
                             person.role,
                             style: TextStyle(
                               color: roleFg,
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),

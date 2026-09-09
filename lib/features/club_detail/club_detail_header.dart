@@ -247,7 +247,7 @@ class _HeaderBadge extends StatelessWidget {
       label,
       style: TextStyle(
         color: foreground,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: FontWeight.w800,
       ),
     ),
@@ -284,7 +284,7 @@ class _StatColumn extends StatelessWidget {
         maxLines: 1,
         style: TextStyle(
           color: foreground,
-          fontSize: 10,
+          fontSize: 12,
           height: 1,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.8,

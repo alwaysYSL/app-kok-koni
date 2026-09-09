@@ -57,7 +57,7 @@ class ClubDocumentTab extends StatelessWidget {
           child: Text(
             'Data milik SICABOR. Perubahan diajukan lewat pengurus klub — aplikasi ini tidak menyunting.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: KokColors.muted, fontSize: 11, height: 1.4),
+            style: TextStyle(color: KokColors.muted, fontSize: 12, height: 1.4),
           ),
         ),
       ],

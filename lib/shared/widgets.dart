@@ -127,7 +127,7 @@ class DemoNote extends StatelessWidget {
     child: Text(
       'MODE DEMO · Data ilustrasi, belum terhubung SICABOR',
       textAlign: TextAlign.center,
-      style: TextStyle(fontSize: 11, color: KokColors.muted),
+      style: TextStyle(fontSize: 12, color: KokColors.muted),
     ),
   );
 }

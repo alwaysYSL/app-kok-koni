@@ -357,7 +357,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     required VoidCallback onTap,
   }) {
     const labelStyle = TextStyle(
-      fontSize: 10,
+      fontSize: 12,
       color: KokColors.muted,
       fontWeight: FontWeight.w600,
     );
@@ -467,7 +467,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? palette.chartColor : KokColors.textSecondary,
           ),
@@ -512,7 +512,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                 '$groupName: $count atlet',
                 const TextStyle(
                   color: Colors.white,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               );
@@ -538,7 +538,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                 }
                 return Text(
                   value.toInt().toString(),
-                  style: const TextStyle(color: KokColors.muted, fontSize: 9),
+                  style: const TextStyle(color: KokColors.muted, fontSize: 12),
                 );
               },
             ),
@@ -554,7 +554,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   labels[idx],
                   style: const TextStyle(
                     color: KokColors.cardTitle,
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 );
@@ -617,7 +617,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       : '${((verifiedCount / (athletes.isEmpty ? 1 : athletes.length)) * 100).round()}%',
                   radius: 22,
                   titleStyle: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -630,7 +630,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       : '',
                   radius: 22,
                   titleStyle: const TextStyle(
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -658,7 +658,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                 const SizedBox(height: 4),
                 Text(
                   'Dokumen kurang: ${missingDocs.join(', ')}',
-                  style: const TextStyle(fontSize: 10, color: KokColors.muted),
+                  style: const TextStyle(fontSize: 12, color: KokColors.muted),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -685,7 +685,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               color: KokColors.cardTitle,
             ),
@@ -854,7 +854,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   onSelected: (_) => setState(() => _selectedAgeGroup = group),
                   selectedColor: palette.softAccent,
                   labelStyle: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? palette.chartColor
@@ -966,7 +966,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                                   Text(
                                     isComplete ? 'Lengkap' : 'Kurang',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: isComplete
                                           ? const Color(0xFF16A34A)
@@ -1066,7 +1066,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                   child: Text(
                     coach.expiredLicense ? 'Kedaluwarsa' : 'Aktif',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: coach.expiredLicense
                           ? KokColors.red
