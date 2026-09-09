@@ -1,17 +1,17 @@
-# Auth Hardening & Lifecycle Remediation Implementation Plan
+# Auth Hardening & Lifecycle Remediation Implementation Plan (v2 Deterministic)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remediate all 7 blocker audit findings (R2-01 through R2-07) and Section 5 consistency issues by implementing a crash-consistent two-phase state machine, serialized storage mutation with ID-based ownership protection, explicit sign-in cancellation, typed cleanup status with fail-closed metadata, full DEMO-003 county support, robust request cancellation, composition root isolation, and UI honesty.
+**Goal:** Menutup seluruh 7 temuan *blocker* (R2-01 s/d R2-07) dan catatan Bagian 5 dari `docs/audit-auth-review-tahap1-kedua.md` dengan mengimplementasikan crash-consistent state machine, serialisasi mutasi storage via ID ownership guard, pembatalan login eksplisit `cancelSignIn()`, metadata fail-closed `SessionMetadata`, pemetaan 3 akun demo konsisten (termasuk DEMO-003 county 5 cabor unik), request cancellation end-to-end, composition root bebas cycle, dan audit kejujuran UI.
 
-**Architecture:** Two-phase mutation (*Reserve -> Execute -> Commit*) with `_mutationQueue` and `_operationEpoch` to guarantee crash-consistent state transitions without deadlocks or unhandled races; `SessionMetadata` single-record JSON in `SharedPreferences` guarding auto-login; clean domain boundary where `AuthController` owns storage and `DemoAuthRepository` only validates credentials; notification-capable `RequestCancellation` guarding against cross-session data pollution; and fail-closed `DeploymentProfile` & `AppComposition`.
+**Architecture:** Dua fase mutasi (*Reserve -> Execute -> Commit*) dengan `_mutationQueue` dan `_operationEpoch` untuk menjamin konsistensi state tanpa race condition; `SessionMetadata` single-record JSON di `SharedPreferences` mengunci status pembersihan; controller memiliki kepemilikan mutlak atas storage sementara repository hanya memvalidasi kredensial/token; `RequestCancellation` guarding data snapshot dari pencemaran antar-sesi; dan composition root modular bebas dependency cycle (`core/config/`, `core/composition/`, `data/`).
 
-**Tech Stack:** Flutter 3.x, Dart 3.12.x, Riverpod 2.5/3.x, GoRouter 17.x, flutter_secure_storage 9.2.4, shared_preferences 2.5.x.
+**Tech Stack:** Flutter 3.x, Dart 3.12.x, flutter_riverpod 3.4.3 (pinned), go_router 17.1.0, flutter_secure_storage 9.2.4, shared_preferences 2.5.0.
 
 ## Global Constraints
 
-- Sesuai dengan spesifikasi `docs/superpowers/specs/2026-09-09-auth-hardening-lifecycle-remediation-design.md`.
-- Seluruh teks pada komponen antarmuka memiliki ukuran font >= 12px (tidak ada teks di bawah 12px anywhere!).
+- Sesuai dengan spesifikasi final `docs/superpowers/specs/2026-09-09-auth-hardening-lifecycle-remediation-design.md`.
+- Seluruh teks pada komponen antarmuka memiliki ukuran font >= 12px (diaudit ketat di Task 8 & 9).
 - Warna teks judul kartu utama menggunakan `KokColors.cardTitle` (`#141414`) dari `lib/core/theme.dart`.
 - Tombol kembali konsisten menggunakan `Icons.chevron_left` dengan `size: 28` dan warna `KokColors.cardTitle`.
 - Tidak mengubah struktur 5 tab navigasi bawah (Beranda, Cabor, Klub, Anggota, Profil/Akun).
@@ -21,191 +21,226 @@
 
 ---
 
-### Task 1: Domain & Storage Foundation (Menutup R2-02, R2-03, & R2-05 Foundation)
+### Task 0: Baseline, Branch, Versi Dependency, & Test/Analyzer Awal
 
 **Files:**
-- Create: `lib/core/auth/data/session_metadata_store.dart`
-- Modify: `lib/core/auth/domain/user_principal.dart`
-- Modify: `lib/core/auth/domain/auth_state.dart`
-- Modify: `lib/core/auth/data/auth_token_storage.dart`
-- Modify: `lib/core/auth/data/remembered_sk_store.dart`
-- Create: `test/session_metadata_store_test.dart`
-- Modify: `test/user_principal_test.dart`
-- Modify: `test/auth_token_storage_test.dart`
+- Read/Verify: `pubspec.yaml`, `pubspec.lock`
+- Run: baseline test suite dan static analysis
 
 **Interfaces:**
-- Consumes: `SharedPreferences`, `FlutterSecureStorage`
+- Memastikan environment kerja bersih dan seluruh dependensi sesuai versi pinned (`flutter_riverpod: 3.4.3`, `flutter_secure_storage: 9.2.4`).
+
+- [ ] **Step 1: Jalankan static analysis awal**
+
+Run: `flutter analyze`
+Expected: `No issues found!`
+
+- [ ] **Step 2: Jalankan full test suite awal**
+
+Run: `flutter test`
+Expected: Seluruh test suite (168 tests) lulus 100%.
+
+- [ ] **Step 3: Commit baseline confirmation jika ada file staging**
+
+Run: `git status`
+Expected: clean working directory.
+
+---
+
+### Task 1: Pure Domain Models, Scope Tanpa Fallback, & CredentialIdGenerator
+
+**Files:**
+- Modify: `lib/core/auth/domain/user_principal.dart`
+- Modify: `lib/core/auth/domain/auth_state.dart`
+- Create: `lib/core/auth/domain/credential_id_generator.dart`
+- Modify: `test/user_principal_test.dart`
+- Create: `test/credential_id_generator_test.dart`
+
+**Interfaces:**
+- Consumes: None (Pure Dart Domain Layer)
 - Produces:
   - `AccessScopeType` (`district`, `county`)
-  - `AccessScope(type, id, name)`
-  - `UserPrincipal(id, skNumber, fullName, roleTitle, scope, permissions)`
+  - `AccessScope(type, id, name)` dengan equality & hashCode berbasis `(type, id)`
+  - `UserPrincipal(id, skNumber, fullName, roleTitle, scope, permissions)` — `scope` WAJIB tanpa default fallback
   - `LocalCleanupStatus` (`clean`, `pending`, `failed`)
   - `AuthSignedOut(cleanupStatus, message)`
-  - `CorruptMetadataException`
-  - `SessionMetadata(schemaVersion, restoreAllowed, cleanupStatus, expectedCredentialId)`
-  - `SessionMetadataStore` & `SharedPrefsSessionMetadataStore`
-  - `StoredCredential(credentialId, refreshToken)`
-  - `AuthTokenStorage` (`read()`, `write(credential)`, `clearIfOwnedBy(credentialId)`, `forceClearForRecovery()`)
-  - `SecureAuthTokenStorage({String namespace, FlutterSecureStorage? storage})`
-  - `RememberedSkStore({required SharedPreferences preferences, String key})`
+  - `AuthSignedIn(user, generation)` — `accessToken` DIHAPUS dari state publik
+  - `CredentialIdGenerator` interface, `UuidCredentialIdGenerator`, dan `DeterministicCredentialIdGenerator`
 
-- [ ] **Step 1: Write failing tests for Domain & Storage Foundation**
+- [ ] **Step 1: Tulis failing test di `test/credential_id_generator_test.dart` dan `test/user_principal_test.dart`**
 
-Create `test/session_metadata_store_test.dart`:
+Create `test/credential_id_generator_test.dart`:
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/session_metadata_store.dart';
-import 'package:kok_app/core/auth/domain/auth_state.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 
 void main() {
-  group('SessionMetadata Serialization & Store', () {
-    test('serializes and deserializes valid SessionMetadata correctly', () {
-      const meta = SessionMetadata(
-        schemaVersion: 1,
-        restoreAllowed: true,
-        cleanupStatus: LocalCleanupStatus.clean,
-        expectedCredentialId: 'cred-uuid-123',
-      );
-      final json = meta.toJson();
-      final parsed = SessionMetadata.fromJson(json);
+  group('CredentialIdGenerator', () {
+    test('UuidCredentialIdGenerator generates valid RFC 4122 v4 UUIDs', () {
+      const generator = UuidCredentialIdGenerator();
+      final id1 = generator.generate();
+      final id2 = generator.generate();
 
-      expect(parsed.schemaVersion, 1);
-      expect(parsed.restoreAllowed, isTrue);
-      expect(parsed.cleanupStatus, LocalCleanupStatus.clean);
-      expect(parsed.expectedCredentialId, 'cred-uuid-123');
+      expect(id1, isNot(equals(id2)));
+      final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$');
+      expect(uuidRegex.hasMatch(id1), isTrue);
+      expect(uuidRegex.hasMatch(id2), isTrue);
     });
 
-    test('rejects corrupt or incomplete metadata fail-closed', () {
-      expect(
-        () => SessionMetadata.fromJson({'schemaVersion': 2, 'restoreAllowed': true}),
-        throwsA(isA<CorruptMetadataException>()),
-      );
-      expect(
-        () => SessionMetadata.fromJson({
-          'schemaVersion': 1,
-          'restoreAllowed': true,
-          'cleanupStatus': 'clean',
-          'expectedCredentialId': '',
-        }),
-        throwsA(isA<CorruptMetadataException>()),
-      );
-      expect(
-        () => SessionMetadata.fromJson({
-          'schemaVersion': 1,
-          'restoreAllowed': true,
-          'cleanupStatus': 'pending',
-          'expectedCredentialId': 'some-id',
-        }),
-        throwsA(isA<CorruptMetadataException>()),
-      );
-    });
-
-    test('SharedPrefsSessionMetadataStore writes and reads metadata correctly', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final store = SharedPrefsSessionMetadataStore(prefs, key: 'kok.auth.v2.demo.metadata');
-
-      expect(await store.read(), isNull);
-
-      const meta = SessionMetadata(
-        schemaVersion: 1,
-        restoreAllowed: false,
-        cleanupStatus: LocalCleanupStatus.pending,
-      );
-      await store.write(meta);
-
-      final readBack = await store.read();
-      expect(readBack, isNotNull);
-      expect(readBack!.restoreAllowed, isFalse);
-      expect(readBack.cleanupStatus, LocalCleanupStatus.pending);
-
-      await store.clear();
-      expect(await store.read(), isNull);
+    test('DeterministicCredentialIdGenerator generates predictable sequence', () {
+      final generator = DeterministicCredentialIdGenerator('test-session');
+      expect(generator.generate(), 'test-session-1');
+      expect(generator.generate(), 'test-session-2');
     });
   });
 }
 ```
 
-Update `test/auth_token_storage_test.dart` to test `StoredCredential` and `clearIfOwnedBy`:
+Update `test/user_principal_test.dart` to verify `AccessScope` equality by `(type, id)` and strict mandatory `scope`:
 ```dart
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/auth_token_storage.dart';
-
-class _InMemoryTokenStorage implements AuthTokenStorage {
-  StoredCredential? _current;
-
-  @override
-  Future<StoredCredential?> read() async => _current;
-
-  @override
-  Future<void> write(StoredCredential credential) async {
-    _current = credential;
-  }
-
-  @override
-  Future<bool> clearIfOwnedBy(String credentialId) async {
-    if (_current?.credentialId == credentialId) {
-      _current = null;
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  Future<void> forceClearForRecovery() async {
-    _current = null;
-  }
-}
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 
 void main() {
-  group('StoredCredential & AuthTokenStorage ownership', () {
-    test('StoredCredential redacts toString and parses strictly', () {
-      const cred = StoredCredential(
-        credentialId: 'cred-1',
-        refreshToken: 'refresh-token-secret',
+  group('AccessScope & UserPrincipal Pure Domain', () {
+    test('AccessScope equality is based strictly on (type, id)', () {
+      const scopeA = AccessScope(
+        type: AccessScopeType.district,
+        id: 'garut_kota',
+        name: 'Kecamatan Garut Kota',
       );
-      expect(cred.toString(), 'StoredCredential([REDACTED])');
-      expect(cred.toJson()['credentialId'], 'cred-1');
-      expect(cred.toJson()['refreshToken'], 'refresh-token-secret');
-
-      final parsed = StoredCredential.fromJson(cred.toJson());
-      expect(parsed.credentialId, 'cred-1');
-      expect(parsed.refreshToken, 'refresh-token-secret');
-
-      expect(
-        () => StoredCredential.fromJson({'credentialId': ''}),
-        throwsA(isA<FormatException>()),
+      const scopeB = AccessScope(
+        type: AccessScopeType.district,
+        id: 'garut_kota',
+        name: 'Label Berbeda Tapi ID Sama',
       );
+      const scopeC = AccessScope(
+        type: AccessScopeType.county,
+        id: 'koni_kab',
+        name: 'KONI Kabupaten Garut',
+      );
+
+      expect(scopeA, equals(scopeB));
+      expect(scopeA.hashCode, equals(scopeB.hashCode));
+      expect(scopeA, isNot(equals(scopeC)));
     });
 
-    test('clearIfOwnedBy only deletes matching credential', () async {
-      final storage = _InMemoryTokenStorage();
-      await storage.write(
-        const StoredCredential(credentialId: 'session-A', refreshToken: 'token-A'),
+    test('UserPrincipal requires mandatory scope and provides districtId/districtName getters', () {
+      const user = UserPrincipal(
+        id: 'usr_garut_kota',
+        skNumber: 'DEMO-001',
+        fullName: 'Pak Asep',
+        roleTitle: 'Koordinator',
+        scope: AccessScope(
+          type: AccessScopeType.district,
+          id: 'garut_kota',
+          name: 'Kecamatan Garut Kota',
+        ),
       );
 
-      final clearedStale = await storage.clearIfOwnedBy('session-stale');
-      expect(clearedStale, isFalse);
-      expect(await storage.read(), isNotNull);
-
-      final clearedOwner = await storage.clearIfOwnedBy('session-A');
-      expect(clearedOwner, isTrue);
-      expect(await storage.read(), isNull);
+      expect(user.districtId, 'garut_kota');
+      expect(user.districtName, 'Kecamatan Garut Kota');
     });
   });
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
 
-Run: `flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart`
-Expected: FAIL compilation errors (`SessionMetadata`, `StoredCredential` not defined).
+Run: `flutter test test/credential_id_generator_test.dart test/user_principal_test.dart`
+Expected: FAIL compilation errors (`UuidCredentialIdGenerator` not found).
 
-- [ ] **Step 3: Write minimal implementation for Domain & Storage Foundation**
+- [ ] **Step 3: Implementasikan kode minimal Task 1**
 
-1. Modify `lib/core/auth/domain/auth_state.dart`:
+1. Create `lib/core/auth/domain/credential_id_generator.dart`:
 ```dart
+import 'dart:math';
+
+abstract interface class CredentialIdGenerator {
+  String generate();
+}
+
+class UuidCredentialIdGenerator implements CredentialIdGenerator {
+  const UuidCredentialIdGenerator();
+
+  @override
+  String generate() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // RFC 4122 v4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}';
+  }
+}
+
+class DeterministicCredentialIdGenerator implements CredentialIdGenerator {
+  int _counter = 0;
+  final String prefix;
+  DeterministicCredentialIdGenerator([this.prefix = 'cred']);
+
+  @override
+  String generate() => '$prefix-${++_counter}';
+}
+```
+
+2. Modify `lib/core/auth/domain/user_principal.dart`:
+```dart
+enum AccessScopeType { district, county }
+
+final class AccessScope {
+  const AccessScope({
+    required this.type,
+    required this.id,
+    required this.name,
+  });
+
+  final AccessScopeType type;
+  final String id;
+  final String name;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AccessScope && other.type == type && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(type, id);
+
+  @override
+  String toString() => 'AccessScope($type, $id, $name)';
+}
+
+final class UserPrincipal {
+  final String id;
+  final String skNumber;
+  final String fullName;
+  final String roleTitle;
+  final AccessScope scope;
+  final String? profileImageUrl;
+  final Set<String> permissions;
+
+  const UserPrincipal({
+    required this.id,
+    required this.skNumber,
+    required this.fullName,
+    required this.roleTitle,
+    required this.scope,
+    this.profileImageUrl,
+    this.permissions = const <String>{},
+  });
+
+  String get districtId => scope.id;
+  String get districtName => scope.name;
+
+  bool hasPermission(String permission) => permissions.contains(permission);
+}
+```
+
+3. Modify `lib/core/auth/domain/auth_state.dart`:
+```dart
+import 'user_principal.dart';
+
 enum LocalCleanupStatus {
   clean,
   pending,
@@ -243,12 +278,10 @@ final class AuthSignedIn extends AuthState {
   const AuthSignedIn({
     required this.user,
     required this.generation,
-    this.accessToken,
   });
 
   final UserPrincipal user;
   final int generation;
-  final String? accessToken;
 }
 
 final class AuthSigningOut extends AuthState {
@@ -262,245 +295,77 @@ final class AuthTemporarilyUnavailable extends AuthState {
 }
 ```
 
-2. Modify `lib/core/auth/domain/user_principal.dart`:
-```dart
-enum AccessScopeType { district, county }
+- [ ] **Step 4: Jalankan test dan static analysis Task 1**
 
-final class AccessScope {
-  const AccessScope({
-    required this.type,
-    required this.id,
-    required this.name,
-  });
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/auth/domain/ test/credential_id_generator_test.dart test/user_principal_test.dart
+flutter test test/credential_id_generator_test.dart test/user_principal_test.dart
+```
+Expected: PASS
 
-  final AccessScopeType type;
-  final String id;
-  final String name;
+- [ ] **Step 5: Commit Task 1**
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is AccessScope &&
-          other.type == type &&
-          other.id == id &&
-          other.name == name;
-
-  @override
-  int get hashCode => Object.hash(type, id, name);
-}
-
-final class UserPrincipal {
-  final String id;
-  final String skNumber;
-  final String fullName;
-  final String roleTitle;
-  final AccessScope scope;
-  final String? profileImageUrl;
-  final Set<String> permissions;
-
-  UserPrincipal({
-    required this.id,
-    required this.skNumber,
-    required this.fullName,
-    required this.roleTitle,
-    AccessScope? scope,
-    String? districtId,
-    String? districtName,
-    this.profileImageUrl,
-    Set<String>? permissions,
-  })  : scope = scope ??
-            AccessScope(
-              type: AccessScopeType.district,
-              id: districtId ?? 'garut_kota',
-              name: districtName ?? 'Kecamatan Garut Kota',
-            ),
-        permissions = Set.unmodifiable(permissions ?? const <String>{});
-
-  String get districtId => scope.id;
-  String get districtName => scope.name;
-
-  bool hasPermission(String permission) => permissions.contains(permission);
-}
+```bash
+git add lib/core/auth/domain/ test/credential_id_generator_test.dart test/user_principal_test.dart
+git commit -m "feat(auth): definisikan pure domain models, AccessScope tanpa fallback, dan CredentialIdGenerator"
 ```
 
-3. Create `lib/core/auth/data/session_metadata_store.dart`:
+---
+
+### Task 2: Storage Adapters, Parser Ketat, Namespace, Adapter Abstraction, & Migrasi Eksplisit (Menutup SC-09, SC-14, SC-20, SC-21)
+
+**Files:**
+- Create: `lib/core/auth/data/secure_key_val_store.dart`
+- Create: `lib/core/auth/data/session_metadata_store.dart`
+- Modify: `lib/core/auth/data/auth_token_storage.dart`
+- Modify: `lib/core/auth/data/remembered_sk_store.dart`
+- Create: `test/session_metadata_store_test.dart`
+- Modify: `test/auth_token_storage_test.dart`
+
+**Interfaces:**
+- Consumes: `SharedPreferences`, `FlutterSecureStorage`
+- Produces:
+  - `StorageException`, `CorruptCredentialException`, `MetadataStorageException`, `CorruptMetadataException`
+  - `SecureKeyValStore` interface dan `FlutterSecureKeyValStore` implementation
+  - `StoredCredential(credentialId, refreshToken)` dengan batas 128/8192 chars
+  - `AuthTokenStorage` (`read()`, `write()`, `clearIfOwnedBy()`, `forceClearForRecovery()`, `migrateLegacyStorage()`)
+  - `SecureAuthTokenStorage({required String namespace, required SecureKeyValStore secureStore})` tanpa default
+  - `SessionMetadataStore` & `SharedPrefsSessionMetadataStore({required SharedPreferences preferences, required String key})`
+  - `RememberedSkStore({required SharedPreferences preferences, required String key})`
+
+- [ ] **Step 1: Tulis failing test di `test/session_metadata_store_test.dart` dan `test/auth_token_storage_test.dart`**
+
+Test cases meliputi:
+- `SC-09`: Metadata corrupt (schemaVersion beda, tipe salah, field hilang, expectedCredentialId kosong saat restoreAllowed) melempar `CorruptMetadataException`.
+- `SC-14`: Ownership guard `clearIfOwnedBy(credentialA)` pada credential B mengembalikan `false` dan tidak menghapus credential B.
+- `SC-20`: `migrateLegacyStorage()` menghapus key `v1_kok_refresh_token` secara eksplisit tanpa side effect pada `read()`.
+- `SC-21`: `StoredCredential` memvalidasi batas panjang 128 dan 8192 chars.
+- Fault-injection pada `FakeSecureKeyValStore` (simulasi exception read/write/delete).
+
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+
+Run: `flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart`
+Expected: FAIL
+
+- [ ] **Step 3: Implementasikan kode Task 2**
+
+1. Create `lib/core/auth/data/secure_key_val_store.dart`:
 ```dart
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../domain/auth_state.dart';
-
-class CorruptMetadataException implements Exception {
-  final String message;
-  const CorruptMetadataException(this.message);
-  @override
-  String toString() => 'CorruptMetadataException: $message';
-}
-
-final class SessionMetadata {
-  static const currentVersion = 1;
-
-  final int schemaVersion;
-  final bool restoreAllowed;
-  final LocalCleanupStatus cleanupStatus;
-  final String? expectedCredentialId;
-
-  const SessionMetadata({
-    required this.schemaVersion,
-    required this.restoreAllowed,
-    required this.cleanupStatus,
-    this.expectedCredentialId,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'schemaVersion': schemaVersion,
-        'restoreAllowed': restoreAllowed,
-        'cleanupStatus': cleanupStatus.name,
-        'expectedCredentialId': expectedCredentialId,
-      };
-
-  factory SessionMetadata.fromJson(dynamic json) {
-    if (json is! Map<String, dynamic>) {
-      throw const CorruptMetadataException('SessionMetadata JSON harus berupa Map/object');
-    }
-    final version = json['schemaVersion'];
-    if (version is! int || version != currentVersion) {
-      throw CorruptMetadataException('schemaVersion tidak didukung: $version');
-    }
-    final restore = json['restoreAllowed'];
-    if (restore is! bool) {
-      throw const CorruptMetadataException('restoreAllowed harus bertipe bool');
-    }
-    final statusStr = json['cleanupStatus'];
-    final status = LocalCleanupStatus.values.asNameMap()[statusStr];
-    if (status == null) {
-      throw CorruptMetadataException('cleanupStatus tidak valid: $statusStr');
-    }
-    final credId = json['expectedCredentialId'];
-    if (restore && (credId is! String || credId.trim().isEmpty)) {
-      throw const CorruptMetadataException(
-          'expectedCredentialId wajib ada saat restoreAllowed bernilai true');
-    }
-    if (restore && status != LocalCleanupStatus.clean) {
-      throw const CorruptMetadataException('restoreAllowed hanya boleh true saat status clean');
-    }
-
-    return SessionMetadata(
-      schemaVersion: version,
-      restoreAllowed: restore,
-      cleanupStatus: status,
-      expectedCredentialId: credId as String?,
-    );
-  }
-}
-
-abstract interface class SessionMetadataStore {
-  Future<SessionMetadata?> read();
-  Future<void> write(SessionMetadata metadata);
-  Future<void> clear();
-}
-
-class SharedPrefsSessionMetadataStore implements SessionMetadataStore {
-  final SharedPreferences _preferences;
-  final String _key;
-
-  const SharedPrefsSessionMetadataStore(
-    this._preferences, {
-    String key = 'kok.auth.v2.demo.metadata',
-  }) : _key = key;
-
-  @override
-  Future<SessionMetadata?> read() async {
-    final raw = _preferences.getString(_key);
-    if (raw == null || raw.trim().isEmpty) return null;
-    try {
-      final decoded = jsonDecode(raw);
-      return SessionMetadata.fromJson(decoded);
-    } catch (_) {
-      throw const CorruptMetadataException('Gagal mem-parse JSON SessionMetadata');
-    }
-  }
-
-  @override
-  Future<void> write(SessionMetadata metadata) async {
-    final raw = jsonEncode(metadata.toJson());
-    await _preferences.setString(_key, raw);
-  }
-
-  @override
-  Future<void> clear() async {
-    await _preferences.remove(_key);
-  }
-}
-```
-
-4. Modify `lib/core/auth/data/auth_token_storage.dart`:
-```dart
-import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-class StorageException implements Exception {
-  final String message;
-  final Object? cause;
-
-  const StorageException(this.message, [this.cause]);
-
-  @override
-  String toString() => cause != null ? '$message (Penyebab: $cause)' : message;
+abstract interface class SecureKeyValStore {
+  Future<String?> read({required String key});
+  Future<void> write({required String key, required String value});
+  Future<void> delete({required String key});
+  Future<bool> containsKey({required String key});
 }
 
-final class StoredCredential {
-  const StoredCredential({
-    required this.credentialId,
-    required this.refreshToken,
-  });
-
-  final String credentialId;
-  final String refreshToken;
-
-  Map<String, dynamic> toJson() => {
-        'credentialId': credentialId,
-        'refreshToken': refreshToken,
-      };
-
-  factory StoredCredential.fromJson(dynamic json) {
-    if (json is! Map<String, dynamic>) {
-      throw const FormatException('Format credential harus berupa JSON object');
-    }
-    final credId = json['credentialId'];
-    final token = json['refreshToken'];
-    if (credId is! String || credId.trim().isEmpty || credId.length > 128) {
-      throw const FormatException('credentialId tidak valid');
-    }
-    if (token is! String || token.trim().isEmpty || token.length > 8192) {
-      throw const FormatException('refreshToken tidak valid atau melebihi batas panjang');
-    }
-    return StoredCredential(
-      credentialId: credId,
-      refreshToken: token,
-    );
-  }
-
-  @override
-  String toString() => 'StoredCredential([REDACTED])';
-}
-
-abstract interface class AuthTokenStorage {
-  Future<StoredCredential?> read();
-  Future<void> write(StoredCredential credential);
-  Future<bool> clearIfOwnedBy(String credentialId);
-  Future<void> forceClearForRecovery();
-}
-
-class SecureAuthTokenStorage implements AuthTokenStorage {
-  static const _legacyKey = 'v1_kok_refresh_token';
-  final String _namespace;
+class FlutterSecureKeyValStore implements SecureKeyValStore {
   final FlutterSecureStorage _storage;
 
-  const SecureAuthTokenStorage({
-    String namespace = 'kok.auth.v2.demo.credential',
-    FlutterSecureStorage? storage,
-  })  : _namespace = namespace,
-        _storage = storage ??
+  const FlutterSecureKeyValStore({FlutterSecureStorage? storage})
+      : _storage = storage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(encryptedSharedPreferences: true),
               iOptions: IOSOptions(
@@ -508,1062 +373,418 @@ class SecureAuthTokenStorage implements AuthTokenStorage {
               ),
             );
 
-  Future<void> _cleanupLegacyBestEffort() async {
-    try {
-      if (await _storage.containsKey(key: _legacyKey)) {
-        await _storage.delete(key: _legacyKey);
-      }
-    } catch (_) {}
-  }
+  @override
+  Future<String?> read({required String key}) => _storage.read(key: key);
 
   @override
-  Future<StoredCredential?> read() async {
-    await _cleanupLegacyBestEffort();
-    try {
-      final raw = await _storage.read(key: _namespace);
-      if (raw == null || raw.trim().isEmpty) return null;
-      final decoded = jsonDecode(raw);
-      return StoredCredential.fromJson(decoded);
-    } on FormatException {
-      return null;
-    } catch (e) {
-      throw StorageException('Gagal mengakses penyimpanan kredensial aman.', e);
-    }
-  }
+  Future<void> write({required String key, required String value}) =>
+      _storage.write(key: key, value: value);
 
   @override
-  Future<void> write(StoredCredential credential) async {
-    try {
-      final raw = jsonEncode(credential.toJson());
-      await _storage.write(key: _namespace, value: raw);
-    } catch (e) {
-      throw StorageException('Gagal menyimpan token ke penyimpanan aman.', e);
-    }
-  }
+  Future<void> delete({required String key}) => _storage.delete(key: key);
 
   @override
-  Future<bool> clearIfOwnedBy(String credentialId) async {
-    try {
-      final current = await read();
-      if (current != null && current.credentialId == credentialId) {
-        await _storage.delete(key: _namespace);
-        return true;
-      }
-      return false;
-    } catch (e) {
-      throw StorageException('Gagal membersihkan token penyimpanan aman.', e);
-    }
-  }
-
-  @override
-  Future<void> forceClearForRecovery() async {
-    try {
-      await _storage.delete(key: _namespace);
-      await _cleanupLegacyBestEffort();
-    } catch (e) {
-      throw StorageException('Gagal melakukan force clear penyimpanan aman.', e);
-    }
-  }
+  Future<bool> containsKey({required String key}) => _storage.containsKey(key: key);
 }
 ```
 
-5. Modify `lib/core/auth/data/remembered_sk_store.dart`:
-```dart
-import 'package:shared_preferences/shared_preferences.dart';
+2. Modify `lib/core/auth/data/auth_token_storage.dart`:
+Implementasikan `StoredCredential` dengan batas 128/8192, `StorageException` tanpa membocorkan cause, `SecureAuthTokenStorage` dengan `migrateLegacyStorage()` eksplisit, dan `clearIfOwnedBy()`.
 
-class RememberedSkStore {
-  final SharedPreferences _preferences;
-  final String _key;
+3. Create `lib/core/auth/data/session_metadata_store.dart`:
+Implementasikan `SessionMetadata` dengan validasi strict (schemaVersion == 1) dan `SharedPrefsSessionMetadataStore` yang memeriksa hasil boolean `setString` dan `remove`.
 
-  RememberedSkStore(
-    this._preferences, {
-    String key = 'kok.auth.v2.demo.remembered_sk',
-  }) : _key = key;
+4. Modify `lib/core/auth/data/remembered_sk_store.dart`:
+Wajibkan parameter `key` (tanpa default hardcoded demo).
 
-  Future<String?> readSk() async {
-    return _preferences.getString(_key);
-  }
+- [ ] **Step 4: Jalankan test dan static analyzer Task 2**
 
-  Future<void> saveSk(String skNumber) async {
-    await _preferences.setString(_key, skNumber);
-  }
-
-  Future<void> clear() async {
-    await _preferences.remove(_key);
-  }
-}
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/auth/data/ test/session_metadata_store_test.dart test/auth_token_storage_test.dart
+flutter analyze
+flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart
 ```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart test/user_principal_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 2**
 
 ```bash
-git add lib/core/auth/domain/ lib/core/auth/data/ test/session_metadata_store_test.dart test/auth_token_storage_test.dart test/user_principal_test.dart
-git commit -m "feat(auth): bangun fondasi StoredCredential, SessionMetadata, dan isolasi namespace token"
+git add lib/core/auth/data/ test/session_metadata_store_test.dart test/auth_token_storage_test.dart
+git commit -m "feat(auth): implementasikan SecureKeyValStore, StoredCredential, SessionMetadataStore ketat, dan migrasi eksplisit"
 ```
 
 ---
 
-### Task 2: Repositories & Fixture Contracts (Menutup R2-03, R2-05, & R2-06 Bagian Data)
+### Task 3: Repository Auth, Session Handle, & Dataset Demo Kabupaten (Menutup SC-17, SC-18, SC-19, SC-22)
 
 **Files:**
 - Modify: `lib/core/auth/data/auth_repository.dart`
 - Modify: `lib/core/auth/data/demo_auth_repository.dart`
-- Modify: `lib/data/repository.dart`
+- Create: `lib/data/kok_repository.dart`
+- Create: `lib/data/demo_kok_repository.dart`
 - Modify: `test/auth_repository_test.dart`
 - Modify: `test/repository_test.dart`
 
 **Interfaces:**
-- Consumes: `AccessScope`, `AccessScopeType`, `UserPrincipal`
+- Consumes: `AccessScope`, `UserPrincipal`
 - Produces:
   - `RemoteRevocationStatus` (`revoked`, `notApplicable`, `failed`)
-  - `RemoteRevocationResult(status, [message])`
+  - `RemoteRevocationResult`
   - `AuthRepository.restoreSession(String refreshToken)`
   - `AuthRepository.revokeSession(String refreshToken)`
-  - `DemoAuthRepository` with 3 exact tokens (`token_usr_garut_kota`, `token_usr_tarogong_kidul`, `token_usr_koni_kab`) and county scope
-  - `RequestCancelledException([reason])`
-  - `StaleSessionResultException()`
-  - `UnsupportedScopeException(scopeId)`
-  - `RequestCancellation` & `RequestCancellationController`
+  - `DemoAuthRepository` 3-token table (`token_usr_garut_kota`, `token_usr_tarogong_kidul`, `token_usr_koni_kab`)
   - `KokRepository.fetchScope(AccessScope scope, {RequestCancellation? cancellation})`
-  - `DemoKokRepository` dynamically calculating combined county fixture: 5 unique sports, 9 clubs, 213 athletes, 18 coaches.
+  - `DemoKokRepository` dataset county 5 cabor unik (`Sepak Bola`, `Bulu Tangkis`, `Pencak Silat`, `Bola Voli`, `Renang`), 9 klub, 213 atlet, 18 pelatih dihitung dinamis.
 
-- [ ] **Step 1: Write failing tests for Repositories & Fixtures**
+- [ ] **Step 1: Tulis failing test di `test/auth_repository_test.dart` dan `test/repository_test.dart`**
 
-Update `test/auth_repository_test.dart`:
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/domain/auth_failure.dart';
-import 'package:kok_app/core/auth/domain/user_principal.dart';
+Test cases meliputi:
+- `SC-17`: Pemetaan `DEMO-003` mengembalikan `usr_koni_kab` dengan scope county dan token `token_usr_koni_kab`.
+- `SC-18`: Snapshot kabupaten menghasilkan 5 cabor unik, 9 klub, 213 atlet, 18 pelatih.
+- `SC-19`: Unknown scope melempar `UnsupportedScopeException`.
+- `SC-22`: `RequestCancellation` idempoten.
 
-void main() {
-  group('DemoAuthRepository contract & token mapping', () {
-    late DemoAuthRepository repo;
-
-    setUp(() {
-      repo = DemoAuthRepository(simulateLatency: false);
-    });
-
-    test('login DEMO-003 with staySignedIn returns token_usr_koni_kab and county scope', () async {
-      final res = await repo.login(
-        skNumber: 'DEMO-003',
-        password: 'konigarut123',
-        staySignedIn: true,
-      );
-      expect(res.isSuccess, isTrue);
-      expect(res.user?.id, 'usr_koni_kab');
-      expect(res.user?.scope.type, AccessScopeType.county);
-      expect(res.user?.scope.id, 'koni_kab');
-      expect(res.refreshToken, 'token_usr_koni_kab');
-    });
-
-    test('restoreSession validates tokens strictly across all 3 accounts', () async {
-      final resKota = await repo.restoreSession('token_usr_garut_kota');
-      expect(resKota.isSuccess, isTrue);
-      expect(resKota.user?.id, 'usr_garut_kota');
-
-      final resTk = await repo.restoreSession('token_usr_tarogong_kidul');
-      expect(resTk.isSuccess, isTrue);
-      expect(resTk.user?.id, 'usr_tarogong_kidul');
-
-      final resKab = await repo.restoreSession('token_usr_koni_kab');
-      expect(resKab.isSuccess, isTrue);
-      expect(resKab.user?.id, 'usr_koni_kab');
-
-      final resUnknown = await repo.restoreSession('unknown-token');
-      expect(resUnknown.isSuccess, isFalse);
-      expect(resUnknown.failure, isA<SessionExpiredFailure>());
-    });
-
-    test('revokeSession returns notApplicable for demo mode', () async {
-      final res = await repo.revokeSession('token_usr_garut_kota');
-      expect(res.status, RemoteRevocationStatus.notApplicable);
-    });
-  });
-}
-```
-
-Update `test/repository_test.dart`:
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/domain/user_principal.dart';
-import 'package:kok_app/data/repository.dart';
-
-void main() {
-  group('DemoKokRepository scope fetching & county fixture', () {
-    const repo = DemoKokRepository(simulateLatency: false);
-
-    test('fetches county scope with exactly 5 unique sports, 9 clubs, 213 athletes, 18 coaches', () async {
-      const countyScope = AccessScope(
-        type: AccessScopeType.county,
-        id: 'koni_kab',
-        name: 'KONI Kabupaten Garut',
-      );
-
-      final snapshot = await repo.fetchScope(countyScope);
-      expect(snapshot.clubs.length, 9);
-      expect(snapshot.sports.length, 5);
-      expect(
-        snapshot.sports.toSet(),
-        {'Sepak Bola', 'Bulu Tangkis', 'Pencak Silat', 'Bola Voli', 'Renang'},
-      );
-
-      final athletes = snapshot.people.where((p) => p.role == 'Atlet').toList();
-      final coaches = snapshot.people.where((p) => p.role == 'Pelatih').toList();
-      expect(athletes.length, 213);
-      expect(coaches.length, 18);
-    });
-
-    test('throws UnsupportedScopeException for unknown scope', () async {
-      const badScope = AccessScope(
-        type: AccessScopeType.district,
-        id: 'kecamatan_alien',
-        name: 'Kecamatan Alien',
-      );
-
-      expect(() => repo.fetchScope(badScope), throwsA(isA<UnsupportedScopeException>()));
-    });
-
-    test('RequestCancellation triggers RequestCancelledException', () async {
-      final controller = RequestCancellationController();
-      controller.cancel('User navigated away');
-
-      const districtScope = AccessScope(
-        type: AccessScopeType.district,
-        id: 'garut_kota',
-        name: 'Kecamatan Garut Kota',
-      );
-
-      expect(
-        () => repo.fetchScope(districtScope, cancellation: controller.token),
-        throwsA(isA<RequestCancelledException>()),
-      );
-    });
-  });
-}
-```
-
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
 
 Run: `flutter test test/auth_repository_test.dart test/repository_test.dart`
-Expected: FAIL compilation errors (`fetchScope`, `RemoteRevocationResult`, etc. not defined).
+Expected: FAIL
 
-- [ ] **Step 3: Write minimal implementation for Repositories & Fixture Contracts**
+- [ ] **Step 3: Implementasikan kode Task 3**
 
-1. Modify `lib/core/auth/data/auth_repository.dart`:
-```dart
-import '../domain/auth_failure.dart';
-import '../domain/user_principal.dart';
+1. Modify `lib/core/auth/data/auth_repository.dart` dan `lib/core/auth/data/demo_auth_repository.dart`.
+2. Create `lib/data/kok_repository.dart` dan `lib/data/demo_kok_repository.dart`.
+3. Standarisasi nama cabang olahraga `'Bola Voli'` pada seluruh fixture.
 
-enum RemoteRevocationStatus { revoked, notApplicable, failed }
+- [ ] **Step 4: Jalankan test dan static analyzer Task 3**
 
-final class RemoteRevocationResult {
-  final RemoteRevocationStatus status;
-  final String? message;
-
-  const RemoteRevocationResult(this.status, [this.message]);
-
-  factory RemoteRevocationResult.notApplicable() =>
-      const RemoteRevocationResult(RemoteRevocationStatus.notApplicable);
-}
-
-class AuthResult {
-  final UserPrincipal? user;
-  final String? accessToken;
-  final String? refreshToken;
-  final AuthFailure? failure;
-
-  const AuthResult.success({
-    required UserPrincipal this.user,
-    this.accessToken,
-    this.refreshToken,
-  }) : failure = null;
-
-  const AuthResult.failed(AuthFailure this.failure)
-      : user = null,
-        accessToken = null,
-        refreshToken = null;
-
-  bool get isSuccess => user != null;
-}
-
-abstract interface class AuthRepository {
-  Future<AuthResult> login({
-    required String skNumber,
-    required String password,
-    required bool staySignedIn,
-  });
-
-  Future<AuthResult> restoreSession(String refreshToken);
-
-  Future<AuthResult> refreshToken(String refreshToken);
-
-  Future<RemoteRevocationResult> revokeSession(String refreshToken);
-}
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/auth/data/ lib/data/ test/auth_repository_test.dart test/repository_test.dart
+flutter analyze
+flutter test test/auth_repository_test.dart test/repository_test.dart
 ```
-
-2. Modify `lib/core/auth/data/demo_auth_repository.dart`:
-```dart
-import 'dart:async';
-import '../domain/auth_failure.dart';
-import '../domain/user_principal.dart';
-import 'auth_repository.dart';
-
-class DemoAuthRepository implements AuthRepository {
-  final bool simulateLatency;
-
-  static final _garutKotaUser = UserPrincipal(
-    id: 'usr_garut_kota',
-    skNumber: 'DEMO-001',
-    fullName: 'Pak Asep',
-    roleTitle: 'Koordinator Kecamatan',
-    scope: const AccessScope(
-      type: AccessScopeType.district,
-      id: 'garut_kota',
-      name: 'Kecamatan Garut Kota',
-    ),
-    permissions: {'sports:read', 'clubs:read', 'members:read', 'reports:export'},
-  );
-
-  static final _tarogongKidulUser = UserPrincipal(
-    id: 'usr_tarogong_kidul',
-    skNumber: 'DEMO-002',
-    fullName: 'Pak Cecep',
-    roleTitle: 'Koordinator Kecamatan',
-    scope: const AccessScope(
-      type: AccessScopeType.district,
-      id: 'tarogong_kidul',
-      name: 'Kecamatan Tarogong Kidul',
-    ),
-    permissions: {'sports:read', 'clubs:read', 'members:read'},
-  );
-
-  static final _koniKabUser = UserPrincipal(
-    id: 'usr_koni_kab',
-    skNumber: 'DEMO-003',
-    fullName: 'Ibu Rina',
-    roleTitle: 'Tim Verifikator',
-    scope: const AccessScope(
-      type: AccessScopeType.county,
-      id: 'koni_kab',
-      name: 'KONI Kabupaten Garut',
-    ),
-    permissions: {
-      'sports:read',
-      'clubs:read',
-      'members:read',
-      'documents:verify',
-      'reports:export',
-    },
-  );
-
-  static final Map<String, UserPrincipal> _sessionsByToken = {
-    'token_usr_garut_kota': _garutKotaUser,
-    'token_usr_tarogong_kidul': _tarogongKidulUser,
-    'token_usr_koni_kab': _koniKabUser,
-  };
-
-  const DemoAuthRepository({this.simulateLatency = true});
-
-  Future<void> _maybeDelay() async {
-    if (simulateLatency) {
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    }
-  }
-
-  @override
-  Future<AuthResult> login({
-    required String skNumber,
-    required String password,
-    required bool staySignedIn,
-  }) async {
-    await _maybeDelay();
-
-    if (skNumber == 'DEMO-TIMEOUT') {
-      return const AuthResult.failed(NetworkTimeoutFailure());
-    }
-
-    UserPrincipal? matchedUser;
-    String? token;
-    String? accessToken;
-
-    if (skNumber == 'DEMO-001' && password == 'kokgarut123') {
-      matchedUser = _garutKotaUser;
-      token = 'token_usr_garut_kota';
-      accessToken = 'access_demo_garut_kota';
-    } else if (skNumber == 'DEMO-002' && password == 'koktarogong123') {
-      matchedUser = _tarogongKidulUser;
-      token = 'token_usr_tarogong_kidul';
-      accessToken = 'access_demo_tarogong_kidul';
-    } else if (skNumber == 'DEMO-003' && password == 'konigarut123') {
-      matchedUser = _koniKabUser;
-      token = 'token_usr_koni_kab';
-      accessToken = 'access_demo_koni_kab';
-    }
-
-    if (matchedUser == null) {
-      return const AuthResult.failed(InvalidCredentialsFailure());
-    }
-
-    return AuthResult.success(
-      user: matchedUser,
-      accessToken: accessToken,
-      refreshToken: staySignedIn ? token : null,
-    );
-  }
-
-  @override
-  Future<AuthResult> restoreSession(String refreshToken) async {
-    await _maybeDelay();
-    final user = _sessionsByToken[refreshToken];
-    if (user == null) {
-      return const AuthResult.failed(
-        SessionExpiredFailure('Sesi Anda tidak valid atau telah kedaluwarsa.'),
-      );
-    }
-
-    return AuthResult.success(
-      user: user,
-      accessToken: 'access_${refreshToken.replaceFirst('token_', '')}',
-      refreshToken: refreshToken,
-    );
-  }
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession(refreshToken);
-  }
-
-  @override
-  Future<RemoteRevocationResult> revokeSession(String refreshToken) async {
-    await _maybeDelay();
-    return RemoteRevocationResult.notApplicable();
-  }
-}
-```
-
-3. Modify `lib/data/repository.dart`:
-Add cancellation exceptions, classes, contracts, and fixture calculations:
-```dart
-import 'dart:async';
-import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/auth/domain/auth_state.dart';
-import '../core/auth/domain/user_principal.dart';
-import '../core/auth/presentation/auth_controller.dart';
-import '../core/config/app_environment.dart';
-import 'models.dart';
-
-final class SessionRequiredException implements Exception {
-  final String message;
-  const SessionRequiredException([
-    this.message = 'Sesi terautentikasi aktif dibutuhkan untuk mengakses data keolahragaan.',
-  ]);
-
-  @override
-  String toString() => message;
-}
-
-final class RequestCancelledException implements Exception {
-  final Object? reason;
-  const RequestCancelledException([this.reason]);
-  @override
-  String toString() => 'Permintaan dibatalkan: $reason';
-}
-
-final class StaleSessionResultException implements Exception {
-  const StaleSessionResultException();
-  @override
-  String toString() => 'Hasil data diabaikan karena sesi telah berganti.';
-}
-
-final class UnsupportedScopeException implements Exception {
-  final String scopeId;
-  const UnsupportedScopeException(this.scopeId);
-  @override
-  String toString() => 'Scope tidak didukung: $scopeId';
-}
-
-final class RequestCancellation {
-  RequestCancellation._(this._whenCancelled);
-
-  final Future<Object?> _whenCancelled;
-  bool _isCancelled = false;
-  Object? _reason;
-
-  bool get isCancelled => _isCancelled;
-  Object? get reason => _reason;
-  Future<Object?> get whenCancelled => _whenCancelled;
-
-  void throwIfCancelled() {
-    if (_isCancelled) {
-      throw RequestCancelledException(_reason);
-    }
-  }
-}
-
-final class RequestCancellationController {
-  RequestCancellationController() : _completer = Completer<Object?>() {
-    token = RequestCancellation._(_completer.future);
-  }
-
-  final Completer<Object?> _completer;
-  late final RequestCancellation token;
-
-  void cancel([Object? reason]) {
-    if (_completer.isCompleted) return;
-    token
-      .._isCancelled = true
-      .._reason = reason;
-    _completer.complete(reason);
-  }
-}
-
-abstract interface class KokRepository {
-  Future<KokSnapshot> fetchScope(
-    AccessScope scope, {
-    RequestCancellation? cancellation,
-  });
-}
-
-// ... helper extensions & methods ...
-```
-
-In `DemoKokRepository`:
-Standardize `sport: 'Bola Voli'` for Bina Muda in Garut Kota to ensure 5 unique sports across Garut:
-`Sepak Bola`, `Bulu Tangkis`, `Pencak Silat`, `Bola Voli`, `Renang`.
-When `scope.type == AccessScopeType.county`:
-Return dynamically combined snapshot of Garut Kota + Tarogong Kidul:
-- 9 clubs
-- 213 athletes
-- 18 coaches
-- 5 unique sports
-When `scope.id == 'garut_kota'`: return Garut Kota snapshot.
-When `scope.id == 'tarogong_kidul'`: return Tarogong Kidul snapshot.
-Otherwise: throw `UnsupportedScopeException(scope.id)`.
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `flutter test test/auth_repository_test.dart test/repository_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 3**
 
 ```bash
-git add lib/core/auth/data/ lib/data/repository.dart test/auth_repository_test.dart test/repository_test.dart
-git commit -m "feat(repo): terapkan RequestCancellation, pemetaan 3 token demo, dan dataset county gabungan"
+git add lib/core/auth/data/ lib/data/ test/auth_repository_test.dart test/repository_test.dart
+git commit -m "feat(repo): terapkan kontrak murni AuthRepository & KokRepository, serta dataset kabupaten gabungan"
 ```
 
 ---
 
-### Task 3: AuthController Hardening (Menutup R2-01, R2-02, & R2-04)
+### Task 4: Mutation Queue, Truth Table Bootstrap, & Fail-Closed Auto-Login (Menutup SC-03, SC-08, SC-09, SC-15, SC-20)
 
 **Files:**
 - Modify: `lib/core/auth/presentation/auth_controller.dart`
 - Modify: `test/auth_controller_test.dart`
 
 **Interfaces:**
-- Consumes: `StoredCredential`, `AuthTokenStorage`, `SessionMetadata`, `SessionMetadataStore`, `AuthRepository`, `LocalCleanupStatus`, `AuthSignedOut`, `AuthSigningIn`, `AuthSigningOut`
+- Consumes: `SessionMetadataStore`, `AuthTokenStorage`, `AuthRepository`, `CredentialIdGenerator`
 - Produces:
-  - `AuthCommandResult`, `AuthCommandAccepted`, `AuthCommandRejected(reason)`
-  - `AuthCommandRejection` (`operationInProgress`, `cleanupRequired`, `invalidState`)
-  - `LogoutResult(localSessionClosed, credentialCleared, remoteRevocationStatus, [message])`
-  - `AuthController.cancelSignIn()`
-  - `AuthController.retryLocalCredentialCleanup()`
-  - Serialized `_mutationQueue` for storage writes
-  - Crash-consistent `bootstrap()`, `login()`, `logout()`
+  - Serialized `_enqueueMutation` yang kebal error tanpa deadlock
+  - Truth table bootstrap fail-closed (`bootstrap()`)
+  - Migrasi eksplisit storage legacy saat bootstrap
 
-- [ ] **Step 1: Write failing tests for AuthController Hardening**
+- [ ] **Step 1: Tulis failing test di `test/auth_controller_test.dart` untuk Queue & Bootstrap**
 
-Update `test/auth_controller_test.dart`:
-```dart
-import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/auth/data/auth_token_storage.dart';
-import 'package:kok_app/core/auth/data/session_metadata_store.dart';
-import 'package:kok_app/core/auth/domain/auth_state.dart';
-import 'package:kok_app/core/auth/presentation/auth_controller.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+Test cases meliputi:
+- `SC-15`: Exception pada antrean mutasi melepaskan lock tanpa deadlock untuk operasi berikutnya.
+- Truth table bootstrap:
+  - Metadata null + token null $\rightarrow$ `AuthSignedOut(clean)`
+  - Metadata null + token ada $\rightarrow$ `AuthSignedOut(failed)` (orphaned token)
+  - Metadata corrupt $\rightarrow$ `AuthSignedOut(failed)`
+  - Metadata pending $\rightarrow$ `AuthSignedOut(failed)`
+  - Metadata mismatch ID $\rightarrow$ `AuthSignedOut(failed)`
+  - Metadata clean + ID cocok $\rightarrow$ memanggil `repo.restoreSession(token)`
+  - Restore ditolak repository $\rightarrow$ cleanup token milik sesi $\rightarrow$ `AuthSignedOut(clean)`
 
-// Test cancelSignIn, storage ownership clearIfOwnedBy, and retryLocalCredentialCleanup
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+
+Run: `flutter test test/auth_controller_test.dart`
+Expected: FAIL
+
+- [ ] **Step 3: Implementasikan kode Task 4 di `auth_controller.dart`**
+
+Implementasikan `_enqueueMutation`, `_runBootstrap()` sesuai truth table, dan pemanggilan `tokenStorage.migrateLegacyStorage()`.
+
+- [ ] **Step 4: Jalankan test dan static analyzer Task 4**
+
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/auth/presentation/ test/auth_controller_test.dart
+flutter analyze
+flutter test test/auth_controller_test.dart
 ```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `flutter test test/auth_controller_test.dart`
-Expected: FAIL (`cancelSignIn` or `retryLocalCredentialCleanup` not defined).
-
-- [ ] **Step 3: Write minimal implementation for AuthController**
-
-Implement:
-1. `_mutationQueue`:
-   `Future<T> _enqueueMutation<T>(Future<T> Function() mutation)`
-2. `cancelSignIn()`:
-   - If `state is! AuthSigningIn`, returns `AuthCommandRejected(AuthCommandRejection.invalidState)`.
-   - Increments `_operationEpoch`.
-   - Sets state to `const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean)`.
-   - Returns `const AuthCommandAccepted()`.
-3. `login()` two-phase pattern:
-   - Phase 1 Reserve: validate state matrix. Set `state = const AuthSigningIn()`. Record ticket/epoch.
-   - Phase 2 Execute: `await repo.login(...)` outside storage mutex.
-   - Phase 3 Commit: enqueue in `_mutationQueue`. Re-verify ticket/epoch.
-     Write `SessionMetadata(restoreAllowed: false, cleanupStatus: pending)`.
-     Write `StoredCredential(credentialId: uuid, refreshToken: token)` to `tokenStorage`.
-     Write `SessionMetadata(restoreAllowed: true, cleanupStatus: clean, expectedCredentialId: uuid)`.
-     Publish `AuthSignedIn`.
-4. `logout()` crash-consistent:
-   - Capture refresh token.
-   - Increment `_operationEpoch` and `_sessionGeneration`.
-   - Evict in-memory session -> `state = const AuthSigningOut()`.
-   - In `_mutationQueue`:
-     Write `SessionMetadata(restoreAllowed: false, cleanupStatus: pending)`.
-     Attempt `await tokenStorage.clearIfOwnedBy(credentialId)`.
-     If success: `SessionMetadata(restoreAllowed: false, cleanupStatus: clean)`. State = `AuthSignedOut(cleanupStatus: clean)`.
-     If `StorageException`: `SessionMetadata(restoreAllowed: false, cleanupStatus: failed)`. State = `AuthSignedOut(cleanupStatus: failed)`.
-   - Async non-blocking remote revocation with 5s timeout.
-5. `retryLocalCredentialCleanup()`:
-   - In `_mutationQueue`:
-     Attempt `tokenStorage.forceClearForRecovery()`.
-     Write `SessionMetadata(restoreAllowed: false, cleanupStatus: clean)`.
-     State = `AuthSignedOut(cleanupStatus: clean)`.
-6. `bootstrap()` fail-closed:
-   - Read metadata. If metadata is null, corrupt, `!restoreAllowed`, or `expectedCredentialId != stored.credentialId`:
-     Set `AuthSignedOut(cleanupStatus: metadata?.cleanupStatus ?? clean)`.
-     Do NOT restore session.
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `flutter test test/auth_controller_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 4**
 
 ```bash
 git add lib/core/auth/presentation/auth_controller.dart test/auth_controller_test.dart
-git commit -m "fix(auth): terapkan dua fase mutasi, cancelSignIn, dan crash-consistent state machine"
+git commit -m "feat(auth): terapkan mutation queue serial dan truth table bootstrap fail-closed"
 ```
 
 ---
 
-### Task 4: Data Lifecycle & Providers Guard (Menutup R2-06 Bagian State & Invalidation)
+### Task 5: Persistent Login, Rollback, cancelSignIn, Logout, & Recovery (Menutup SC-01, SC-02, SC-04, SC-05, SC-06, SC-07, SC-10, SC-11, SC-12, SC-13, SC-16)
 
 **Files:**
-- Modify: `lib/data/repository.dart`
+- Modify: `lib/core/auth/presentation/auth_controller.dart`
+- Modify: `test/auth_controller_test.dart`
+
+**Interfaces:**
+- Produces:
+  - `login()` dua fase dengan rollback storage
+  - `cancelSignIn()` eksplisit
+  - `logout()` crash-consistent dengan awaiting revocation ber-timeout
+  - `retryLocalCredentialCleanup()` idempoten
+  - `LogoutResult`
+
+- [ ] **Step 1: Tulis failing test di `test/auth_controller_test.dart` untuk Login, Cancel, Logout, & Recovery**
+
+Test cases: `SC-01`, `SC-02`, `SC-04`, `SC-05`, `SC-06`, `SC-07`, `SC-10`, `SC-11`, `SC-12`, `SC-13`, `SC-16`.
+
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+
+Run: `flutter test test/auth_controller_test.dart`
+Expected: FAIL
+
+- [ ] **Step 3: Implementasikan kode Task 5 di `auth_controller.dart`**
+
+Implementasikan:
+- `login()`: Phase 1 Reserve $\rightarrow$ Phase 2 Execute $\rightarrow$ Phase 3 Commit dengan rollback `clearIfOwnedBy` jika epoch berubah.
+- `cancelSignIn()`: increment epoch, state $\rightarrow$ `AuthSignedOut(clean)`.
+- `logout()`: write pending metadata $\rightarrow$ `clearIfOwnedBy` di queue $\rightarrow$ publish state $\rightarrow$ await `repo.revokeSession` dengan timeout 5s $\rightarrow$ return `LogoutResult`.
+- `retryLocalCredentialCleanup()`: force clear storage di queue $\rightarrow$ update metadata clean $\rightarrow$ state `AuthSignedOut(clean)`.
+
+- [ ] **Step 4: Jalankan test dan static analyzer Task 5**
+
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/auth/presentation/ test/auth_controller_test.dart
+flutter analyze
+flutter test test/auth_controller_test.dart
+```
+Expected: PASS
+
+- [ ] **Step 5: Commit Task 5**
+
+```bash
+git add lib/core/auth/presentation/auth_controller.dart test/auth_controller_test.dart
+git commit -m "feat(auth): terapkan dua fase login, cancelSignIn, logout crash-consistent, dan recovery cleanup"
+```
+
+---
+
+### Task 6: Data Request Lifecycle, RequestCancellation, Stale-Result Guard, & No-Retry Policy (Menutup SC-23, SC-24, SC-25)
+
+**Files:**
+- Create: `lib/data/providers/snapshot_provider.dart`
+- Modify: `lib/data/repository.dart` (re-export atau delegasi bersih)
 - Modify: `test/session_scope_test.dart`
 
 **Interfaces:**
-- Consumes: `AppEnvironment`, `AccessScope`, `authControllerProvider`, `deploymentProfileProvider`
+- Consumes: `KokRepository`, `authControllerProvider`, `deploymentProfileProvider`
 - Produces:
   - `DataRequestContext(environment, userId, scope, generation)`
   - `sessionDataContextProvider`
-  - `snapshotProvider` with post-await context verification and no-retry policy on lifecycle exceptions.
+  - `snapshotProvider` dengan post-await guard dan no-retry policy untuk lifecycle exceptions.
 
-- [ ] **Step 1: Write failing test in `test/session_scope_test.dart`**
+- [ ] **Step 1: Tulis failing test di `test/session_scope_test.dart`**
 
-Test post-await context drift and no-retry on `StaleSessionResultException` / `RequestCancelledException`.
+Test cases:
+- `SC-23`: Request A in-flight dibatalkan ketika session switch ke B; data B tidak tercemar.
+- `SC-24`: Post-await guard melempar `StaleSessionResultException` jika konteks berubah tanpa pembatalan transport.
+- `SC-25`: `snapshotProvider` tidak melakukan auto-retry untuk `SessionRequiredException`, `RequestCancelledException`, `StaleSessionResultException`, dan `UnsupportedScopeException`.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
 
 Run: `flutter test test/session_scope_test.dart`
 Expected: FAIL
 
-- [ ] **Step 3: Implement minimal code in `lib/data/repository.dart`**
+- [ ] **Step 3: Implementasikan kode Task 6**
 
-1. Define `DataRequestContext`:
-```dart
-final class DataRequestContext {
-  const DataRequestContext({
-    required this.environment,
-    required this.userId,
-    required this.scope,
-    required this.generation,
-  });
+Create `lib/data/providers/snapshot_provider.dart` dan perbarui `lib/data/repository.dart`.
 
-  final AppEnvironment environment;
-  final String userId;
-  final AccessScope scope;
-  final int generation;
+- [ ] **Step 4: Jalankan test dan static analyzer Task 6**
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is DataRequestContext &&
-          other.environment == environment &&
-          other.userId == userId &&
-          other.scope == scope &&
-          other.generation == generation;
-
-  @override
-  int get hashCode => Object.hash(environment, userId, scope, generation);
-}
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/data/ test/session_scope_test.dart
+flutter analyze
+flutter test test/session_scope_test.dart
 ```
-
-2. Define `sessionDataContextProvider`:
-```dart
-final sessionDataContextProvider = Provider<DataRequestContext?>((ref) {
-  final authState = ref.watch(authControllerProvider);
-  final profile = ref.watch(deploymentProfileProvider);
-  if (authState is! AuthSignedIn) return null;
-  return DataRequestContext(
-    environment: profile.environment,
-    userId: authState.user.id,
-    scope: authState.user.scope,
-    generation: authState.generation,
-  );
-});
-```
-
-3. In `snapshotProvider`:
-```dart
-final snapshotProvider = FutureProvider<KokSnapshot>((ref) async {
-  final context = ref.watch(sessionDataContextProvider);
-  if (context == null) {
-    throw const SessionRequiredException();
-  }
-
-  final repository = ref.watch(repositoryProvider);
-  final cancellationController = RequestCancellationController();
-  ref.onDispose(() => cancellationController.cancel('Session changed or disposed'));
-
-  final snapshot = await repository.fetchScope(
-    context.scope,
-    cancellation: cancellationController.token,
-  );
-
-  final currentContext = ref.read(sessionDataContextProvider);
-  if (currentContext != context) {
-    throw const StaleSessionResultException();
-  }
-
-  return snapshot;
-}, retry: (retryCount, error) {
-  if (error is SessionRequiredException ||
-      error is RequestCancelledException ||
-      error is StaleSessionResultException ||
-      error is UnsupportedScopeException) {
-    return null;
-  }
-  return ProviderContainer.defaultRetry(retryCount, error);
-});
-```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `flutter test test/session_scope_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 6**
 
 ```bash
-git add lib/data/repository.dart test/session_scope_test.dart
-git commit -m "feat(data): perkuat snapshotProvider dengan DataRequestContext dan no-retry policy"
+git add lib/data/ test/session_scope_test.dart
+git commit -m "feat(data): terapkan DataRequestContext guard, pembatalan request end-to-end, dan no-retry policy"
 ```
 
 ---
 
-### Task 5: DeploymentProfile, AppComposition Root, & Main Wiring (Menutup R2-07)
+### Task 7: Deployment Profile & Composition Root Bebas Cycle (Menutup SC-26, SC-27, SC-28, SC-29)
 
 **Files:**
-- Modify: `lib/core/config/app_environment.dart`
+- Create: `lib/core/config/deployment_profile.dart`
+- Create: `lib/core/composition/app_composition.dart`
 - Modify: `lib/main.dart`
 - Modify: `lib/app.dart`
 - Modify: `test/app_environment_test.dart`
 
 **Interfaces:**
 - Produces:
-  - `AuthMode` (`demo`, `remote`)
-  - `DataMode` (`demo`, `remote`)
   - `DeploymentProfile(environment, authMode, dataMode)`
   - `AppComposition(profile, authRepository, kokRepository, tokenStorage, sessionMetadataStore, rememberedSkStore)`
-  - `deploymentProfileProvider`, `appCompositionProvider`
+  - Fail-closed composition validation
+  - Inisialisasi bersih di `main.dart` tanpa circular imports
 
-- [ ] **Step 1: Write failing test in `test/app_environment_test.dart`**
+- [ ] **Step 1: Tulis failing test di `test/app_environment_test.dart`**
 
-Test profile validation rules:
-- `dataMode.remote + authMode.demo` throws StateError across all environments.
-- `production + demo auth/data` throws StateError.
-- `demo + remote auth/data` throws StateError.
-- `AppComposition.fromProfile` builds concrete isolated stores per environment.
+Test cases:
+- `SC-26`: Production tanpa remote adapter melempar `StateError`.
+- `SC-27`: `dataMode.remote + authMode.demo` ditolak keras di semua env.
+- `SC-28`: Demo env wajib adapter demo.
+- `SC-29`: Namespace storage credential, metadata, remembered SK terisolasi antar-env.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
 
 Run: `flutter test test/app_environment_test.dart`
 Expected: FAIL
 
-- [ ] **Step 3: Implement minimal code in `app_environment.dart`, `main.dart`, `app.dart`**
+- [ ] **Step 3: Implementasikan kode Task 7**
 
-1. Implement `DeploymentProfile` and `AppComposition` in `lib/core/config/app_environment.dart`:
-```dart
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../auth/data/auth_repository.dart';
-import '../auth/data/auth_token_storage.dart';
-import '../auth/data/demo_auth_repository.dart';
-import '../auth/data/remembered_sk_store.dart';
-import '../auth/data/session_metadata_store.dart';
-import '../../data/repository.dart';
+1. Create `lib/core/config/deployment_profile.dart`.
+2. Create `lib/core/composition/app_composition.dart`.
+3. Update `lib/main.dart` dan `lib/app.dart`.
 
-enum AppEnvironment { demo, staging, production }
-enum AuthMode { demo, remote }
-enum DataMode { demo, remote }
+- [ ] **Step 4: Jalankan test dan static analyzer Task 7**
 
-final class DeploymentProfile {
-  final AppEnvironment environment;
-  final AuthMode authMode;
-  final DataMode dataMode;
-
-  const DeploymentProfile({
-    required this.environment,
-    required this.authMode,
-    required this.dataMode,
-  });
-
-  factory DeploymentProfile.fromEnvironment() {
-    const envStr = String.fromEnvironment('APP_ENV', defaultValue: 'demo');
-    const authStr = String.fromEnvironment('AUTH_MODE', defaultValue: 'demo');
-    const dataStr = String.fromEnvironment('DATA_MODE', defaultValue: 'demo');
-
-    final env = AppEnvironment.values.asNameMap()[envStr];
-    final auth = AuthMode.values.asNameMap()[authStr];
-    final data = DataMode.values.asNameMap()[dataStr];
-
-    if (env == null || auth == null || data == null) {
-      throw StateError('Konfigurasi environment tidak valid: env=$envStr, auth=$authStr, data=$dataStr');
-    }
-
-    final profile = DeploymentProfile(environment: env, authMode: auth, dataMode: data);
-    profile.validate();
-    return profile;
-  }
-
-  void validate() {
-    if (environment == AppEnvironment.demo &&
-        (authMode != AuthMode.demo || dataMode != DataMode.demo)) {
-      throw StateError('FATAL: Demo environment wajib menggunakan auth dan data demo.');
-    }
-    if (environment == AppEnvironment.production) {
-      if (authMode != AuthMode.remote || dataMode != DataMode.remote) {
-        throw StateError('FATAL: Build produksi wajib menggunakan auth dan data remote.');
-      }
-    }
-    if (dataMode == DataMode.remote && authMode == AuthMode.demo) {
-      throw StateError('FATAL: Data remote dilarang keras dilindungi oleh autentikasi demo.');
-    }
-  }
-}
-
-final class AppComposition {
-  final DeploymentProfile profile;
-  final AuthRepository authRepository;
-  final KokRepository kokRepository;
-  final AuthTokenStorage tokenStorage;
-  final SessionMetadataStore sessionMetadataStore;
-  final RememberedSkStore rememberedSkStore;
-
-  const AppComposition({
-    required this.profile,
-    required this.authRepository,
-    required this.kokRepository,
-    required this.tokenStorage,
-    required this.sessionMetadataStore,
-    required this.rememberedSkStore,
-  });
-
-  factory AppComposition.fromProfile(
-    DeploymentProfile profile, {
-    required SharedPreferences preferences,
-  }) {
-    profile.validate();
-
-    final tokenStorage = SecureAuthTokenStorage(
-      namespace: 'kok.auth.v2.${profile.environment.name}.credential',
-    );
-    final metadataStore = SharedPrefsSessionMetadataStore(
-      preferences,
-      key: 'kok.auth.v2.${profile.environment.name}.metadata',
-    );
-    final skStore = RememberedSkStore(
-      preferences,
-      key: 'kok.auth.v2.${profile.environment.name}.remembered_sk',
-    );
-
-    final AuthRepository authRepo;
-    if (profile.authMode == AuthMode.demo) {
-      authRepo = const DemoAuthRepository();
-    } else {
-      throw StateError('RemoteAuthRepository belum diimplementasikan untuk Tahap A.');
-    }
-
-    final KokRepository kokRepo;
-    if (profile.dataMode == DataMode.demo) {
-      kokRepo = const DemoKokRepository();
-    } else {
-      throw StateError('RemoteKokRepository belum diimplementasikan untuk Tahap A.');
-    }
-
-    return AppComposition(
-      profile: profile,
-      authRepository: authRepo,
-      kokRepository: kokRepo,
-      tokenStorage: tokenStorage,
-      sessionMetadataStore: metadataStore,
-      rememberedSkStore: skStore,
-    );
-  }
-}
-
-final deploymentProfileProvider = Provider<DeploymentProfile>((ref) {
-  return DeploymentProfile.fromEnvironment();
-});
-
-final appCompositionProvider = Provider<AppComposition>((ref) {
-  throw UnimplementedError('appCompositionProvider must be initialized in main()');
-});
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/core/ lib/main.dart lib/app.dart test/app_environment_test.dart
+flutter analyze
+flutter test test/app_environment_test.dart
 ```
-
-2. Wire in `lib/main.dart`:
-```dart
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  final profile = DeploymentProfile.fromEnvironment();
-  final preferences = await SharedPreferences.getInstance();
-  final composition = AppComposition.fromProfile(profile, preferences: preferences);
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        preferencesProvider.overrideWithValue(preferences),
-        deploymentProfileProvider.overrideWithValue(profile),
-        appCompositionProvider.overrideWithValue(composition),
-        authRepositoryProvider.overrideWithValue(composition.authRepository),
-        repositoryProvider.overrideWithValue(composition.kokRepository),
-        authTokenStorageProvider.overrideWithValue(composition.tokenStorage),
-        sessionMetadataStoreProvider.overrideWithValue(composition.sessionMetadataStore),
-        rememberedSkStoreProvider.overrideWithValue(composition.rememberedSkStore),
-      ],
-      child: const KokApp(),
-    ),
-  );
-}
-```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `flutter test test/app_environment_test.dart`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 7**
 
 ```bash
-git add lib/core/config/ lib/main.dart lib/app.dart test/app_environment_test.dart
-git commit -m "feat(config): integrasikan DeploymentProfile dan AppComposition fail-closed"
+git add lib/core/config/ lib/core/composition/ lib/main.dart lib/app.dart test/app_environment_test.dart
+git commit -m "feat(composition): integrasikan DeploymentProfile dan AppComposition root bebas circular dependency"
 ```
 
 ---
 
-### Task 6: UI Polish, Permission Enforcement, & Honest Labels (Menutup Catatan Bagian 5)
+### Task 8: UI Polish, Permission Enforcement, Awaited Actions, & Honest Labels (Menutup SC-30, SC-31)
 
 **Files:**
 - Modify: `lib/features/profile_page.dart`
 - Modify: `lib/features/login_page.dart`
+- Modify: `lib/core/auth/presentation/session_unavailable_page.dart`
 - Modify: `lib/features/home_page.dart`
 - Modify: `README.md`
 - Modify: `test/profile_page_test.dart`
 - Modify: `test/login_page_test.dart`
+- Modify: `test/session_pages_test.dart`
+- Modify: `test/home_page_test.dart`
 
 **Interfaces:**
-- Consumes: `currentUserProvider`, `authControllerProvider`, permission `reports:export`, `LocalCleanupStatus.failed`.
+- Consumes: `currentUserProvider`, `authControllerProvider`
+- Produces:
+  - Seluruh tombol logout di-`await` dan visual dinonaktifkan saat busy
+  - Tombol retry / logout mencegah double tap
+  - Penegakan izin `reports:export` pada ekspor rekapitulasi (Pak Cecep / DEMO-002 disabled)
+  - Banner peringatan cleanup failed dan tombol "Coba Bersihkan Lagi" di `LoginPage`
+  - Pembersihan seluruh klaim SICABOR pada UI
+  - Teks akurat keamanan platform pada `README.md`
 
-- [ ] **Step 1: Write failing tests in `test/profile_page_test.dart` and `test/login_page_test.dart`**
+- [ ] **Step 1: Tulis failing test di `test/profile_page_test.dart`, `test/login_page_test.dart`, `test/session_pages_test.dart`**
 
-1. In `test/profile_page_test.dart`:
-   - Test `DEMO-002` (Pak Cecep, lacks `reports:export`): copy recap button is disabled with message *"Akun ini tidak memiliki izin untuk mengekspor atau menyalin rekapitulasi."*
-   - Test `DEMO-001` (Pak Asep, has `reports:export`): copy recap button is enabled.
-   - Verify `"STATUS SISTEM DATA KOK"` and `"Data demo lokal—belum terhubung dengan SICABOR."` text.
-2. In `test/login_page_test.dart`:
-   - Test banner displayed when `cleanupStatus == LocalCleanupStatus.failed`.
-   - Test tapping *"Coba Bersihkan Lagi"* calls `retryLocalCredentialCleanup()`.
+Test cases:
+- `SC-30`: DEMO-002 (tanpa `reports:export`) tombol rekap disabled + handler double-check memblokir copy.
+- `SC-31`: Verifikasi hilangnya teks SICABOR di profil dan beranda.
+- Banner cleanup failed & tombol coba bersihkan lagi di `LoginPage`.
+- Awaited logout di `SessionUnavailablePage` dan disabled state saat busy.
 
-- [ ] **Step 2: Run tests to verify failure**
+- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
 
-Run: `flutter test test/profile_page_test.dart test/login_page_test.dart`
+Run: `flutter test test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart`
 Expected: FAIL
 
-- [ ] **Step 3: Implement minimal UI updates**
+- [ ] **Step 3: Implementasikan perbaikan UI Task 8**
 
-1. In `lib/features/profile_page.dart`:
-   - Change section header to `'STATUS SISTEM DATA KOK'`.
-   - Change text to `'Data demo lokal—belum terhubung dengan SICABOR.'`.
-   - In `_showHelpdeskSheet`: change title to `'WhatsApp Helpdesk KOK (Demo)'`, add note `'Kontak demo/belum diverifikasi—jangan digunakan untuk pemulihan akun.'`.
-   - In `_showRekapSheet`: check `user.hasPermission('reports:export')`. If false, render disabled button with explanation. Check again inside onPressed before copying.
-2. In `lib/features/login_page.dart`:
-   - Read `authState`. If `authState is AuthSignedOut && authState.cleanupStatus == LocalCleanupStatus.failed`, render amber warning card above form:
-     > **Pembersihan sesi belum selesai.** Akses data telah dikunci, tetapi kredensial lokal belum berhasil dihapus dari perangkat ini. Coba bersihkan kembali sebelum masuk menggunakan akun lain.
-     Along with *"Coba Bersihkan Lagi"* button.
-   - When cleanup failed, disable login submission.
-3. In `README.md`:
-   - Add honest platform secure storage details and demo mode limitations.
+Update `profile_page.dart`, `login_page.dart`, `session_unavailable_page.dart`, `home_page.dart`, dan `README.md`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Jalankan test dan static analyzer Task 8**
 
-Run: `flutter test test/profile_page_test.dart test/login_page_test.dart`
+Run:
+```bash
+dart format --output=none --set-exit-if-changed lib/features/ lib/core/auth/presentation/ README.md test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart
+flutter analyze
+flutter test test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart
+```
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit Task 8**
 
 ```bash
-git add lib/features/ README.md test/profile_page_test.dart test/login_page_test.dart
-git commit -m "feat(ui): tegakkan izin reports:export, bersihkan sisa klaim SICABOR, dan tambah banner retry cleanup"
+git add lib/features/ lib/core/auth/presentation/ README.md test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart
+git commit -m "feat(ui): tegakkan izin reports:export, awaited logout, banner retry cleanup, dan hapus klaim SICABOR"
 ```
 
 ---
 
-### Task 7: Comprehensive Regression Test Suite & Verification (Menutup 31 Skenario Pengujian)
+### Task 9: Cross-Layer Regression (SC-01 s/d SC-31), UI Audit, & Final Verification
 
 **Files:**
 - Create: `test/auth_hardening_remediation_test.dart`
 - Modify: `test/app_test.dart`
+- Audit Script: audit tipografi $\ge 12\text{px}$, warna `KokColors.cardTitle`, dan tombol kembali `Icons.chevron_left`
 
-**Verification:**
-- Implement all 31 regression test scenarios specified in Section 4 of `docs/superpowers/specs/2026-09-09-auth-hardening-lifecycle-remediation-design.md`.
-- Verify full test suite passes 100%.
-- Verify `flutter analyze` has 0 issues.
+**Interfaces:**
+- Eksekusi menyeluruh 31 skenario regresi `SC-01` s/d `SC-31`
+- Verifikasi E2E siklus multi-akun DEMO-001, DEMO-002, DEMO-003
+- Audit compliance UI global constraints
 
-- [ ] **Step 1: Write `test/auth_hardening_remediation_test.dart` covering 31 scenarios**
+- [ ] **Step 1: Buat `test/auth_hardening_remediation_test.dart` yang merangkum seluruh SC-01 s/d SC-31**
 
-Group tests logically:
-- Storage & Cleanup (Scenarios 1-11)
-- Concurrency & Ownership (Scenarios 12-16)
-- DEMO-003 & Scope (Scenarios 17-21)
-- Data Cancellation (Scenarios 22-25)
-- Composition & Permissions (Scenarios 26-31)
+Pastikan seluruh 31 skenario dari tabel spesifikasi diuji secara formal dengan test name ber-prefix ID:
+`[SC-01] Logout clear berhasil ...`
+`[SC-02] Logout clear gagal ...`
+...
+`[SC-31] Bebas klaim palsu SICABOR ...`
 
-- [ ] **Step 2: Run remediation test suite**
+- [ ] **Step 2: Jalankan suite remediasi komprehensif**
 
 Run: `flutter test test/auth_hardening_remediation_test.dart`
-Expected: PASS (all 31 scenarios pass)
+Expected: Seluruh 31 skenario PASS.
 
-- [ ] **Step 3: Run full app tests**
+- [ ] **Step 3: Jalankan full test suite aplikasi**
 
 Run: `flutter test`
-Expected: All test files pass (100% pass rate)
+Expected: 100% tests passing (semua file test hijau).
 
-- [ ] **Step 4: Run static analyzer**
+- [ ] **Step 4: Audit tipografi $\ge 12\text{px}$ dan komponen UI global**
+
+Lakukan pemeriksaan statis:
+- Pastikan tidak ada `fontSize` di bawah 12 di seluruh `lib/`.
+- Pastikan tombol kembali konsisten `Icons.chevron_left` dengan `size: 28` dan warna `KokColors.cardTitle`.
+
+- [ ] **Step 5: Jalankan static analysis akhir**
 
 Run: `flutter analyze`
 Expected: `No issues found!`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit Task 9**
 
 ```bash
 git add test/auth_hardening_remediation_test.dart test/app_test.dart
-git commit -m "test(auth): tambahkan 31 pengujian regresi lengkap penguatan autentikasi dan siklus sesi"
+git commit -m "test(auth): selesaikan 31 skenario regresi komprehensif SC-01 s/d SC-31 dan verifikasi final"
 ```
