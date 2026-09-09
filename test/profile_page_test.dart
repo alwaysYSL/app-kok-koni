@@ -20,8 +20,16 @@ class _FakeProfileAuthController extends AuthController {
   AuthState build() => AuthSignedIn(user: user, generation: 1);
 
   @override
-  Future<void> logout() async {
+  Future<LogoutResult> logout({
+    Duration revocationTimeout = const Duration(seconds: 5),
+  }) async {
     state = const AuthSignedOut();
+    return const LogoutResult(
+      localSessionClosed: true,
+      credentialCleared: true,
+      metadataClean: true,
+      remoteRevocationStatus: RemoteRevocationStatus.revoked,
+    );
   }
 }
 

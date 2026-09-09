@@ -22,8 +22,16 @@ class _MockAuthController extends AuthController {
   }
 
   @override
-  Future<void> logout() async {
+  Future<LogoutResult> logout({
+    Duration revocationTimeout = const Duration(seconds: 5),
+  }) async {
     logoutCalled = true;
+    return const LogoutResult(
+      localSessionClosed: true,
+      credentialCleared: true,
+      metadataClean: true,
+      remoteRevocationStatus: RemoteRevocationStatus.revoked,
+    );
   }
 }
 

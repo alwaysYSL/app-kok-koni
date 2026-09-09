@@ -53,7 +53,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _error = null;
     });
     try {
-      final ok = await ref
+      final res = await ref
           .read(authControllerProvider.notifier)
           .login(
             skNumber: _sk.text.trim(),
@@ -61,10 +61,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             staySignedIn: _staySignedIn,
             rememberSk: _remember,
           );
-      if (!ok && mounted) {
+      if (!res.isSuccess && mounted) {
         final authState = ref.read(authControllerProvider);
         if (authState is AuthSignedOut && authState.errorMessage != null) {
           setState(() => _error = authState.errorMessage);
+        } else if (res.errorMessage != null) {
+          setState(() => _error = res.errorMessage);
         } else {
           setState(() => _error = 'Nomor SK atau kata sandi tidak sesuai.');
         }

@@ -7,6 +7,7 @@ import 'package:kok_app/app.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
@@ -57,6 +58,24 @@ class _FakeTokenStorage implements AuthTokenStorage {
   Future<void> clear() async => _token = null;
 }
 
+class _FakeSessionMetadataStore implements SessionMetadataStore {
+  SessionMetadata? _metadata;
+  _FakeSessionMetadataStore([this._metadata]);
+
+  @override
+  Future<SessionMetadata?> read() async => _metadata;
+
+  @override
+  Future<void> write(SessionMetadata metadata) async {
+    _metadata = metadata;
+  }
+
+  @override
+  Future<void> clear() async {
+    _metadata = null;
+  }
+}
+
 Future<ProviderContainer> start(
   WidgetTester tester, {
   double width = 390,
@@ -71,6 +90,11 @@ Future<ProviderContainer> start(
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
   final tokenStorage = _FakeTokenStorage();
+  final metadataStore = _FakeSessionMetadataStore(
+    initialToken != null
+        ? SessionMetadata.restoreEnabled('legacy')
+        : const SessionMetadata.signedOutClean(),
+  );
   if (initialToken != null) {
     await tokenStorage.saveRefreshToken(initialToken);
   }
@@ -84,6 +108,7 @@ Future<ProviderContainer> start(
     overrides: [
       preferencesProvider.overrideWithValue(prefs),
       authTokenStorageProvider.overrideWithValue(tokenStorage),
+      sessionMetadataStoreProvider.overrideWithValue(metadataStore),
       rememberedSkStoreProvider.overrideWithValue(skStore),
       authRepositoryProvider.overrideWithValue(authRepo),
       ...overrides,

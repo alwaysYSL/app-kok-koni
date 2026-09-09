@@ -29,6 +29,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
+          authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepo),
           rememberedSkStoreProvider.overrideWithValue(skStore),
         ],
@@ -55,6 +56,7 @@ void main() {
 
     final container = ProviderContainer(
       overrides: [
+        authTokenStorageProvider.overrideWithValue(tokenStorage),
         authRepositoryProvider.overrideWithValue(authRepo),
         rememberedSkStoreProvider.overrideWithValue(skStore),
       ],
@@ -62,6 +64,7 @@ void main() {
     addTearDown(container.dispose);
 
     final controller = container.read(authControllerProvider.notifier);
+    await controller.bootstrap();
 
     // Login Pak Asep (Garut Kota)
     await controller.login(

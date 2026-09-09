@@ -53,8 +53,10 @@ class AuthResult {
     required UserPrincipal this.user,
     this.accessToken,
     this.refreshToken,
-    this.sessionHandle,
-  }) : failure = null;
+    RemoteSessionHandle? sessionHandle,
+    RemoteSessionHandle? remoteHandle,
+  }) : sessionHandle = sessionHandle ?? remoteHandle,
+       failure = null;
 
   const AuthResult.failed(AuthFailure this.failure)
     : user = null,
@@ -65,6 +67,7 @@ class AuthResult {
   bool get isSuccess => user != null;
 
   RemoteSessionHandle? get session => sessionHandle;
+  RemoteSessionHandle? get remoteHandle => sessionHandle;
 }
 
 abstract interface class AuthRepository {

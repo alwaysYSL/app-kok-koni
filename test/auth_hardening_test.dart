@@ -10,8 +10,10 @@ import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
+import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/presentation/session_signing_out_page.dart';
@@ -72,28 +74,43 @@ class _ControlledAuthRepository implements AuthRepository {
 }
 
 class _InMemoryTokenStorage implements AuthTokenStorage {
-  String? token;
+  StoredCredential? credential;
   bool shouldThrow = false;
+  bool shouldThrowOnRead = false;
+  bool shouldThrowOnWrite = false;
+  bool shouldThrowOnClearIfOwned = false;
+  bool shouldThrowOnForceClear = false;
+  bool? clearIfOwnedOverride;
+  void Function()? onWriteHook;
+  int forceClearCallCount = 0;
+  int clearIfOwnedCallCount = 0;
   String throwMessage = 'Hardware keystore error';
 
   @override
   Future<StoredCredential?> read() async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    if (token == null) return null;
-    return StoredCredential(credentialId: 'legacy', refreshToken: token!);
+    if (shouldThrow || shouldThrowOnRead) throw StorageException(throwMessage);
+    return credential;
   }
 
   @override
-  Future<void> write(StoredCredential credential) async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    token = credential.refreshToken;
+  Future<void> write(StoredCredential cred) async {
+    if (shouldThrow || shouldThrowOnWrite) throw StorageException(throwMessage);
+    credential = cred;
+    if (onWriteHook != null) onWriteHook!();
   }
 
   @override
   Future<bool> clearIfOwnedBy(String credentialId) async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    if (token != null) {
-      token = null;
+    if (shouldThrow || shouldThrowOnClearIfOwned) {
+      throw StorageException(throwMessage);
+    }
+    clearIfOwnedCallCount++;
+    if (clearIfOwnedOverride != null) {
+      if (clearIfOwnedOverride == true) credential = null;
+      return clearIfOwnedOverride!;
+    }
+    if (credential != null && credential!.credentialId == credentialId) {
+      credential = null;
       return true;
     }
     return false;
@@ -101,8 +118,11 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
 
   @override
   Future<void> forceClearForRecovery() async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    token = null;
+    if (shouldThrow || shouldThrowOnForceClear) {
+      throw StorageException(throwMessage);
+    }
+    forceClearCallCount++;
+    credential = null;
   }
 
   @override
@@ -113,25 +133,57 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
   @override
   Future<String?> getRefreshToken() async {
     if (shouldThrow) throw StorageException(throwMessage);
-    return token;
+    return credential?.refreshToken;
   }
 
   @override
   Future<String?> readRefreshToken() async {
     if (shouldThrow) throw StorageException(throwMessage);
-    return token;
+    return credential?.refreshToken;
   }
 
   @override
   Future<void> saveRefreshToken(String t) async {
     if (shouldThrow) throw StorageException(throwMessage);
-    token = t;
+    credential = StoredCredential(credentialId: 'legacy', refreshToken: t);
   }
 
   @override
   Future<void> clear() async {
     if (shouldThrow) throw StorageException(throwMessage);
-    token = null;
+    credential = null;
+  }
+}
+
+class _FakeSessionMetadataStore implements SessionMetadataStore {
+  SessionMetadata? metadata;
+  bool shouldThrowOnRead = false;
+  bool shouldThrowOnWrite = false;
+  int? throwOnWriteCallIndex;
+  int writeCount = 0;
+
+  _FakeSessionMetadataStore([this.metadata]);
+
+  @override
+  Future<SessionMetadata?> read() async {
+    if (shouldThrowOnRead) throw const StorageException('Metadata read error');
+    return metadata;
+  }
+
+  @override
+  Future<void> write(SessionMetadata meta) async {
+    writeCount++;
+    if (shouldThrowOnWrite ||
+        (throwOnWriteCallIndex != null &&
+            writeCount == throwOnWriteCallIndex)) {
+      throw const StorageException('Metadata write error');
+    }
+    metadata = meta;
+  }
+
+  @override
+  Future<void> clear() async {
+    metadata = null;
   }
 }
 
@@ -197,6 +249,8 @@ void main() {
         addTearDown(container.dispose);
 
         final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
         // Mulai login yang tertahan secara asinkron
         final loginFuture = controller.login(
@@ -221,8 +275,9 @@ void main() {
         );
         final loginSuccess = await loginFuture;
 
-        // Token tidak boleh di-commit, login dinyatakan gagal, state tetap signed out
-        expect(loginSuccess, isFalse);
+        // Token tidak boleh di-commit, login dinyatakan dibatalkan, state tetap signed out
+        expect(loginSuccess.isSuccess, isFalse);
+        expect(loginSuccess.status, equals(AuthCommandStatus.cancelled));
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
         expect(await storage.readRefreshToken(), isNull);
         expect(await storage.getRefreshToken(), isNull);
@@ -240,6 +295,15 @@ void main() {
           restoreCompleter: restoreCompleter,
         );
         final storage = _InMemoryTokenStorage();
+        await storage.write(
+          const StoredCredential(
+            credentialId: 'cred-a07',
+            refreshToken: 'token-a07',
+          ),
+        );
+        final metadataStore = _FakeSessionMetadataStore(
+          SessionMetadata.restoreEnabled('cred-a07'),
+        );
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final skStore = RememberedSkStore(
@@ -251,6 +315,7 @@ void main() {
           overrides: [
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             rememberedSkStoreProvider.overrideWithValue(skStore),
             preferencesProvider.overrideWithValue(prefs),
           ],
@@ -263,6 +328,8 @@ void main() {
         final f1 = controller.bootstrap();
         final f2 = controller.bootstrap();
         final f3 = controller.bootstrap();
+
+        await pumpEventQueue();
 
         // Hanya 1 restore session request yang dikirimkan ke repository
         expect(repo.restoreCallCount, equals(1));
@@ -370,14 +437,15 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 5. Penanganan StorageException beralih ke AuthTemporarilyUnavailable (Menutup A-05)
+    // 5. Penanganan StorageException beralih ke AuthSignedOut(failed) (Menutup A-05 & Row 3)
     // -------------------------------------------------------------------------
     test(
-      '5. Skenario A-05: StorageException pada pembacaan token dialihkan ke AuthTemporarilyUnavailable dengan reason jujur',
+      '5. Skenario A-05: StorageException pada pembacaan token dialihkan ke AuthSignedOut(failed) sesuai Bootstrap Truth Table Row 3',
       () async {
         final storage = _InMemoryTokenStorage()
           ..shouldThrow = true
           ..throwMessage = 'Penyimpanan hardware keystore tidak merespons.';
+        final metadataStore = _FakeSessionMetadataStore();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final skStore = RememberedSkStore(
@@ -394,6 +462,7 @@ void main() {
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             rememberedSkStoreProvider.overrideWithValue(skStore),
             authRepositoryProvider.overrideWithValue(repo),
           ],
@@ -404,10 +473,9 @@ void main() {
         await controller.bootstrap();
 
         final state = container.read(authControllerProvider);
-        expect(state, isA<AuthTemporarilyUnavailable>());
         expect(
-          (state as AuthTemporarilyUnavailable).reason,
-          'Penyimpanan hardware keystore tidak merespons.',
+          state,
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
         );
       },
     );
@@ -703,6 +771,413 @@ void main() {
 
         expect(p1, isNot(equals(pDifferentDistrict)));
         expect(p1.hashCode, isNot(equals(pDifferentDistrict.hashCode)));
+      },
+    );
+  });
+
+  group('Fault-Injection Suite (FT-01 s/d FT-08)', () {
+    late SharedPreferences prefs;
+    late RememberedSkStore skStore;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      prefs = await SharedPreferences.getInstance();
+      skStore = RememberedSkStore(prefs: prefs, key: 'test_hardening_sk');
+    });
+
+    // FT-01: Metadata pending login gagal -> tidak ada credential baru; state unavailable
+    test(
+      'FT-01: Metadata pending login gagal -> tidak ada credential baru, state AuthTemporarilyUnavailable',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        // Gagalkan penulisan pertama saat login (penulisan metadata pending)
+        metadataStore.throwOnWriteCallIndex = 1;
+
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final result = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.status, equals(AuthCommandStatus.failed));
+        expect(
+          container.read(authControllerProvider),
+          isA<AuthTemporarilyUnavailable>(),
+        );
+        expect(storage.credential, isNull);
+        expect(controller.signInPhase, equals(SignInPhase.idle));
+      },
+    );
+
+    // FT-02: Credential write melempar -> metadata failed; state failed
+    test(
+      'FT-02: Credential write melempar -> metadata failed, state AuthSignedOut(failed)',
+      () async {
+        final storage = _InMemoryTokenStorage()..shouldThrowOnWrite = true;
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final result = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.status, equals(AuthCommandStatus.failed));
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+        expect(
+          metadataStore.metadata,
+          equals(const SessionMetadata.cleanupFailed()),
+        );
+        expect(controller.signInPhase, equals(SignInPhase.idle));
+      },
+    );
+
+    // FT-03: Epoch berubah setelah credential write -> rollback owned credential
+    test(
+      'FT-03: Epoch berubah setelah credential write -> rollback owned credential',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        final generator = DeterministicCredentialIdGenerator('ft03');
+        late ProviderContainer container;
+
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+            credentialIdGeneratorProvider.overrideWithValue(generator),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        // Saat write credential dieksekusi, picu perubahan epoch sebelum commit memeriksa epoch
+        Future<LogoutResult>? logoutFuture;
+        storage.onWriteHook = () {
+          logoutFuture = controller.logout();
+        };
+
+        final result = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+
+        await logoutFuture;
+
+        expect(result.status, equals(AuthCommandStatus.cancelled));
+        // Kredensial yang sempat ditulis harus di-rollback
+        expect(storage.credential, isNull);
+        expect(storage.clearIfOwnedCallCount, greaterThanOrEqualTo(1));
+      },
+    );
+
+    // FT-04: Metadata final gagal -> rollback; clean hanya bila rollback+metadata sukses
+    test(
+      'FT-04: Metadata final gagal -> rollback credential dan set clean bila rollback+clean sukses',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        // Gagal saat penulisan ke-2 (penulisan metadata restore-enabled)
+        metadataStore.throwOnWriteCallIndex = 2;
+
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final result = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.status, equals(AuthCommandStatus.failed));
+        // Credential di-rollback
+        expect(storage.credential, isNull);
+        expect(storage.clearIfOwnedCallCount, equals(1));
+        // Karena rollback dan penulisan metadata clean berikutnya berhasil -> clean
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean)),
+        );
+      },
+    );
+
+    // FT-05: clearIfOwnedBy false -> credential lain tetap utuh; state failed
+    test(
+      'FT-05: clearIfOwnedBy return false saat logout -> foreign credential utuh, state failed',
+      () async {
+        final foreignCred = const StoredCredential(
+          credentialId: 'foreign-cred-999',
+          refreshToken: 'foreign-token',
+        );
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        // Login sukses terlebih dahulu
+        final loginRes = await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+        expect(loginRes.isSuccess, isTrue);
+
+        // Ubah kredensial di storage menjadi milik foreign credential
+        storage.credential = foreignCred;
+
+        // Logout dipanggil
+        final logoutRes = await controller.logout();
+
+        // Ownership mismatch:
+        expect(logoutRes.credentialCleared, isFalse);
+        expect(storage.credential, equals(foreignCred));
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+      },
+    );
+
+    // FT-06: Restore expired dan cleanup gagal -> state failed
+    test(
+      'FT-06: Restore expired dan clearIfOwnedBy gagal -> AuthSignedOut(failed)',
+      () async {
+        final expiredCred = const StoredCredential(
+          credentialId: 'cred-expired-ft06',
+          refreshToken: 'token-expired',
+        );
+        final storage = _InMemoryTokenStorage()
+          ..credential = expiredCred
+          ..clearIfOwnedOverride = false;
+        final metadataStore = _FakeSessionMetadataStore(
+          SessionMetadata.restoreEnabled('cred-expired-ft06'),
+        );
+        final repo = _ControlledAuthRepository(
+          restoreCompleter: Completer<AuthResult>()
+            ..complete(
+              const AuthResult.failed(SessionExpiredFailure('Expired token')),
+            ),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(repo),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            preferencesProvider.overrideWithValue(prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+      },
+    );
+
+    // FT-07: Token clear sukses, metadata clean gagal -> state failed
+    test(
+      'FT-07: Token clear sukses tetapi metadata clean gagal saat logout -> state failed',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore(
+          const SessionMetadata.signedOutClean(),
+        );
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberSk: false,
+        );
+
+        // Saat logout, izinkan penulisan metadata pending, lalu gagalkan penulisan metadata clean
+        metadataStore.throwOnWriteCallIndex = metadataStore.writeCount + 2;
+
+        final logoutRes = await controller.logout();
+        expect(logoutRes.credentialCleared, isTrue);
+        expect(logoutRes.metadataClean, isFalse);
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+      },
+    );
+
+    // FT-08: Force clear sukses, metadata recovery gagal -> state failed
+    test(
+      'FT-08: Force clear sukses tetapi metadata recovery gagal -> state failed dan return false',
+      () async {
+        final storage = _InMemoryTokenStorage();
+        final metadataStore = _FakeSessionMetadataStore();
+        final authRepo = DemoAuthRepository(
+          tokenStorage: storage,
+          skStore: skStore,
+          simulateLatency: false,
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            authRepositoryProvider.overrideWithValue(authRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        // Force state failed dari read error
+        storage.shouldThrowOnRead = true;
+        await controller.bootstrap();
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
+
+        // Reset storage error, tapi gagalkan write metadata
+        storage.shouldThrowOnRead = false;
+        metadataStore.shouldThrowOnWrite = true;
+
+        final recovered = await controller.retryLocalCredentialCleanup();
+        expect(recovered, isFalse);
+        expect(storage.forceClearCallCount, equals(1));
+        expect(
+          container.read(authControllerProvider),
+          equals(const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed)),
+        );
       },
     );
   });
