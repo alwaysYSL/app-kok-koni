@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/auth/domain/auth_state.dart';
 import 'core/auth/presentation/auth_controller.dart';
+import 'core/auth/presentation/session_signing_out_page.dart';
 import 'core/auth/presentation/session_startup_page.dart';
 import 'core/auth/presentation/session_unavailable_page.dart';
 import 'core/theme.dart';
@@ -29,20 +30,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authControllerProvider);
       final loc = state.matchedLocation;
 
+      if (authState is AuthSigningOut) {
+        return loc == '/signing-out' ? null : '/signing-out';
+      }
       if (authState is AuthBootstrapping) {
         return loc == '/session' ? null : '/session';
       }
       if (authState is AuthTemporarilyUnavailable) {
         return loc == '/session-unavailable' ? null : '/session-unavailable';
       }
-      if (authState is AuthSignedOut) {
+      if (authState is! AuthSignedIn) {
         return loc == '/login' ? null : '/login';
       }
-      if (authState is AuthSignedIn) {
-        if (loc == '/login' || loc == '/session' || loc == '/session-unavailable') {
-          return '/home';
-        }
-        return null;
+
+      const authGates = {'/login', '/session', '/session-unavailable', '/signing-out'};
+      if (authGates.contains(loc)) {
+        return '/home';
       }
       return null;
     },
@@ -54,8 +57,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const SessionStartupPage(),
       ),
       GoRoute(
+        path: '/signing-out',
+        builder: (context, state) => const SessionSigningOutPage(),
+      ),
+      GoRoute(
         path: '/session-unavailable',
-        builder: (_, _) => const SessionUnavailablePage(),
+        builder: (context, state) {
+          final authState = ref.read(authControllerProvider);
+          final reason = (authState is AuthTemporarilyUnavailable)
+              ? authState.reason
+              : state.uri.queryParameters['reason'];
+          return SessionUnavailablePage(reason: reason);
+        },
       ),
       StatefulShellRoute.indexedStack(
         builder: (_, s, shell) => _NavigationShell(shell: shell),

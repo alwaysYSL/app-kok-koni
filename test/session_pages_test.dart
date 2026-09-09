@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
+import 'package:kok_app/core/auth/presentation/session_signing_out_page.dart';
 import 'package:kok_app/core/auth/presentation/session_startup_page.dart';
 import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
 import 'package:kok_app/core/theme.dart';
@@ -126,5 +127,48 @@ void main() {
 
     await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
     expect(mockController.logoutCalled, isTrue);
+  });
+
+  testWidgets('SessionSigningOutPage menampilkan teks Mengeluarkan Akun dan pattern KOK', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SessionSigningOutPage(),
+      ),
+    );
+
+    expect(find.text('Mengeluarkan Akun'), findsOneWidget);
+    expect(find.text('Membersihkan sesi lokal dan mengamankan data...'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
+  testWidgets('SessionUnavailablePage menampilkan custom reason saat diberikan', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SessionUnavailablePage(
+          reason: 'Penyimpanan hardware keystore tidak merespons.',
+          onRetry: () {},
+          onSignOut: () {},
+        ),
+      ),
+    );
+
+    expect(find.text('Penyimpanan hardware keystore tidak merespons.'), findsOneWidget);
+  });
+
+  testWidgets('Semua teks pada SessionSigningOutPage memiliki ukuran font >= 12px', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: SessionSigningOutPage(),
+      ),
+    );
+
+    final textWidgets = tester.widgetList<Text>(find.byType(Text));
+    expect(textWidgets, isNotEmpty);
+    for (final text in textWidgets) {
+      final fontSize = text.style?.fontSize;
+      expect(fontSize, isNotNull);
+      expect(fontSize!, greaterThanOrEqualTo(12.0),
+          reason: 'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize');
+    }
   });
 }

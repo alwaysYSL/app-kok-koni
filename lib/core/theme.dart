@@ -18,6 +18,7 @@ abstract final class KokColors {
   /// Biru tua (#123A75) - Teks di atas biru, label penegas
   static const ink = Color(0xFF173D75);
   static const navy = Color(0xFF071B68);
+  static const primaryNavy = navy;
   static const deepNavy = Color(0xFF0C2464);
 
   /// Biru sedang (#4D7FC9) - Bar data, ikon, garis aktif
