@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
-import 'package:kok_app/core/session.dart';
+import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/profile_page.dart';
@@ -24,11 +24,11 @@ class _FakeProfileAuthController extends AuthController {
   }
 }
 
-const testUser = UserPrincipal(
+final testUser = UserPrincipal(
   id: 'usr-garut-kota-001',
   skNumber: 'DEMO-001',
-  name: 'Pak Asep',
-  role: 'Koordinator Kecamatan',
+  fullName: 'Pak Asep',
+  roleTitle: 'Koordinator Kecamatan',
   districtId: 'garut_kota',
   districtName: 'Kecamatan Garut Kota',
   permissions: {'sports:read'},
@@ -39,8 +39,9 @@ Widget buildTestableProfileWidget({
   KokSnapshot? snapshot,
   SharedPreferences? preferences,
   GoRouter? router,
-  UserPrincipal user = testUser,
+  UserPrincipal? user,
 }) {
+  final currentUser = user ?? testUser;
   final snap = snapshot ??
       KokSnapshot(
         clubs: const [
@@ -95,7 +96,7 @@ Widget buildTestableProfileWidget({
 
   return ProviderScope(
     overrides: [
-      authControllerProvider.overrideWith(() => _FakeProfileAuthController(user)),
+      authControllerProvider.overrideWith(() => _FakeProfileAuthController(currentUser)),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
         preferencesProvider.overrideWithValue(preferences),
@@ -112,7 +113,7 @@ Future<void> pumpProfilePage(
   KokSnapshot? snapshot,
   SharedPreferences? preferences,
   GoRouter? router,
-  UserPrincipal user = testUser,
+  UserPrincipal? user,
 }) async {
   tester.view.physicalSize = const Size(390, 1200);
   tester.view.devicePixelRatio = 1;

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/auth/domain/auth_state.dart';
 import '../core/auth/presentation/auth_controller.dart';
-import '../core/session.dart';
 import '../core/theme.dart';
 import 'login_decorations.dart';
 
@@ -46,6 +45,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _submit() async {
+    if (_busy) return;
     if (!_form.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
     setState(() {
@@ -59,15 +59,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             staySignedIn: _staySignedIn,
             rememberSk: _remember,
           );
-      if (ok) {
-        try {
-          await ref.read(sessionProvider.notifier).signIn(
-                _sk.text.trim(),
-                _password.text,
-                _remember,
-              );
-        } catch (_) {}
-      } else if (mounted) {
+      if (!ok && mounted) {
         final authState = ref.read(authControllerProvider);
         if (authState is AuthSignedOut && authState.errorMessage != null) {
           setState(() => _error = authState.errorMessage);

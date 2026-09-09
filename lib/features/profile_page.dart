@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/auth/domain/user_principal.dart';
 import '../core/auth/presentation/auth_controller.dart';
-import '../core/session.dart';
+import '../core/preferences.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/repository.dart';
@@ -540,9 +540,6 @@ Status: Terdaftar pada Sistem KOK Garut Kota''';
                         onPressed: () {
                           Navigator.of(dialogContext).pop();
                           ref.read(authControllerProvider.notifier).logout();
-                          try {
-                            ref.read(sessionProvider.notifier).signOut();
-                          } catch (_) {}
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFDC2626),
