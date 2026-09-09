@@ -130,37 +130,37 @@ void main() {
       );
 
       const context1 = DataRequestContext(
-        environment: AppEnvironment.demo,
+        environment: AppEnv.demo,
         userId: 'usr_001',
         scope: scopeA,
         generation: 1,
       );
       const context2 = DataRequestContext(
-        environment: AppEnvironment.demo,
+        environment: AppEnv.demo,
         userId: 'usr_001',
         scope: scopeA,
         generation: 1,
       );
       const contextDiffEnv = DataRequestContext(
-        environment: AppEnvironment.staging,
+        environment: AppEnv.staging,
         userId: 'usr_001',
         scope: scopeA,
         generation: 1,
       );
       const contextDiffUser = DataRequestContext(
-        environment: AppEnvironment.demo,
+        environment: AppEnv.demo,
         userId: 'usr_002',
         scope: scopeA,
         generation: 1,
       );
       const contextDiffScope = DataRequestContext(
-        environment: AppEnvironment.demo,
+        environment: AppEnv.demo,
         userId: 'usr_001',
         scope: scopeB,
         generation: 1,
       );
       const contextDiffGen = DataRequestContext(
-        environment: AppEnvironment.demo,
+        environment: AppEnv.demo,
         userId: 'usr_001',
         scope: scopeA,
         generation: 2,

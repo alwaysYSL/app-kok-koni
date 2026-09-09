@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../config/app_environment.dart';
+import '../../composition/app_composition.dart';
 import '../../preferences.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
@@ -16,7 +16,14 @@ import '../domain/user_principal.dart';
 
 export '../data/auth_repository.dart' show RemoteRevocationStatus;
 
+String get _defaultEnvName =>
+    DeploymentProfile.fromEnvironment().environment.name;
+
 final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.authTokenStorage;
+  }
   return SecureAuthTokenStorage(
     store: const FlutterSecureKeyValStore(
       FlutterSecureStorage(
@@ -24,16 +31,20 @@ final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {
         iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
       ),
     ),
-    key: 'kok.auth.v2.${currentEnvironment.name}.credential',
+    key: 'kok.auth.v2.$_defaultEnvName.credential',
   );
 });
 
 final sessionMetadataStoreProvider = Provider<SessionMetadataStore>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.sessionMetadataStore;
+  }
   try {
     final prefs = ref.watch(preferencesProvider);
     return SharedPrefsSessionMetadataStore(
       prefs: prefs,
-      key: 'kok.auth.v2.${currentEnvironment.name}.metadata',
+      key: 'kok.auth.v2.$_defaultEnvName.metadata',
     );
   } catch (_) {
     return _FallbackSessionMetadataStore();
@@ -58,14 +69,26 @@ class _FallbackSessionMetadataStore implements SessionMetadataStore {
 }
 
 final rememberedSkStoreProvider = Provider<RememberedSkStore>((ref) {
-  final prefs = ref.watch(preferencesProvider);
-  return RememberedSkStore(
-    prefs: prefs,
-    key: 'kok.auth.v2.${currentEnvironment.name}.remembered_sk',
-  );
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.rememberedSkStore;
+  }
+  try {
+    final prefs = ref.watch(preferencesProvider);
+    return RememberedSkStore(
+      prefs: prefs,
+      key: 'kok.auth.v2.$_defaultEnvName.remembered_sk',
+    );
+  } catch (_) {
+    return RememberedSkStore(key: 'kok.auth.v2.$_defaultEnvName.remembered_sk');
+  }
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.authRepository;
+  }
   return DemoAuthRepository(
     tokenStorage: ref.watch(authTokenStorageProvider),
     skStore: ref.watch(rememberedSkStoreProvider),
@@ -73,6 +96,10 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 });
 
 final credentialIdGeneratorProvider = Provider<CredentialIdGenerator>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.credentialIdGenerator;
+  }
   return UuidCredentialIdGenerator();
 });
 
@@ -661,6 +688,13 @@ class AuthController extends Notifier<AuthState> {
   Future<LogoutResult> logout({
     Duration revocationTimeout = const Duration(seconds: 5),
   }) async {
+    final compositionTimeout = ref
+        .read(appCompositionProvider)
+        ?.revocationTimeout;
+    final effectiveTimeout = (revocationTimeout != const Duration(seconds: 5))
+        ? revocationTimeout
+        : (compositionTimeout ?? revocationTimeout);
+
     final remoteHandle = _activeRemoteHandle;
     final activeCredentialId = _activeCredentialId;
 
@@ -736,7 +770,7 @@ class AuthController extends Notifier<AuthState> {
       try {
         revocationResult = await repo
             .revokeSession(remoteHandle)
-            .timeout(revocationTimeout);
+            .timeout(effectiveTimeout);
       } on TimeoutException {
         revocationResult = const RemoteRevocationResult(
           RemoteRevocationStatus.failed,

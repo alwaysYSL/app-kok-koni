@@ -11,6 +11,7 @@ import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_document_tab.dart';
@@ -20,6 +21,27 @@ import 'package:kok_app/features/home_page.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
+
+class _FakeSecureKeyValStore implements SecureKeyValStore {
+  final Map<String, String> _data = {};
+
+  @override
+  Future<String?> read({required String key}) async => _data[key];
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _data[key] = value;
+  }
+
+  @override
+  Future<void> delete({required String key}) async {
+    _data.remove(key);
+  }
+
+  @override
+  Future<bool> containsKey({required String key}) async =>
+      _data.containsKey(key);
+}
 
 class _FakeTokenStorage implements AuthTokenStorage {
   String? _token;
@@ -700,6 +722,39 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Masuk Akun'), findsOneWidget);
         expect(find.text('Klub Garuda Muda'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Alur 6: Startup menggunakan AppComposition.fromProfile berhasil masuk ke flow autentikasi',
+      (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        const profile = DeploymentProfile(
+          environment: AppEnv.demo,
+          authMode: AuthMode.demo,
+          dataMode: DataMode.demo,
+        );
+        final composition = AppComposition.fromProfile(
+          profile,
+          preferences: prefs,
+          secureStore: _FakeSecureKeyValStore(),
+        );
+        final container = ProviderContainer(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            preferencesProvider.overrideWithValue(prefs),
+          ],
+        );
+        addTearDown(container.dispose);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const KokApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Masuk Akun'), findsOneWidget);
       },
     );
   });

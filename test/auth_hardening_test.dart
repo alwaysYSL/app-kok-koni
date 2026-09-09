@@ -5,8 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kok_app/app.dart';
-import 'package:kok_app/core/config/app_environment.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
+import 'package:kok_app/core/config/app_environment.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';

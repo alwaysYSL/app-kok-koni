@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/domain/auth_state.dart';
 import '../../core/auth/domain/user_principal.dart';
 import '../../core/auth/presentation/auth_controller.dart';
-import '../../core/config/app_environment.dart';
+import '../../core/composition/app_composition.dart';
 import '../demo_kok_repository.dart';
 import '../kok_repository.dart';
 import '../models.dart';
@@ -28,7 +28,7 @@ final class DataRequestContext {
     required this.generation,
   });
 
-  final AppEnvironment environment;
+  final AppEnv environment;
   final String userId;
   final AccessScope scope;
   final int generation;
@@ -46,15 +46,23 @@ final class DataRequestContext {
   int get hashCode => Object.hash(environment, userId, scope, generation);
 }
 
-final repositoryProvider = Provider<KokRepository>(
-  (ref) => DemoKokRepository(),
-);
+final repositoryProvider = Provider<KokRepository>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  if (composition != null) {
+    return composition.kokRepository;
+  }
+  return DemoKokRepository();
+});
 
 final dataRequestContextProvider = Provider<DataRequestContext?>((ref) {
   final authState = ref.watch(authControllerProvider);
   if (authState is AuthSignedIn) {
+    final composition = ref.watch(appCompositionProvider);
+    final env =
+        composition?.profile.environment ??
+        DeploymentProfile.fromEnvironment().environment;
     return DataRequestContext(
-      environment: currentEnvironment,
+      environment: env,
       userId: authState.user.id,
       scope: authState.user.scope,
       generation: authState.generation,
