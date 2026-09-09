@@ -1,642 +1,551 @@
 # Auth Hardening & Lifecycle Remediation Implementation Plan (v3 Deterministic)
 
+Tanggal: 2026-09-09
+Status: **Approved for Execution**
+Penulis: Pengembang & Reviewer Teknis
+Spesifikasi acuan: Spesifikasi Final Remediasi Autentikasi & Lifecycle — Tahap A Patch 2
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Menutup seluruh 7 temuan *blocker* (R2-01 s/d R2-07) dan catatan Bagian 5 dari `docs/audit-auth-review-tahap1-kedua.md` dengan mengimplementasikan crash-resilient state machine, serialisasi mutasi storage via ID ownership guard, pembatalan login `cancelSignIn()` dengan `SignInPhase`, metadata fail-closed `SessionMetadata` berbasis `restoreAllowed`, pemetaan 3 akun demo konsisten (termasuk DEMO-003 county 5 cabor unik), request cancellation end-to-end, composition root bebas cycle, dan audit kejujuran UI.
+**Goal:** Menutup R2-01 s/d R2-07 dan catatan konsistensi Bagian 5 melalui state machine crash-resilient, storage ownership guard, typed failure handling, explicit scope, stale-result rejection, composition root fail-closed, serta UI yang jujur.
 
-**Architecture:** Dua fase mutasi (*Reserve -> Execute -> Commit*) dengan `_mutationQueue` dan `SignInPhase` untuk mencegah race condition commit/clear; `SessionMetadata` single-record JSON di `SharedPreferences` mengunci status pembersihan dan verifikasi `restoreAllowed`; controller memiliki kepemilikan mutlak atas storage sementara repository menghasilkan `RemoteSessionHandle` privat; `RequestCancellation` guarding data snapshot; dan composition root modular bebas dependency cycle (`core/config/`, `core/composition/`, `data/`).
+**Architecture:** `Reserve → Execute → Commit`; satu mutation queue untuk storage lokal; `SignInPhase` internal; `SessionMetadata` sebagai restore gate; `RemoteSessionHandle` privat; `DataRequestContext` sebagai cache/lifecycle identity; adapter storage dan repository dapat diinjeksi.
 
-**Tech Stack:** Flutter 3.x, Dart 3.12.x, flutter_riverpod 3.4.3 (pinned di `pubspec.lock`), go_router 17.5.0 (pinned di `pubspec.lock`), shared_preferences 2.5.5 (pinned di `pubspec.lock`), flutter_secure_storage 9.2.4 (pinned di `pubspec.lock`).
+**Dependency baseline yang harus diverifikasi dari `pubspec.lock`:** Dart SDK sesuai `pubspec.yaml`, `flutter_riverpod 3.4.3`, `go_router 17.5.0`, `shared_preferences 2.5.5`, dan `flutter_secure_storage 9.2.4`. Nilai aktual hasil resolver yang berlaku; jangan mengubah versi sebagai bagian remediasi kecuali diperlukan dan direview terpisah.
+
+---
 
 ## Global Constraints
 
-- Sesuai dengan spesifikasi final `docs/superpowers/specs/2026-09-09-auth-hardening-lifecycle-remediation-design.md`.
-- Setiap task commit **wajib menjaga repository tetap hijau** (`flutter analyze` 0 issues dan test suite task terkait lulus 100%).
-- Seluruh teks pada komponen antarmuka memiliki ukuran font >= 12px (diaudit ketat di Task 8 & 9).
-- Warna teks judul kartu utama menggunakan `KokColors.cardTitle` (`#141414`) dari `lib/core/theme.dart`.
-- Tombol kembali konsisten menggunakan `Icons.chevron_left` dengan `size: 28` dan warna `KokColors.cardTitle`.
-- Tidak mengubah struktur 5 tab navigasi bawah (Beranda, Cabor, Klub, Anggota, Profil/Akun).
-- Pesan error login publik selalu generik: "Nomor SK atau kata sandi tidak sesuai."
-- Fail-closed principle: segala anomali metadata, unauthenticated data fetch, atau konfigurasi ilegal ditolak keras.
+- Seluruh perubahan mengikuti spesifikasi acuan di atas.
+- Tidak menebak endpoint, issuer, client ID, atau kontrak SICABOR.
+- Tidak menambahkan plaintext token fallback.
+- Setiap key/namespace wajib eksplisit dan environment-scoped.
+- Raw token tidak masuk state publik, log, assertion message, atau fixture snapshot.
+- Semua breaking change disertai migration sweep pada task yang sama.
+- `dart format`, `flutter analyze`, dan test terdampak wajib lulus sebelum commit.
+- Setelah Task 1, 2, 3, 5, 7, dan 8, jalankan full `flutter test` karena task tersebut mengubah kontrak lintas-layer.
+- Hasil test/build merupakan target sampai benar-benar dijalankan; jangan menuliskannya sebagai fakta sebelum ada output runtime.
 
 ---
 
-### Task 0: Baseline Verification & Environment Lock
+## Task 0 — Baseline Verification & Environment Lock
 
-**Files:**
-- Read/Verify: `pubspec.yaml`, `pubspec.lock`
+**Files:** `pubspec.yaml`, `pubspec.lock`, status Git, seluruh test yang sudah ada.
 
-**Interfaces:**
-- Memastikan environment kerja bersih dan mencatat baseline aktual test suite dan analyzer.
+- [ ]  Catat `flutter --version` dan `dart --version`.
+- [ ]  Jalankan `flutter pub get` tanpa mengubah dependency yang tidak terkait.
+- [ ]  Jalankan baseline analyzer dan test.
+- [ ]  Catat jumlah test aktual, failure bila ada, dan durasi; jangan memakai angka hardcoded.
+- [ ]  Pastikan working tree bersih dan buat branch implementasi.
 
-- [ ] **Step 1: Jalankan static analysis awal**
+```bash
+flutter --version
+dart --version
+flutter pub get
+flutter analyze
+flutter test
+git status --short
+git switch -c feat/auth-hardening-patch-2
+```
 
-Run: `flutter analyze`
-Expected: `No issues found!`
-
-- [ ] **Step 2: Jalankan full test suite awal dan catat baseline**
-
-Run: `flutter test`
-Expected: Seluruh test suite baseline lulus 100% (168 tests lulus).
-
-- [ ] **Step 3: Pastikan working directory bersih**
-
-Run: `git status`
-Expected: `nothing to commit, working tree clean`.
+**Gate:** baseline harus hijau atau seluruh failure existing harus didokumentasikan dan dipisahkan dari remediasi.
 
 ---
 
-### Task 1: Pure Domain Models, Defensive Permissions, & CredentialIdGenerator
+## Task 1 — Pure Domain Models, Defensive Permissions, & Credential IDs
 
-**Files:**
+### Files
+
 - Modify: `lib/core/auth/domain/user_principal.dart`
 - Modify: `lib/core/auth/domain/auth_state.dart`
 - Create: `lib/core/auth/domain/credential_id_generator.dart`
-- Modify (Sweep): `lib/core/auth/data/demo_auth_repository.dart`
-- Modify (Sweep): `lib/core/auth/presentation/auth_controller.dart`
-- Modify (Sweep): `lib/data/repository.dart`
-- Modify: `test/user_principal_test.dart`
+- Modify: `lib/core/auth/data/demo_auth_repository.dart`
+- Modify: `lib/core/auth/presentation/auth_controller.dart`
+- Modify: `lib/data/repository.dart` sebagai compatibility layer sementara
+- Modify tests: `user_principal_test.dart`, `auth_token_storage_test.dart`, `auth_hardening_test.dart`, `profile_page_test.dart`, `auth_controller_test.dart`, `home_page_test.dart`, `app_test.dart`
 - Create: `test/credential_id_generator_test.dart`
-- Modify (Sweep): `test/auth_token_storage_test.dart`, `test/auth_hardening_test.dart`, `test/profile_page_test.dart`, `test/auth_controller_test.dart`, `test/home_page_test.dart`
 
-**Interfaces:**
-- Consumes: None (Pure Dart Domain Layer)
-- Produces:
-  - `AccessScopeType` (`district`, `county`)
-  - `AccessScope(type, id, name)` dengan equality & hashCode berbasis `(type, id)`
-  - `UserPrincipal(id, skNumber, fullName, roleTitle, scope, permissions)` — `scope` WAJIB tanpa default fallback, `permissions` dibungkus `Set.unmodifiable()`
-  - `LocalCleanupStatus` (`clean`, `pending`, `failed`)
-  - `AuthSignedOut(cleanupStatus, message)`
-  - `AuthSignedIn(user, generation)` — `accessToken` DIHAPUS dari state publik
-  - `CredentialIdGenerator` interface, `UuidCredentialIdGenerator` (RFC 4122 v4 dengan `Random.secure()`), dan `DeterministicCredentialIdGenerator`
+### Kontrak yang dihasilkan
 
-- [ ] **Step 1: Tulis failing test di `test/credential_id_generator_test.dart` dan `test/user_principal_test.dart`**
+- `AccessScopeType { district, county }`
+- `AccessScope(type, id, name)` dengan equality `(type, id)` dan strict JSON round-trip
+- `UserPrincipal(..., required scope, permissions)` dengan `Set.unmodifiable`
+- Getter `name`, `role`, `districtId`, dan `districtName` hanya sebagai deprecated compatibility API
+- `AuthSignedIn(user, generation)` tanpa token
+- `CredentialIdGenerator`, generator UUID secure, dan fake deterministik
 
-Di `test/credential_id_generator_test.dart`:
-- `UuidCredentialIdGenerator` menghasilkan UUID RFC 4122 v4 yang valid dan tidak tabrakan.
-- `DeterministicCredentialIdGenerator` menghasilkan sequence terprediksi.
+### Langkah
 
-Di `test/user_principal_test.dart`:
-- `AccessScope` equality berbasis `(type, id)`.
-- `UserPrincipal` mewajibkan `scope` tanpa default fallback.
-- Defensive copy test: mutasi pada Set sumber tidak mengubah `UserPrincipal.permissions`.
+- [ ]  Tulis failing tests untuk equality scope, strict JSON parsing, defensive permission copy, UUID format, dan generator deterministik.
+- [ ]  Implementasikan model domain serta value equality `UserPrincipal` menggunakan `setEquals` dan `Object.hashAllUnordered`.
+- [ ]  Hapus argumen `accessToken:` dari seluruh instansiasi `AuthSignedIn`.
+- [ ]  Migrasikan constructor principal lama ke `scope:` kanonis.
+- [ ]  Pertahankan getter compatibility agar UI lama tetap hijau; beri `@Deprecated`.
+- [ ]  Pastikan raw token tidak berada pada `AuthState`.
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+### Migration sweep
 
-Run: `flutter test test/credential_id_generator_test.dart test/user_principal_test.dart`
-Expected: FAIL compilation error.
-
-- [ ] **Step 3: Implementasikan kode Task 1**
-
-1. Create `lib/core/auth/domain/credential_id_generator.dart`:
-```dart
-import 'dart:math';
-
-abstract interface class CredentialIdGenerator {
-  String generate();
-}
-
-class UuidCredentialIdGenerator implements CredentialIdGenerator {
-  const UuidCredentialIdGenerator();
-
-  @override
-  String generate() {
-    final rnd = Random.secure();
-    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40; // RFC 4122 v4
-    bytes[8] = (bytes[8] & 0x3f) | 0x80; // RFC 4122 variant
-    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}';
-  }
-}
-
-class DeterministicCredentialIdGenerator implements CredentialIdGenerator {
-  int _counter = 0;
-  final String prefix;
-  DeterministicCredentialIdGenerator([this.prefix = 'cred']);
-
-  @override
-  String generate() => '$prefix-${++_counter}';
-}
+```bash
+git grep -n "accessToken:" -- lib test
+git grep -n "districtId:" -- lib test
+git grep -n "districtName:" -- lib test
 ```
 
-2. Modify `lib/core/auth/domain/user_principal.dart`:
-Definisikan `AccessScopeType`, `AccessScope`, dan `UserPrincipal` dengan `permissions = Set.unmodifiable(permissions)`.
+Kemunculan yang tersisa harus disengaja, didokumentasikan, dan bukan constructor principal lama.
 
-3. Modify `lib/core/auth/domain/auth_state.dart`:
-Definisikan `LocalCleanupStatus`, `AuthSignedOut`, dan hapus `accessToken` dari `AuthSignedIn`.
+### Verifikasi
 
-- [ ] **Step 4: Migration Sweep Task 1 (Menjaga Repository Tetap Hijau)**
-
-Perbarui seluruh pemanggil constructor `UserPrincipal` dan `AuthSignedIn` di:
-- `lib/core/auth/data/demo_auth_repository.dart`
-- `lib/core/auth/presentation/auth_controller.dart` (hapus `, accessToken: ...` pada instansiasi `AuthSignedIn`)
-- `lib/data/repository.dart`
-- Seluruh test file yang memakai `districtId:` pada `UserPrincipal`:
-  `test/user_principal_test.dart`, `test/auth_token_storage_test.dart`, `test/auth_hardening_test.dart`, `test/profile_page_test.dart`, `test/auth_controller_test.dart`, `test/home_page_test.dart`.
-
-Verifikasi sweep:
 ```bash
-git grep "districtId:" lib/core/auth/domain/
-```
-Expected: nol kemunculan di domain model.
-
-- [ ] **Step 5: Jalankan formatter, analyzer, dan test Task 1**
-
-Run:
-```bash
-dart format --output=none --set-exit-if-changed lib/core/auth/domain/ test/credential_id_generator_test.dart test/user_principal_test.dart
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test test/credential_id_generator_test.dart test/user_principal_test.dart
+flutter test test/user_principal_test.dart test/credential_id_generator_test.dart \
+  test/auth_controller_test.dart test/auth_hardening_test.dart \
+  test/profile_page_test.dart test/home_page_test.dart test/app_test.dart
+flutter test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 6: Commit Task 1**
+### Checkpoint
 
 ```bash
-git add lib/core/auth/domain/ lib/core/auth/data/ lib/core/auth/presentation/auth_controller.dart lib/data/repository.dart test/
-git commit -m "feat(auth): definisikan AccessScope murni, UserPrincipal defensif, CredentialIdGenerator, dan sweep konsumen"
+git add lib test
+git commit -m "feat(auth): add scoped principals, defensive permissions, and credential IDs"
 ```
 
 ---
 
-### Task 2: Storage Adapters, Parser Ketat, Namespace, & Migrasi Eksplisit (Menutup SC-09, SC-14, SC-20, SC-21)
+## Task 2 — Storage Adapters, Strict Parsers, Namespace, & Legacy Migration
 
-**Files:**
+### Files
+
 - Create: `lib/core/auth/data/secure_key_val_store.dart`
 - Create: `lib/core/auth/data/session_metadata_store.dart`
 - Modify: `lib/core/auth/data/auth_token_storage.dart`
 - Modify: `lib/core/auth/data/remembered_sk_store.dart`
+- Modify: `lib/core/auth/presentation/auth_controller.dart`
 - Create: `test/session_metadata_store_test.dart`
-- Modify: `test/auth_token_storage_test.dart`
-- Modify (Sweep): `lib/core/auth/presentation/auth_controller.dart`, `test/login_page_test.dart`
+- Modify all constructor consumers in:
+    - `test/session_scope_test.dart`
+    - `test/login_page_test.dart`
+    - `test/auth_token_storage_test.dart`
+    - `test/auth_repository_test.dart`
+    - `test/auth_hardening_test.dart`
+    - `test/auth_controller_test.dart`
+    - `test/app_test.dart`
 
-**Interfaces:**
-- Consumes: `SharedPreferences`, `FlutterSecureStorage`
-- Produces:
-  - `StorageException`, `CorruptCredentialException`, `MetadataStorageException`, `CorruptMetadataException`
-  - `SecureKeyValStore` interface dan `FlutterSecureKeyValStore` implementation
-  - `StoredCredential(credentialId, refreshToken)` dengan batas 128/8192 chars
-  - `AuthTokenStorage` (`read()`, `write()`, `clearIfOwnedBy()`, `forceClearForRecovery()`, `migrateLegacyStorage()`)
-  - `SecureAuthTokenStorage({required String namespace, required SecureKeyValStore secureStore})` tanpa default
-  - `SessionMetadataStore` & `SharedPrefsSessionMetadataStore({required SharedPreferences preferences, required String key})`
-  - `RememberedSkStore({required SharedPreferences preferences, required String key})`
+### Kontrak yang dihasilkan
 
-- [ ] **Step 1: Tulis failing test di `test/session_metadata_store_test.dart` dan `test/auth_token_storage_test.dart`**
+- `SecureKeyValStore` dan `FlutterSecureKeyValStore`
+- `StoredCredential` dengan parser strict, batas 128/8192, dan redacted `toString()`
+- `SessionMetadata` dengan private constructor/factory invariant
+- `SessionMetadataStore` yang memeriksa return `setString/remove`
+- `SecureAuthTokenStorage` dengan required namespace dan required adapter
+- `RememberedSkStore` dengan required key
+- `migrateLegacyStorage()` eksplisit; `read()` bebas side effect
 
-Test cases meliputi:
-- `[SC-09]`: Metadata corrupt (schemaVersion beda, tipe salah, field hilang, expectedCredentialId dilarang saat restoreAllowed == false) melempar `CorruptMetadataException`.
-- `[SC-14]`: Ownership guard `clearIfOwnedBy(credentialA)` pada credential B mengembalikan `false` dan tidak menghapus credential B.
-- `[SC-20]`: `migrateLegacyStorage()` menghapus key `v1_kok_refresh_token` secara eksplisit tanpa side effect pada `read()`.
-- `[SC-21]`: `StoredCredential` memvalidasi batas panjang 128 dan 8192 chars. Melebihi batas melempar `CorruptCredentialException`.
-- Fault injection pada `FakeSecureKeyValStore` (simulasi error read/write/delete).
+### Langkah
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+- [ ]  Tulis fake secure key-value store dengan fault injection read/write/delete.
+- [ ]  Tulis test absent vs corrupt untuk credential dan metadata.
+- [ ]  Tulis test tipe non-string, empty string, whitespace, schema unknown, ID terlalu panjang, serta `expectedCredentialId` non-null saat restore false.
+- [ ]  Tulis test actual `SecureAuthTokenStorage`, bukan hanya fake interface.
+- [ ]  Tulis test `clearIfOwnedBy(A)` tidak menghapus B.
+- [ ]  Tulis test migrasi legacy tidak pernah melakukan restore.
+- [ ]  Implementasikan adapter dan parser tanpa mencetak underlying cause/token.
+- [ ]  Gunakan key eksplisit sementara yang tetap berasal dari environment aktif; jangan hardcode demo di provider lintas-environment.
 
-Run: `flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart`
-Expected: FAIL
+### Migration sweep
 
-- [ ] **Step 3: Implementasikan kode Task 2**
-
-1. Create `lib/core/auth/data/secure_key_val_store.dart`.
-2. Modify `lib/core/auth/data/auth_token_storage.dart`.
-3. Create `lib/core/auth/data/session_metadata_store.dart`.
-4. Modify `lib/core/auth/data/remembered_sk_store.dart`.
-
-- [ ] **Step 4: Migration Sweep Task 2 (Menjaga Repository Tetap Hijau)**
-
-Perbarui instansiasi `SecureAuthTokenStorage` dan `RememberedSkStore` di `lib/core/auth/presentation/auth_controller.dart` dan `test/login_page_test.dart` agar memberikan parameter `namespace:` dan `key:` secara eksplisit:
-```dart
-final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {
-  return const SecureAuthTokenStorage(
-    namespace: 'kok.auth.v2.demo.credential',
-    secureStore: FlutterSecureKeyValStore(),
-  );
-});
-```
-Verifikasi sweep:
 ```bash
-git grep "RememberedSkStore()" lib test
-git grep "SecureAuthTokenStorage()" lib test
+git grep -n "RememberedSkStore(" -- lib test
+git grep -n "SecureAuthTokenStorage(" -- lib test
+git grep -n "v1_kok_refresh_token" -- lib test
 ```
-Expected: nol kemunculan tanpa argumen.
 
-- [ ] **Step 5: Jalankan formatter, analyzer, dan test Task 2**
+Periksa setiap constructor memiliki dependency/key yang lengkap. Legacy key hanya boleh berada pada implementasi migrasi dan test terkait.
 
-Run:
+### Verifikasi
+
 ```bash
-dart format --output=none --set-exit-if-changed lib/core/auth/data/ test/session_metadata_store_test.dart test/auth_token_storage_test.dart
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart
+flutter test test/session_metadata_store_test.dart test/auth_token_storage_test.dart \
+  test/login_page_test.dart test/auth_repository_test.dart \
+  test/auth_hardening_test.dart test/auth_controller_test.dart test/app_test.dart
+flutter test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 6: Commit Task 2**
+### Checkpoint
 
 ```bash
-git add lib/core/auth/data/ lib/core/auth/presentation/auth_controller.dart test/session_metadata_store_test.dart test/auth_token_storage_test.dart test/login_page_test.dart
-git commit -m "feat(auth): terapkan SecureKeyValStore, SessionMetadataStore strict fail-closed, dan migrasi sweep storage"
+git add lib test
+git commit -m "feat(auth): add strict credential and session metadata storage"
 ```
 
 ---
 
-### Task 3: Repository Auth, RemoteSessionHandle, & Dataset Demo Kabupaten (Menutup SC-17, SC-18, SC-19, SC-22)
+## Task 3 — Repository Contracts, RemoteSessionHandle, & Scoped Dataset
 
-**Files:**
+### Files
+
 - Modify: `lib/core/auth/data/auth_repository.dart`
 - Modify: `lib/core/auth/data/demo_auth_repository.dart`
 - Create: `lib/data/kok_repository.dart`
 - Create: `lib/data/demo_kok_repository.dart`
-- Modify: `lib/data/models.dart` (tambahkan `AccessScope scope` ke `KokSnapshot` dan re-run build_runner)
-- Modify: `test/auth_repository_test.dart`
-- Modify: `test/repository_test.dart`
-- Modify (Sweep 11 files): `test/sports_page_test.dart`, `test/sport_detail_test.dart`, `test/search_page_test.dart`, `test/profile_page_test.dart`, `test/home_page_test.dart`, `test/committee_page_test.dart`, `test/attention_page_test.dart`, `test/athlete_detail_test.dart`, `test/auth_hardening_test.dart`
+- Modify: `lib/data/models.dart`
+- Regenerate: `lib/data/models.freezed.dart`, `lib/data/models.g.dart`
+- Modify: `lib/data/repository.dart` sebagai compatibility barrel
+- Modify tests using `fetch()`/`fetchDistrict()`:
+    - `sports_page_test.dart`, `sport_detail_test.dart`, `search_page_test.dart`
+    - `profile_page_test.dart`, `home_page_test.dart`, `committee_page_test.dart`
+    - `attention_page_test.dart`, `athlete_detail_test.dart`
+    - `auth_hardening_test.dart`, `auth_repository_test.dart`, `repository_test.dart`
 
-**Interfaces:**
-- Consumes: `AccessScope`, `UserPrincipal`
-- Produces:
-  - `RemoteSessionHandle(revocationToken)`
-  - `RemoteRevocationStatus` (`revoked`, `notApplicable`, `failed`)
-  - `RemoteRevocationResult`
-  - `AuthRepository.restoreSession(String refreshToken)`
-  - `AuthRepository.revokeSession(RemoteSessionHandle session)`
-  - `DemoAuthRepository` 3-token table (`token_usr_garut_kota`, `token_usr_tarogong_kidul`, `token_usr_koni_kab`)
-  - `KokSnapshot(scope, clubs, people, committee, loadedAt)`
-  - `KokRepository.fetchScope(AccessScope scope, {RequestCancellation? cancellation})`
-  - `DemoKokRepository` dataset county 5 cabor unik (`Sepak Bola`, `Bulu Tangkis`, `Pencak Silat`, `Bola Voli`, `Renang`), 9 klub, 213 atlet, 18 pelatih dihitung dinamis.
+### Kontrak yang dihasilkan
 
-- [ ] **Step 1: Tulis failing test di `test/auth_repository_test.dart` dan `test/repository_test.dart`**
+- `RemoteSessionHandle` strict dan redacted
+- `AuthRepository.revokeSession(RemoteSessionHandle)`
+- `KokRepository.fetchScope(AccessScope, {RequestCancellation?})`
+- `KokSnapshot` Freezed membawa `AccessScope scope`
+- Dataset county dengan 5 cabor unik, 9 klub, 213 atlet, dan 18 pelatih
+- Unknown scope melempar `UnsupportedScopeException`
 
-Test cases meliputi:
-- `[SC-17]`: Pemetaan `DEMO-003` mengembalikan `usr_koni_kab` dengan scope county dan token `token_usr_koni_kab`.
-- `[SC-18]`: Snapshot kabupaten menghasilkan 5 cabor unik, 9 klub, 213 atlet, 18 pelatih dengan `snapshot.scope.id == 'koni_kab'`.
-- `[SC-19]`: Unknown scope melempar `UnsupportedScopeException`.
-- `[SC-22]`: `RequestCancellation` idempoten.
+### Langkah
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+- [ ]  Tulis failing test tiga login/token mapping dan restore masing-masing akun.
+- [ ]  Tulis test login nonpersisten tetap menghasilkan private remote handle tetapi tidak mewajibkan refresh-token persistence.
+- [ ]  Tambahkan `AccessScope` pada `KokSnapshot` aktual yang memakai Freezed.
+- [ ]  Jalankan build runner dan periksa diff generated code.
+- [ ]  Tambahkan JSON round-trip test yang mempertahankan seluruh scope.
+- [ ]  Buat county snapshot dengan penggabungan fixture dinamis; jangan infer scope dari ID klub.
+- [ ]  Standarisasi nama `Bola Voli`.
+- [ ]  Migrasikan seluruh `fetch()` dan `fetchDistrict()` ke `fetchScope()`.
 
-Run: `flutter test test/auth_repository_test.dart test/repository_test.dart`
-Expected: FAIL
+### Migration sweep
 
-- [ ] **Step 3: Implementasikan kode Task 3**
-
-1. Modify `lib/core/auth/data/auth_repository.dart` & `lib/core/auth/data/demo_auth_repository.dart`.
-2. Update `KokSnapshot` di `lib/data/models.dart` untuk menambahkan `required AccessScope scope` dan jalankan `dart run build_runner build --delete-conflicting-outputs`.
-3. Create `lib/data/kok_repository.dart` dan `lib/data/demo_kok_repository.dart`.
-4. Standarisasi nama cabang olahraga `'Bola Voli'` pada seluruh fixture.
-
-- [ ] **Step 4: Migration Sweep Task 3 (Menjaga Repository Tetap Hijau)**
-
-Migrasikan seluruh pemanggilan legacy `fetch()` dan `fetchDistrict()` di 11 test files:
-- `test/sports_page_test.dart`
-- `test/sport_detail_test.dart`
-- `test/search_page_test.dart`
-- `test/profile_page_test.dart`
-- `test/home_page_test.dart`
-- `test/committee_page_test.dart`
-- `test/attention_page_test.dart`
-- `test/athlete_detail_test.dart`
-- `test/auth_hardening_test.dart`
-- `test/auth_repository_test.dart`
-- `test/repository_test.dart`
-
-Ganti ke `fetchScope(const AccessScope(type: AccessScopeType.district, id: 'garut_kota', name: 'Kecamatan Garut Kota'))` atau scope terkait.
-Verifikasi sweep:
 ```bash
-git grep "\.fetch(" lib test
-git grep "fetchDistrict" lib test
+git grep -nE "\.fetch\(|fetchDistrict|CancelToken" -- lib test
 ```
-Expected: nol pemanggilan legacy API.
 
-- [ ] **Step 5: Jalankan formatter, analyzer, dan test Task 3**
+Expected: tidak ada API lama, kecuali komentar migrasi yang akan dibersihkan pada Task 7.
 
-Run:
+### Verifikasi
+
 ```bash
-dart format --output=none --set-exit-if-changed lib/core/auth/data/ lib/data/ test/
+dart run build_runner build --delete-conflicting-outputs
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test test/auth_repository_test.dart test/repository_test.dart
+flutter test test/auth_repository_test.dart test/repository_test.dart \
+  test/sports_page_test.dart test/sport_detail_test.dart test/search_page_test.dart \
+  test/profile_page_test.dart test/home_page_test.dart test/committee_page_test.dart \
+  test/attention_page_test.dart test/athlete_detail_test.dart test/auth_hardening_test.dart
+flutter test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 6: Commit Task 3**
+### Checkpoint
 
 ```bash
-git add lib/core/auth/data/ lib/data/ test/
-git commit -m "feat(repo): terapkan RemoteSessionHandle, KokSnapshot scoped, dataset kabupaten 5 cabor, dan sweep test callers"
+git add lib test
+git commit -m "feat(repo): add remote session handles and scoped county snapshots"
 ```
 
 ---
 
-### Task 4: Mutation Queue, Truth Table Bootstrap, & Fail-Closed Auto-Login (Menutup SC-03, SC-08, SC-09, SC-15, SC-20)
+## Task 4 — Mutation Queue & Bootstrap Truth Table
 
-**Files:**
+### Files
+
 - Modify: `lib/core/auth/presentation/auth_controller.dart`
 - Modify: `test/auth_controller_test.dart`
 
-**Interfaces:**
-- Consumes: `SessionMetadataStore`, `AuthTokenStorage`, `AuthRepository`, `CredentialIdGenerator`
-- Produces:
-  - Serialized `_enqueueMutation` yang kebal error tanpa deadlock
-  - Truth table bootstrap fail-closed berbasis `restoreAllowed == true`
-  - Migrasi eksplisit storage legacy saat bootstrap
+### Langkah
 
-- [ ] **Step 1: Tulis failing test di `test/auth_controller_test.dart` untuk Queue & Bootstrap**
+- [ ]  Buat fault-injectable controller fixtures untuk metadata, token storage, repository, dan queue.
+- [ ]  Tulis test seluruh bootstrap truth table dari spesifikasi.
+- [ ]  Tulis test queue: mutasi pertama melempar, mutasi berikutnya tetap berjalan.
+- [ ]  Implementasikan mutation tail yang menyampaikan error ke caller tetapi menjaga tail berikutnya sukses.
+- [ ]  Jalankan migrasi legacy sebelum pembacaan v2.
+- [ ]  Bedakan absent, corrupt, read error, restore false, mismatch ID, dan expired session.
+- [ ]  Pada orphan token: force clear + metadata clean menghasilkan clean hanya bila keduanya sukses; selain itu failed.
+- [ ]  Pada expired restore: `clearIfOwnedBy` + metadata clean; failure apa pun menghasilkan failed.
+- [ ]  Bootstrap idempoten dan hanya memiliki satu active Future.
 
-Test cases meliputi:
-- `[SC-15]`: Exception pada antrean mutasi melepaskan lock tanpa deadlock untuk operasi berikutnya.
-- `[SC-03]`: Restart setelah clear gagal (`restoreAllowed: false, cleanupStatus: failed`) menolak auto-login dan set state `AuthSignedOut(failed)`.
-- `[SC-08]`: Crash sebelum `restoreAllowed = true` (`restoreAllowed: false, cleanupStatus: pending`) menolak auto-login.
-- `[SC-20]`: Migrasi legacy storage dijalankan saat bootstrap.
-- Truth table lengkap bootstrap (11 kondisi sesuai spesifikasi Bagian 3.4 B).
+### Verifikasi
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
-
-Run: `flutter test test/auth_controller_test.dart`
-Expected: FAIL
-
-- [ ] **Step 3: Implementasikan kode Task 4 di `auth_controller.dart`**
-
-Implementasikan `_enqueueMutation`, `_runBootstrap()` sesuai truth table lengkap yang memeriksa `metadata.restoreAllowed == true`, dan eksekusi `tokenStorage.migrateLegacyStorage()`.
-
-- [ ] **Step 4: Jalankan formatter, analyzer, dan test Task 4**
-
-Run:
 ```bash
-dart format --output=none --set-exit-if-changed lib/core/auth/presentation/ test/auth_controller_test.dart
+dart format --output=none --set-exit-if-changed lib test/auth_controller_test.dart
 flutter analyze
 flutter test test/auth_controller_test.dart
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 5: Commit Task 4**
+### Checkpoint
 
 ```bash
 git add lib/core/auth/presentation/auth_controller.dart test/auth_controller_test.dart
-git commit -m "feat(auth): terapkan mutation queue serial, truth table bootstrap berbasis restoreAllowed, dan migrasi legacy"
+git commit -m "feat(auth): implement resilient mutation queue and bootstrap truth table"
 ```
 
 ---
 
-### Task 5: Persistent Login, Rollback, cancelSignIn, Logout, & Recovery (Menutup SC-01, SC-02, SC-04, SC-05, SC-06, SC-07, SC-10, SC-11, SC-12, SC-13, SC-16)
+## Task 5 — Login, Logical Cancellation, Logout, & Recovery
 
-**Files:**
+### Files
+
 - Modify: `lib/core/auth/presentation/auth_controller.dart`
+- Modify: `lib/core/auth/data/auth_repository.dart` bila adapter cancellation hook diperlukan
 - Modify: `test/auth_controller_test.dart`
+- Modify: `test/auth_hardening_test.dart`
 
-**Interfaces:**
-- Produces:
-  - `SignInPhase` (`idle`, `executing`, `waitingForCommit`, `committing`)
-  - `login()` dua fase dengan rollback storage
-  - `cancelSignIn()` eksplisit berbasis `SignInPhase`
-  - `logout()` crash-resilient dengan awaiting timeout revocation (5s) untuk sesi persisten & nonpersisten
-  - `retryLocalCredentialCleanup()` idempoten
-  - `LogoutResult`
+### Kontrak yang dihasilkan
 
-- [ ] **Step 1: Tulis failing test di `test/auth_controller_test.dart` untuk Login, Cancel, Logout, & Recovery**
+- `SignInPhase { idle, executing, waitingForCommit, committing }`
+- Typed `AuthCommandResult`/rejection
+- Logical cancellation via typed `Future.any`
+- `LogoutResult(localSessionClosed, credentialCleared, metadataClean, remoteRevocationStatus)`
+- Injectable `revocationTimeout` untuk test cepat
+- Recovery hanya legal dari cleanup failed
 
-Test cases:
-- `[SC-01]`: Logout clear berhasil $\rightarrow$ state signed-out bersih, token kosong, metadata `restoreAllowed = false, cleanupStatus = clean`.
-- `[SC-02]`: Logout clear gagal $\rightarrow$ data terkunci, `cleanupStatus == failed`, metadata `restoreAllowed = false, cleanupStatus = failed`.
-- `[SC-04]`: `retryLocalCredentialCleanup()` berhasil $\rightarrow$ force clear storage, metadata bersih, login diaktifkan kembali.
-- `[SC-05]`: `retryLocalCredentialCleanup()` gagal $\rightarrow$ status tetap failed.
-- `[SC-06]`: Double logout tap $\rightarrow$ hanya satu operasi cleanup storage dijalankan.
-- `[SC-07]`: Percobaan login saat cleanup berlangsung $\rightarrow$ ditolak `AuthCommandRejected(cleanupRequired)`.
-- `[SC-10]`: Local cleanup tetap tuntas dan state signed-out ketika remote revocation timeout (5s).
-- `[SC-11]`: `LogoutResult`: status `notApplicable` terbedakan dari `failed` atau `revoked`.
-- `[SC-12]`: `cancelSignIn()` saat execute jaringan menggantung $\rightarrow$ state kembali ke `AuthSignedOut(clean)`.
-- `[SC-13]`: Revalidasi tiket operasi pasca-antrean commit $\rightarrow$ commit ditolak jika epoch berubah.
-- `[SC-16]`: `cancelSignIn()` ketika phase `committing` ditolak dengan `AuthCommandRejected(operationInProgress)`.
-- Persistence failure matrix tests (8 skenario kegagalan storage).
+### Langkah login
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
+- [ ]  Reserve hanya dari signed-out clean; set phase executing dan simpan ticket.
+- [ ]  Execute repository di luar queue.
+- [ ]  Race result dengan cancel trigger bertipe `AuthResult`.
+- [ ]  Jelaskan bahwa `Future.any()` tidak membatalkan transport; panggil transport cancel hook hanya bila tersedia.
+- [ ]  Set waiting-for-commit, lalu di dalam queue validasi ticket dan set committing sebelum write pertama.
+- [ ]  Login nonpersisten: metadata signed-out clean; session handle hanya di memory.
+- [ ]  Login persisten: metadata pending → credential write → epoch check → metadata restore-enabled.
+- [ ]  Semua jalur mengembalikan phase ke idle.
 
-Run: `flutter test test/auth_controller_test.dart`
-Expected: FAIL
+### Fault-injection FT-01 s/d FT-08
 
-- [ ] **Step 3: Implementasikan kode Task 5 di `auth_controller.dart`**
+- [ ]  FT-01 metadata pending gagal: tidak ada credential; state temporarily unavailable.
+- [ ]  FT-02 credential write ambigu: metadata/state failed.
+- [ ]  FT-03 epoch berubah setelah write: rollback owned credential.
+- [ ]  FT-04 metadata final gagal: rollback; clean hanya bila rollback dan metadata clean sukses.
+- [ ]  FT-05 ownership mismatch: jangan global clear; state failed.
+- [ ]  FT-06 expired restore dan cleanup gagal: failed.
+- [ ]  FT-07 token clear sukses tetapi metadata clean gagal: failed.
+- [ ]  FT-08 force clear sukses tetapi metadata recovery gagal: failed.
 
-Implementasikan `SignInPhase`, `login()` dua fase dengan rollback, `cancelSignIn()`, `logout()`, dan `retryLocalCredentialCleanup()`.
+### Langkah logout/recovery
 
-- [ ] **Step 4: Jalankan formatter, analyzer, dan test Task 5**
+- [ ]  Invalidate session in-memory dan generation sebelum I/O.
+- [ ]  Metadata pending failure tidak boleh menghentikan percobaan local clear dan remote revocation.
+- [ ]  `clearIfOwnedBy == false` diperlakukan sebagai anomaly bila credential awal diketahui ada.
+- [ ]  Publish clean hanya bila credential dan metadata berada pada kondisi aman.
+- [ ]  Await revocation di luar queue dengan timeout injectable; timeout menjadi status failed.
+- [ ]  Recovery mengubah state ke pending, menolak double tap/login, force-clears, lalu menulis metadata clean.
 
-Run:
+### Verifikasi
+
 ```bash
-dart format --output=none --set-exit-if-changed lib/core/auth/presentation/ test/auth_controller_test.dart
+dart format --output=none --set-exit-if-changed lib test/auth_controller_test.dart test/auth_hardening_test.dart
 flutter analyze
-flutter test test/auth_controller_test.dart
+flutter test test/auth_controller_test.dart test/auth_hardening_test.dart
+flutter test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 5: Commit Task 5**
+### Checkpoint
 
 ```bash
-git add lib/core/auth/presentation/auth_controller.dart test/auth_controller_test.dart
-git commit -m "feat(auth): integrasikan SignInPhase, cancelSignIn, rollback storage, dan logout ber-timeout"
+git add lib test/auth_controller_test.dart test/auth_hardening_test.dart
+git commit -m "feat(auth): implement two-phase login, cancellation, logout, and recovery"
 ```
 
 ---
 
-### Task 6: Data Request Lifecycle, RequestCancellation, Stale-Result Guard, & No-Retry Policy (Menutup SC-23, SC-24, SC-25)
+## Task 6 — Data Lifecycle, Request Cancellation, & Stale Guard
 
-**Files:**
+### Files
+
 - Create: `lib/data/providers/snapshot_provider.dart`
-- Modify: `lib/data/repository.dart` (re-export sementara)
+- Modify: `lib/data/kok_repository.dart`
+- Modify: `lib/data/demo_kok_repository.dart`
+- Modify: `lib/data/repository.dart` re-export sementara
 - Modify: `test/session_scope_test.dart`
 
-**Interfaces:**
-- Consumes: `KokRepository`, `authControllerProvider`, `deploymentProfileProvider`
-- Produces:
-  - `DataRequestContext(environment, userId, scope, generation)`
-  - `sessionDataContextProvider`
-  - `snapshotProvider` dengan post-await cancellation check dan no-retry policy untuk error siklus sesi.
+### Langkah
 
-- [ ] **Step 1: Tulis failing test di `test/session_scope_test.dart`**
+- [ ]  Implementasikan `RequestCancellation` dan controller idempoten dengan reason pertama tetap.
+- [ ]  Demo repository memeriksa cancel sebelum dan sesudah setiap delayed `await`.
+- [ ]  Provider membuat token per lifecycle dan cancel pada dispose.
+- [ ]  Setelah fetch selesai, jalankan `throwIfCancelled()` sebelum membaca `ref`.
+- [ ]  Cocokkan `DataRequestContext(environment, userId, scope, generation)` sebelum publish.
+- [ ]  Lifecycle exceptions mengembalikan `null` dari retry callback; error lain memakai `ProviderContainer.defaultRetry`.
+- [ ]  Test transport yang mengabaikan cancellation tetapi menyelesaikan respons lama.
+- [ ]  Pastikan internal cache, bila ada, memakai seluruh `DataRequestContext`, bukan hanya scope ID.
 
-Test cases:
-- `[SC-23]`: Request A in-flight dibatalkan ketika session switch ke B; data B tidak tercemar.
-- `[SC-24]`: Post-await context guard melempar `StaleSessionResultException` jika context berubah saat request berjalan.
-- `[SC-25]`: `snapshotProvider` menonaktifkan retry untuk lifecycle exceptions (`SessionRequiredException`, `RequestCancelledException`, `StaleSessionResultException`, `UnsupportedScopeException`) dan meneruskan error lainnya ke `ProviderContainer.defaultRetry`.
+### Verifikasi
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
-
-Run: `flutter test test/session_scope_test.dart`
-Expected: FAIL
-
-- [ ] **Step 3: Implementasikan kode Task 6**
-
-Create `lib/data/providers/snapshot_provider.dart` dan update `lib/data/repository.dart`.
-
-- [ ] **Step 4: Jalankan formatter, analyzer, dan test Task 6**
-
-Run:
 ```bash
-dart format --output=none --set-exit-if-changed lib/data/ test/session_scope_test.dart
+dart format --output=none --set-exit-if-changed lib/data test/session_scope_test.dart
 flutter analyze
 flutter test test/session_scope_test.dart
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 5: Commit Task 6**
+### Checkpoint
 
 ```bash
-git add lib/data/ test/session_scope_test.dart
-git commit -m "feat(data): bangun snapshotProvider dengan DataRequestContext guard, post-await cancellation, dan no-retry policy"
+git add lib/data test/session_scope_test.dart
+git commit -m "feat(data): reject cancelled and stale cross-session responses"
 ```
 
 ---
 
-### Task 7: Deployment Profile & Composition Root Bebas Cycle (Menutup SC-26, SC-27, SC-28, SC-29)
+## Task 7 — DeploymentProfile, Composition Root, & Import Cleanup
 
-**Files:**
+### Files
+
 - Create: `lib/core/config/deployment_profile.dart`
 - Create: `lib/core/composition/app_composition.dart`
-- Modify: `lib/main.dart`
-- Modify: `lib/app.dart`
-- Modify: `test/app_environment_test.dart`
-- Prune/Cleanup: Hapus compatibility barrel `lib/core/config/app_environment.dart` dan `lib/data/repository.dart` setelah migrasi import tuntas.
+- Modify: `lib/main.dart`, `lib/app.dart`
+- Modify: `test/app_environment_test.dart`, `test/app_test.dart`
+- Migrate all imports from `app_environment.dart` dan `repository.dart`
+- Delete compatibility barrels only after grep is clean
 
-**Interfaces:**
-- Produces:
-  - `DeploymentProfile(environment, authMode, dataMode)`
-  - `AppComposition.fromProfile(profile, preferences: ..., secureStore: ..., credentialIdGenerator: ...)`
-  - Inisialisasi bersih di `main.dart` tanpa circular imports
+### Langkah
 
-- [ ] **Step 1: Tulis failing test di `test/app_environment_test.dart`**
+- [ ]  Implementasikan matriks validasi profile persis seperti spesifikasi.
+- [ ]  Pisahkan profile validation dari adapter availability.
+- [ ]  Inject `SharedPreferences`, `SecureKeyValStore`, `CredentialIdGenerator`, dan `revocationTimeout`.
+- [ ]  Derive auth/data/storage providers dari `appCompositionProvider`.
+- [ ]  `main()` membuat dependency platform dan hanya meng-override composition serta dependency dasar yang memang diperlukan.
+- [ ]  Tulis positive tests untuk profile valid dan negative tests untuk kombinasi ilegal.
+- [ ]  Test namespace credential/metadata/SK terisolasi antar-environment.
+- [ ]  Production remote/remote lolos profile validation tetapi composition fail-closed selama adapter belum tersedia.
+- [ ]  Migrasikan seluruh import dan hapus barrel lama setelah tidak digunakan.
 
-Test cases:
-- `[SC-26]`: Production tanpa remote adapter melempar `StateError`.
-- `[SC-27]`: `dataMode.remote + authMode.demo` ditolak keras di semua env.
-- `[SC-28]`: Demo env wajib adapter demo.
-- `[SC-29]`: Namespace storage credential, metadata, remembered SK terisolasi antar-env.
+### Migration sweep
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
-
-Run: `flutter test test/app_environment_test.dart`
-Expected: FAIL
-
-- [ ] **Step 3: Implementasikan kode Task 7**
-
-1. Create `lib/core/config/deployment_profile.dart`.
-2. Create `lib/core/composition/app_composition.dart`.
-3. Update `lib/main.dart` dan `lib/app.dart`.
-4. Migrasikan seluruh import di `lib/` dan `test/` yang masih merujuk ke file lama, lalu bersihkan barrel sementara.
-
-- [ ] **Step 4: Jalankan formatter, analyzer, dan test Task 7**
-
-Run:
 ```bash
-dart format --output=none --set-exit-if-changed lib/core/ lib/main.dart lib/app.dart test/app_environment_test.dart
-flutter analyze
-flutter test test/app_environment_test.dart
+git grep -n "core/config/app_environment.dart" -- lib test
+git grep -n "data/repository.dart" -- lib test
+git grep -n "appCompositionProvider" -- lib test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 5: Commit Task 7**
+### Verifikasi
 
 ```bash
-git add lib/ test/
-git commit -m "feat(composition): implementasikan AppComposition root bebas cycle dan bersihkan compatibility barrels"
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test test/app_environment_test.dart test/app_test.dart
+flutter test
+```
+
+### Checkpoint
+
+```bash
+git add lib test
+git commit -m "feat(composition): add fail-closed deployment profile and composition root"
 ```
 
 ---
 
-### Task 8: UI Polish, Permission Enforcement, Awaited Actions, & Honest Labels (Menutup SC-30, SC-31)
+## Task 8 — UI, Awaited Actions, Permission Guard, & Honest Labels
 
-**Files:**
+### Files
+
 - Modify: `lib/features/profile_page.dart`
 - Modify: `lib/features/login_page.dart`
-- Modify: `lib/core/auth/presentation/session_unavailable_page.dart`
 - Modify: `lib/features/home_page.dart`
+- Modify: `lib/core/auth/presentation/session_unavailable_page.dart`
 - Modify: `README.md`
-- Modify: `test/profile_page_test.dart`
-- Modify: `test/login_page_test.dart`
-- Modify: `test/session_pages_test.dart`
-- Modify: `test/home_page_test.dart`
+- Modify: `profile_page_test.dart`, `login_page_test.dart`, `home_page_test.dart`, `session_pages_test.dart`
 
-**Interfaces:**
-- Consumes: `currentUserProvider`, `authControllerProvider`
-- Produces:
-  - Seluruh tombol logout di-`await` dan tombol dinonaktifkan saat busy
-  - Tombol retry / logout mencegah double tap
-  - Penegakan izin `reports:export` pada ekspor rekapitulasi (Pak Cecep / DEMO-002 disabled)
-  - Banner peringatan cleanup failed dan tombol "Coba Bersihkan Lagi" di `LoginPage`
-  - Pembersihan klaim aktif SICABOR dan penyajian teks jujur: `'Data demo lokal—belum terhubung dengan SICABOR.'`
-  - Teks akurat keamanan platform pada `README.md`
+### Langkah
 
-- [ ] **Step 1: Tulis failing test di `test/profile_page_test.dart`, `test/login_page_test.dart`, `test/session_pages_test.dart`, `test/home_page_test.dart`**
+- [ ]  Await semua logout dan retry calls.
+- [ ]  Busy state menonaktifkan tombol dan mencegah double tap.
+- [ ]  Cleanup failed menonaktifkan login dan menampilkan banner recovery.
+- [ ]  DEMO-002 melihat tombol rekap disabled; handler memeriksa ulang permission.
+- [ ]  Dokumentasikan bahwa guard Flutter bukan backend authorization boundary.
+- [ ]  Hapus klaim aktif SICABOR; pertahankan kalimat jujur “Data demo lokal—belum terhubung dengan SICABOR.”
+- [ ]  Tandai kontak demo belum diverifikasi.
+- [ ]  Audit font eksplisit, card-title color, back button, dan struktur lima tab.
 
-Test cases:
-- `[SC-30]`: DEMO-002 (tanpa `reports:export`) tombol rekap disabled + handler double-check memblokir copy.
-- `[SC-31]`: Bebas dari klaim `SINKRONISASI DATA SICABOR`, `tersinkronisasi dengan SICABOR`, `data SICABOR aktif`; menyajikan kalimat jujur `Data demo lokal—belum terhubung dengan SICABOR.`
-- Banner cleanup failed & tombol coba bersihkan lagi di `LoginPage`.
-- Awaited logout di `SessionUnavailablePage` dan disabled state saat busy.
+### Verifikasi
 
-- [ ] **Step 2: Jalankan test untuk memverifikasi kegagalan**
-
-Run: `flutter test test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart test/home_page_test.dart`
-Expected: FAIL
-
-- [ ] **Step 3: Implementasikan perbaikan UI Task 8**
-
-Update `profile_page.dart`, `login_page.dart`, `session_unavailable_page.dart`, `home_page.dart`, dan `README.md`.
-*(Catatan: format hanya folder `lib` dan `test`, jangan menyertakan `README.md` pada perintah `dart format`).*
-
-- [ ] **Step 4: Jalankan formatter, analyzer, dan test Task 8**
-
-Run:
 ```bash
-dart format --output=none --set-exit-if-changed lib/features/ lib/core/auth/presentation/ test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart test/home_page_test.dart
+dart format --output=none --set-exit-if-changed lib test
 flutter analyze
-flutter test test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart test/home_page_test.dart
+flutter test test/profile_page_test.dart test/login_page_test.dart \
+  test/home_page_test.dart test/session_pages_test.dart
+flutter test
 ```
-Expected: PASS dan `flutter analyze` 0 issues!
 
-- [ ] **Step 5: Commit Task 8**
+Jangan memasukkan `README.md` ke `dart format`.
+
+### Checkpoint
 
 ```bash
-git add lib/features/ lib/core/auth/presentation/ README.md test/profile_page_test.dart test/login_page_test.dart test/session_pages_test.dart test/home_page_test.dart
-git commit -m "feat(ui): tegakkan izin reports:export, awaited logout, banner retry cleanup, dan teks jujur demo"
+git add lib README.md test
+git commit -m "feat(ui): add awaited auth actions, permission guard, and honest demo labels"
 ```
 
 ---
 
-### Task 9: Cross-Layer Regression (SC-01 s/d SC-31), UI Audit, & Final Verification
+## Task 9 — Cross-Layer Regression, Audit, Build, & Device Smoke Test
 
-**Files:**
-- Create: `test/auth_hardening_remediation_test.dart` (cross-layer flows)
-- Modify: `test/app_test.dart` (E2E multi-akun)
+### Cross-layer flows
 
-**Interfaces:**
-- Agregasi eksekusi menyeluruh 31 skenario `[SC-01]` s/d `[SC-31]`
-- Audit compliance UI global constraints (fontSize $\ge 12\text{px}$, back button Icons.chevron_left size 28 KokColors.cardTitle, cardTitle #141414)
-- Platform verification: `flutter build apk --debug`
+- [ ]  DEMO-003 persistent login → dispose container → bootstrap baru → `usr_koni_kab` → county snapshot benar.
+- [ ]  Delayed fetch akun A → switch akun B → respons A tidak pernah dipublikasikan.
+- [ ]  Logout clear gagal → restart → restore ditolak → recovery sukses → login kembali tersedia.
+- [ ]  Nonpersistent login → logout → remote revocation status tersedia tanpa credential persisted.
+- [ ]  Production profile invalid/adapter missing gagal secara fail-closed.
 
-- [ ] **Step 1: Buat `test/auth_hardening_remediation_test.dart` untuk verifikasi cross-layer flow**
+`test/auth_hardening_remediation_test.dart` hanya memuat cross-layer flows; unit test SC/FT tetap berada pada file domain masing-masing untuk menghindari duplikasi.
 
-- [ ] **Step 2: Jalankan full test suite aplikasi**
-
-Run: `flutter test`
-Expected: 100% tests passing across all test files.
-
-- [ ] **Step 3: Audit tipografi $\ge 12\text{px}$ dan komponen UI global**
-
-Pemeriksaan statis:
-- Pastikan tidak ada `fontSize` di bawah 12 di seluruh `lib/`.
-- Pastikan tombol kembali konsisten `Icons.chevron_left` dengan `size: 28` dan warna `KokColors.cardTitle`.
-
-- [ ] **Step 4: Jalankan static analysis akhir**
-
-Run: `flutter analyze`
-Expected: `No issues found!`
-
-- [ ] **Step 5: Jalankan platform build verification**
-
-Run: `flutter build apk --debug`
-Expected: Gradle build succeeds.
-
-- [ ] **Step 6: Commit Task 9**
+### Audit commands
 
 ```bash
-git add test/auth_hardening_remediation_test.dart test/app_test.dart
-git commit -m "test(auth): selesaikan pengujian regresi komprehensif SC-01 s/d SC-31, UI audit, dan build verification"
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+
+git grep -nE "fetchDistrict|class CancelToken|accessToken.*AuthSignedIn" -- lib test
+git grep -nE "SINKRONISASI DATA SICABOR|tersinkronisasi dengan SICABOR|data SICABOR aktif" -- lib
+```
+
+Expected grep untuk API/klaim terlarang: tidak ada hasil.
+
+### UI audit
+
+- [ ]  Scan explicit `fontSize` dan verifikasi tidak ada nilai di bawah 12.
+- [ ]  Widget tests memverifikasi tombol kembali dan busy states penting.
+- [ ]  Pastikan lima destination navigation tetap ada.
+- [ ]  Pastikan kalimat disclaimer SICABOR tetap ada; jangan melarang semua penggunaan kata “SICABOR”.
+
+### Device/emulator smoke test
+
+- [ ]  Login persisten masing-masing akun dan restart aplikasi.
+- [ ]  Verifikasi identitas/scope tidak berubah.
+- [ ]  Logout dan pastikan restore tidak terjadi.
+- [ ]  Simulasikan cleanup failure melalui debug/fake build, restart, lalu recovery.
+- [ ]  Uji Android platform storage pada perangkat/emulator target.
+- [ ]  Bila web/iOS juga target rilis, jalankan build dan smoke test platform tersebut secara terpisah.
+
+### Evidence record
+
+Catat:
+
+- commit SHA;
+- Flutter/Dart version;
+- resolved dependency version;
+- analyzer output;
+- jumlah dan hasil test aktual;
+- build artifact/target;
+- perangkat/emulator dan OS version;
+- hasil SC-01–SC-31 dan FT-01–FT-08;
+- exception atau deviasi yang masih terbuka.
+
+### Final checkpoint
+
+```bash
+git status --short
+git add lib test README.md pubspec.lock
+git commit -m "test(auth): complete auth lifecycle regression and platform verification"
 ```
