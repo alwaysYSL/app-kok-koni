@@ -3,26 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/auth/domain/auth_state.dart';
 import '../core/auth/domain/user_principal.dart';
 import '../core/auth/presentation/auth_controller.dart';
-import 'demo_kok_repository.dart';
-import 'kok_repository.dart';
 import 'models.dart';
-import 'request_cancellation.dart';
 
 export 'demo_kok_repository.dart';
 export 'kok_repository.dart';
 export 'models.dart' show KokSnapshotDistrictExt;
+export 'providers/snapshot_provider.dart';
 export 'request_cancellation.dart';
-
-final class SessionRequiredException implements Exception {
-  final String message;
-  const SessionRequiredException([
-    this.message =
-        'Sesi terautentikasi aktif dibutuhkan untuk mengakses data keolahragaan.',
-  ]);
-
-  @override
-  String toString() => message;
-}
 
 typedef DistrictSnapshot = KokSnapshot;
 
@@ -77,42 +64,6 @@ final dioProvider = Provider<Dio>((ref) {
   ref.onDispose(() => dio.close());
   return dio;
 });
-
-final repositoryProvider = Provider<KokRepository>(
-  (ref) => DemoKokRepository(),
-);
-
-final snapshotProvider = FutureProvider<KokSnapshot>(
-  (ref) async {
-    final scope = ref.watch(sessionScopeProvider);
-    if (scope == null) {
-      throw const SessionRequiredException();
-    }
-
-    final repository = ref.watch(repositoryProvider);
-    final cancellationController = RequestCancellationController();
-    ref.onDispose(
-      () => cancellationController.cancel('Session changed or disposed'),
-    );
-
-    final targetScope =
-        scope.accessScope ??
-        AccessScope(
-          type: AccessScopeType.district,
-          id: scope.districtId,
-          name: scope.districtId,
-        );
-
-    return repository.fetchScope(
-      targetScope,
-      cancellation: cancellationController.token,
-    );
-  },
-  retry: (retryCount, error) {
-    if (error is SessionRequiredException) return null;
-    return ProviderContainer.defaultRetry(retryCount, error);
-  },
-);
 
 List<SportPerson> clubPeople(KokSnapshot data, String id, [String? role]) =>
     data.people
