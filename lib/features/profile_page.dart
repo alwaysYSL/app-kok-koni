@@ -172,9 +172,9 @@ class ProfilePage extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Rekapitulasi Data KOK Garut Kota',
-                style: TextStyle(
+              Text(
+                'Rekapitulasi Data KOK ${data.districtName.replaceFirst('Kecamatan ', '')}',
+                style: const TextStyle(
                   fontFamily: 'KokSans',
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -182,9 +182,9 @@ class ProfilePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Ringkasan data keolahragaan wilayah Kecamatan Garut Kota.',
-                style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              Text(
+                'Ringkasan data keolahragaan wilayah ${data.districtName}.',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 18),
               Container(
@@ -241,14 +241,14 @@ class ProfilePage extends ConsumerWidget {
                     final timeStr =
                         '${data.loadedAt.hour.toString().padLeft(2, '0')}:${data.loadedAt.minute.toString().padLeft(2, '0')}';
                     final summaryText = '''
-REKAPITULASI DATA KOK GARUT KOTA
+REKAPITULASI DATA ${data.districtName.toUpperCase()}
 Waktu: $timeStr WIB
 Total Cabang Olahraga: $caborCount
 Total Klub: $klubCount
 Total Atlet: $atletCount
 Total Pelatih: $pelatihCount
 Total Berkas Belum Lengkap: $missingCount
-Status: Terdaftar pada Sistem KOK Garut Kota''';
+Status: Terdaftar pada Sistem KOK ${data.districtName}''';
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -732,7 +732,7 @@ class _SyncStatusCard extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Terakhir sinkron: $timeStr · ${data.people.length} entri data',
+                  'Terakhir dimuat: $timeStr · ${data.people.length} entri data (Mode Demo)',
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -745,16 +745,21 @@ class _SyncStatusCard extends ConsumerWidget {
                 shape: const CircleBorder(),
                 child: IconButton(
                   iconSize: 20,
-                  tooltip: 'Muat ulang data SICABOR',
-                  onPressed: () {
+                  tooltip: 'Muat ulang data',
+                  onPressed: () async {
                     ref.invalidate(snapshotProvider);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Data berhasil disinkronkan ulang'),
-                        duration: Duration(seconds: 2),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                    try {
+                      await ref.read(snapshotProvider.future);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Data berhasil dimuat ulang'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (_) {}
                   },
                   icon: const Icon(
                     Icons.sync_rounded,

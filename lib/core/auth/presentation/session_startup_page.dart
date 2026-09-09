@@ -91,7 +91,7 @@ class _SessionStartupPageState extends ConsumerState<SessionStartupPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Memverifikasi sesi aman...',
+                      'Memeriksa sesi pengguna...',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.85),
                         fontSize: 12.5,

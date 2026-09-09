@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -31,6 +32,16 @@ final testUser = UserPrincipal(
   roleTitle: 'Koordinator Kecamatan',
   districtId: 'garut_kota',
   districtName: 'Kecamatan Garut Kota',
+  permissions: {'sports:read'},
+);
+
+final cecepUser = UserPrincipal(
+  id: 'usr-tarogong-kidul-002',
+  skNumber: 'DEMO-002',
+  fullName: 'Pak Cecep',
+  roleTitle: 'Koordinator Kecamatan',
+  districtId: 'tarogong_kidul',
+  districtName: 'Kecamatan Tarogong Kidul',
   permissions: {'sports:read'},
 );
 
@@ -206,7 +217,7 @@ void main() {
 
         expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
         expect(
-          find.text('Terakhir sinkron: 14:30 · 3 entri data'),
+          find.text('Terakhir dimuat: 14:30 · 3 entri data (Mode Demo)'),
           findsOneWidget,
         );
         expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
@@ -231,7 +242,7 @@ void main() {
         await tester.tap(syncButton);
         await tester.pump();
 
-        expect(find.text('Data berhasil disinkronkan ulang'), findsOneWidget);
+        expect(find.text('Data berhasil dimuat ulang'), findsOneWidget);
         await tester.pumpAndSettle();
       },
     );
@@ -471,6 +482,63 @@ void main() {
         expect(find.text('Pak Asep'), findsOneWidget);
         expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
         expect(find.textContaining('entri data'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Rekapitulasi menampilkan nama wilayah Tarogong Kidul secara dinamis saat akun Tarogong Kidul aktif',
+      (tester) async {
+        final data =
+            await tester.runAsync(() => DemoKokRepository().fetchDistrict('tarogong_kidul'));
+        final prefs = await SharedPreferences.getInstance();
+
+        String? copiedText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copiedText =
+                  (call.arguments as Map<Object?, Object?>)['text'] as String?;
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+
+        await pumpProfilePage(
+          tester,
+          user: cecepUser,
+          snapshot: data,
+          preferences: prefs,
+        );
+
+        await tester.scrollUntilVisible(find.text('Rekap Data Kecamatan'), 200);
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Rekapitulasi Data KOK Tarogong Kidul'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Ringkasan data keolahragaan wilayah Kecamatan Tarogong Kidul.'),
+          findsOneWidget,
+        );
+
+        expect(find.text('Salin Teks Rekapitulasi'), findsOneWidget);
+        await tester.tap(find.text('Salin Teks Rekapitulasi'));
+        await tester.pumpAndSettle();
+
+        expect(copiedText, contains('REKAPITULASI DATA KECAMATAN TAROGONG KIDUL'));
+        expect(
+          copiedText,
+          contains('Status: Terdaftar pada Sistem KOK Kecamatan Tarogong Kidul'),
+        );
       },
     );
   });

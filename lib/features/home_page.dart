@@ -294,7 +294,7 @@ class _FloatingStatsCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Terakhir Tersinkron SICABOR · $timeStr',
+                  'Terakhir Dimuat: $timeStr WIB',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,

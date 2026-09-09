@@ -16,11 +16,11 @@ class _FakeHomeAuthController extends AuthController {
 }
 
 void main() {
-  const cecepUser = UserPrincipal(
+  final cecepUser = UserPrincipal(
     id: 'usr-tarogong-kidul-002',
     skNumber: 'DEMO-002',
-    name: 'Pak Cecep',
-    role: 'Koordinator Kecamatan',
+    fullName: 'Pak Cecep',
+    roleTitle: 'Koordinator Kecamatan',
     districtId: 'tarogong_kidul',
     districtName: 'Kecamatan Tarogong Kidul',
     permissions: {'sports:read'},
@@ -43,5 +43,25 @@ void main() {
 
     expect(find.textContaining('Pak Cecep'), findsWidgets);
     expect(find.textContaining('Kecamatan Tarogong Kidul'), findsWidgets);
+  });
+
+  testWidgets('HomePage menampilkan label Terakhir Dimuat dengan format WIB yang jujur', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(() => _FakeHomeAuthController(cecepUser)),
+          snapshotProvider.overrideWith((ref) => DemoKokRepository().fetchDistrict('tarogong_kidul')),
+        ],
+        child: const MaterialApp(
+          home: HomePage(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
+    expect(find.textContaining('WIB'), findsWidgets);
+    expect(find.textContaining('Terakhir Tersinkron SICABOR'), findsNothing);
   });
 }
