@@ -1,4 +1,7 @@
+import '../data/session_metadata_store.dart';
 import 'user_principal.dart';
+
+export '../data/session_metadata_store.dart' show LocalCleanupStatus;
 
 sealed class AuthState {
   const AuthState();
@@ -10,7 +13,23 @@ class AuthBootstrapping extends AuthState {
 
 class AuthSignedOut extends AuthState {
   final String? errorMessage;
-  const AuthSignedOut({this.errorMessage});
+  final LocalCleanupStatus cleanupStatus;
+
+  const AuthSignedOut({
+    this.errorMessage,
+    this.cleanupStatus = LocalCleanupStatus.clean,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AuthSignedOut &&
+          runtimeType == other.runtimeType &&
+          errorMessage == other.errorMessage &&
+          cleanupStatus == other.cleanupStatus;
+
+  @override
+  int get hashCode => Object.hash(errorMessage, cleanupStatus);
 }
 
 class AuthSigningIn extends AuthState {
