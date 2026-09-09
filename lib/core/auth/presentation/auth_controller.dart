@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../session.dart';
+import '../../preferences.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
 import '../data/demo_auth_repository.dart';
@@ -37,6 +37,10 @@ final currentUserProvider = Provider<UserPrincipal?>((ref) {
 
 class AuthController extends Notifier<AuthState> {
   int _sessionGeneration = 0;
+  int _operationEpoch = 0;
+  Future<void>? _activeBootstrapFuture;
+
+  int get sessionGeneration => _sessionGeneration;
   int get currentGeneration => _sessionGeneration;
 
   @override
@@ -45,10 +49,26 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> bootstrap() async {
+    if (_activeBootstrapFuture != null) return _activeBootstrapFuture!;
+    final future = _runBootstrap();
+    _activeBootstrapFuture = future;
+    try {
+      await future;
+    } finally {
+      _activeBootstrapFuture = null;
+    }
+  }
+
+  Future<void> _runBootstrap() async {
+    _operationEpoch++;
+    final currentEpoch = _operationEpoch;
     state = const AuthBootstrapping();
+
     final repo = ref.read(authRepositoryProvider);
     try {
       final result = await repo.restoreSession();
+      if (currentEpoch != _operationEpoch) return;
+
       if (result.isSuccess && result.user != null) {
         _sessionGeneration++;
         state = AuthSignedIn(
@@ -57,9 +77,19 @@ class AuthController extends Notifier<AuthState> {
           accessToken: result.accessToken,
         );
       } else {
-        state = const AuthSignedOut();
+        if (result.failure is NetworkTimeoutFailure) {
+          state = AuthTemporarilyUnavailable(
+            reason: result.failure!.message,
+          );
+        } else {
+          state = const AuthSignedOut();
+        }
       }
+    } on StorageException catch (e) {
+      if (currentEpoch != _operationEpoch) return;
+      state = AuthTemporarilyUnavailable(reason: e.message);
     } catch (_) {
+      if (currentEpoch != _operationEpoch) return;
       state = const AuthTemporarilyUnavailable(
         reason: 'Gagal menghubungkan ke layanan autentikasi.',
       );
@@ -72,23 +102,43 @@ class AuthController extends Notifier<AuthState> {
     required bool staySignedIn,
     required bool rememberSk,
   }) async {
+    _operationEpoch++;
+    final currentEpoch = _operationEpoch;
     state = const AuthSigningIn();
-    final repo = ref.read(authRepositoryProvider);
 
+    final repo = ref.read(authRepositoryProvider);
     try {
       final result = await repo.login(
         skNumber: skNumber,
         password: password,
         staySignedIn: staySignedIn,
       );
+      if (currentEpoch != _operationEpoch) return false;
 
       if (result.isSuccess && result.user != null) {
-        final skStore = ref.read(rememberedSkStoreProvider);
+        final tokenStorage = (repo is DemoAuthRepository)
+            ? repo.tokenStorage
+            : ref.read(authTokenStorageProvider);
+        if (staySignedIn && result.refreshToken != null) {
+          await tokenStorage.saveRefreshToken(result.refreshToken!);
+          if (currentEpoch != _operationEpoch) {
+            await tokenStorage.clear();
+            return false;
+          }
+        } else {
+          await tokenStorage.clear();
+          if (currentEpoch != _operationEpoch) return false;
+        }
+
+        final skStore = (repo is DemoAuthRepository && repo.skStore != null)
+            ? repo.skStore!
+            : ref.read(rememberedSkStoreProvider);
         if (rememberSk) {
           await skStore.saveSk(skNumber);
         } else {
           await skStore.clear();
         }
+        if (currentEpoch != _operationEpoch) return false;
 
         _sessionGeneration++;
         state = AuthSignedIn(
@@ -108,6 +158,7 @@ class AuthController extends Notifier<AuthState> {
         return false;
       }
     } catch (_) {
+      if (currentEpoch != _operationEpoch) return false;
       state = const AuthTemporarilyUnavailable(
         reason: 'Terjadi gangguan sistem. Silakan coba lagi.',
       );
@@ -120,13 +171,18 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    _operationEpoch++;
+    final currentEpoch = _operationEpoch;
     _sessionGeneration++;
     state = const AuthSigningOut();
+
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.logout();
     } finally {
-      state = const AuthSignedOut();
+      if (currentEpoch == _operationEpoch) {
+        state = const AuthSignedOut();
+      }
     }
   }
 }
