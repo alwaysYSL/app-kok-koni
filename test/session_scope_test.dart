@@ -87,4 +87,14 @@ void main() {
     expect(snapshotCecep.districtName, 'Kecamatan Tarogong Kidul');
     expect(snapshotCecep.clubs.length, 4);
   });
+
+  test('snapshotProvider melempar SessionRequiredException saat sessionScope bernilai null', () async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    expect(
+      () => container.read(snapshotProvider.future),
+      throwsA(isA<SessionRequiredException>()),
+    );
+  });
 }

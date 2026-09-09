@@ -4,11 +4,34 @@ import '../core/auth/domain/auth_state.dart';
 import '../core/auth/presentation/auth_controller.dart';
 import 'models.dart';
 
+final class SessionRequiredException implements Exception {
+  final String message;
+  const SessionRequiredException([
+    this.message = 'Sesi terautentikasi aktif dibutuhkan untuk mengakses data keolahragaan.',
+  ]);
+
+  @override
+  String toString() => message;
+}
+
+class CancelToken {
+  bool _isCancelled = false;
+  String? _reason;
+
+  bool get isCancelled => _isCancelled;
+  String? get reason => _reason;
+
+  void cancel([String? reason]) {
+    _isCancelled = true;
+    _reason = reason;
+  }
+}
+
 /// Replace this implementation when the SICABOR contract is available.
 /// There are deliberately no guessed HTTP endpoints or fabricated access tokens.
 abstract interface class KokRepository {
   Future<KokSnapshot> fetch();
-  Future<KokSnapshot> fetchDistrict(String districtId);
+  Future<KokSnapshot> fetchDistrict(String districtId, {CancelToken? cancelToken});
 }
 
 typedef DistrictSnapshot = KokSnapshot;
@@ -78,11 +101,18 @@ final repositoryProvider = Provider<KokRepository>(
 
 final snapshotProvider = FutureProvider<KokSnapshot>((ref) async {
   final scope = ref.watch(sessionScopeProvider);
-  final repository = ref.watch(repositoryProvider);
-  if (scope != null) {
-    return repository.fetchDistrict(scope.districtId);
+  if (scope == null) {
+    throw const SessionRequiredException();
   }
-  return repository.fetchDistrict('garut_kota');
+
+  final repository = ref.watch(repositoryProvider);
+  final cancelToken = CancelToken();
+  ref.onDispose(() => cancelToken.cancel('Session changed or disposed'));
+
+  return repository.fetchDistrict(scope.districtId, cancelToken: cancelToken);
+}, retry: (retryCount, error) {
+  if (error is SessionRequiredException) return null;
+  return ProviderContainer.defaultRetry(retryCount, error);
 });
 
 class DemoKokRepository implements KokRepository {
@@ -90,8 +120,14 @@ class DemoKokRepository implements KokRepository {
   Future<KokSnapshot> fetch() => fetchDistrict('garut_kota');
 
   @override
-  Future<KokSnapshot> fetchDistrict(String districtId) async {
+  Future<KokSnapshot> fetchDistrict(String districtId, {CancelToken? cancelToken}) async {
+    if (cancelToken?.isCancelled ?? false) {
+      throw Exception('Permintaan data dibatalkan: ${cancelToken?.reason}');
+    }
     await Future<void>.delayed(const Duration(milliseconds: 400));
+    if (cancelToken?.isCancelled ?? false) {
+      throw Exception('Permintaan data dibatalkan: ${cancelToken?.reason}');
+    }
     if (districtId == 'tarogong_kidul') {
       const tkClubs = [
         Club(
