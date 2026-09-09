@@ -814,7 +814,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 SizedBox(
                                   height: 46,
                                   child: OutlinedButton.icon(
-                                    onPressed: _busy
+                                    onPressed: isFormDisabled
                                         ? null
                                         : () => _showDemoAccountsSheet(context),
                                     style: OutlinedButton.styleFrom(

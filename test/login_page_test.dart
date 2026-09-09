@@ -176,6 +176,11 @@ void main() {
       );
       expect(masukButton.onPressed, isNull);
 
+      final demoButton = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Pilih Akun Demo'),
+      );
+      expect(demoButton.onPressed, isNull);
+
       // Tap 'Coba Bersihkan Lagi'
       await tester.tap(find.text('Coba Bersihkan Lagi'));
       await tester.pump();
