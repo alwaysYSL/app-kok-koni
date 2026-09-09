@@ -67,7 +67,7 @@ class ProfilePage extends ConsumerWidget {
             builder: (data) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('SINKRONISASI DATA SICABOR'),
+                _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
                 _SyncStatusCard(data: data),
                 _buildSectionHeader('UTILITAS KOORDINATOR'),
                 _MenuTile(
@@ -76,7 +76,8 @@ class ProfilePage extends ConsumerWidget {
                   iconColor: const Color(0xFF1B4F9E),
                   title: 'Rekap Data Kecamatan',
                   subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
-                  onTap: () => _showRekapSheet(context, data),
+                  enabled: user?.hasPermission('reports:export') ?? false,
+                  onTap: () => _showRekapSheet(context, data, user),
                 ),
                 _MenuTile(
                   icon: Icons.support_agent_rounded,
@@ -119,7 +120,7 @@ class ProfilePage extends ConsumerWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
+              'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,
@@ -146,7 +147,12 @@ class ProfilePage extends ConsumerWidget {
     ),
   );
 
-  void _showRekapSheet(BuildContext context, KokSnapshot data) {
+  void _showRekapSheet(
+    BuildContext context,
+    KokSnapshot data,
+    UserPrincipal? user,
+  ) {
+    if (!(user?.hasPermission('reports:export') ?? false)) return;
     final caborCount = data.clubs.map((c) => c.sport).toSet().length;
     final klubCount = data.clubs.length;
     final atletCount = data.people.where((p) => p.role == 'Atlet').length;
@@ -308,8 +314,10 @@ Status: Terdaftar pada Sistem KOK ${data.districtName}''';
                 icon: Icons.chat_bubble_outline_rounded,
                 iconBg: const Color(0xFFD1FAE5),
                 iconColor: const Color(0xFF059669),
-                title: 'WhatsApp Helpdesk SICABOR',
+                title: 'WhatsApp Helpdesk (Kontak Demo - Belum Diverifikasi)',
                 subtitle: '0812-2180-1936',
+                note:
+                    'Kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.',
               ),
               _ContactItem(
                 icon: Icons.phone_outlined,
@@ -460,109 +468,138 @@ Status: Terdaftar pada Sistem KOK ${data.districtName}''';
   void _showSignOutDialog(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: Colors.white,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFEE2E2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.logout_rounded,
-                    color: Color(0xFFDC2626),
-                    size: 28,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Keluar dari Akun?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'KokSans',
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0C2464),
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Sesi Anda akan berakhir. Anda perlu memasukkan kembali nomor SK KOK untuk masuk ke aplikasi.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF4B5563),
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        var isLoggingOut = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) => Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            backgroundColor: Colors.white,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: TextButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFFF3F4F6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: const Text(
-                          'Batal',
-                          style: TextStyle(
-                            color: Color(0xFF374151),
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFEE2E2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFFDC2626),
+                        size: 28,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
-                          ref.read(authControllerProvider.notifier).logout();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFDC2626),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: const Text(
-                          'Ya, Keluar',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Keluar dari Akun?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'KokSans',
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0C2464),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Sesi Anda akan berakhir. Anda perlu memasukkan kembali nomor SK KOK untuk masuk ke aplikasi.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF4B5563),
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: TextButton(
+                            onPressed: isLoggingOut
+                                ? null
+                                : () => Navigator.of(dialogContext).pop(),
+                            style: TextButton.styleFrom(
+                              backgroundColor: const Color(0xFFF3F4F6),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Batal',
+                              style: TextStyle(
+                                color: Color(0xFF374151),
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: isLoggingOut
+                                ? null
+                                : () async {
+                                    setDialogState(() => isLoggingOut = true);
+                                    try {
+                                      await ref
+                                          .read(authControllerProvider.notifier)
+                                          .logout();
+                                    } finally {
+                                      if (dialogContext.mounted) {
+                                        Navigator.of(dialogContext).pop();
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDC2626),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: isLoggingOut
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Ya, Keluar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -771,7 +808,7 @@ class _SyncStatusCard extends ConsumerWidget {
           const DashedDivider(color: Color(0xFFE5E7EB)),
           const SizedBox(height: 12),
           const Text(
-            'Status koneksi: Data lokal tersinkronisasi dengan SICABOR Kabupaten Garut.',
+            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
             style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
         ],
@@ -788,6 +825,7 @@ class _MenuTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.enabled = true,
   });
 
   final IconData icon;
@@ -796,44 +834,56 @@ class _MenuTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final bool enabled;
 
   @override
-  Widget build(BuildContext context) => Surface(
-    onTap: onTap,
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    child: Row(
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
-          child: Icon(icon, color: iconColor, size: 22),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: KokColors.cardTitle,
-                ),
+  Widget build(BuildContext context) {
+    final effectiveSubtitle = enabled
+        ? subtitle
+        : 'Fitur tidak tersedia untuk peran ini';
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: Surface(
+        onTap: enabled ? onTap : null,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(color: iconBg, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: KokColors.cardTitle,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    effectiveSubtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 3),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-              ),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
+          ],
         ),
-        const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _MetricRow extends StatelessWidget {
@@ -879,6 +929,7 @@ class _ContactItem extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    this.note,
   });
 
   final IconData icon;
@@ -886,6 +937,7 @@ class _ContactItem extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String subtitle;
+  final String? note;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -921,6 +973,17 @@ class _ContactItem extends StatelessWidget {
                   color: Color(0xFF1E293B),
                 ),
               ),
+              if (note != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  note!,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9CA3AF),
+                    height: 1.3,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

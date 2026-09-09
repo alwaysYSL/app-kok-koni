@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -206,6 +207,74 @@ void main() {
               'Teks "${text.data}" memiliki ukuran di bawah 12px: $fontSize',
         );
       }
+    },
+  );
+
+  testWidgets(
+    'SessionUnavailablePage awaits onRetry and onSignOut with busy indicator and disabled buttons during async call',
+    (tester) async {
+      final retryCompleter = Completer<void>();
+      final signOutCompleter = Completer<void>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SessionUnavailablePage(
+            reason: 'Koneksi terganggu',
+            onRetry: () => retryCompleter.future,
+            onSignOut: () => signOutCompleter.future,
+          ),
+        ),
+      );
+
+      // Initial state: both buttons enabled, no spinner
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      // Tap Coba Hubungkan Kembali
+      await tester.tap(find.text('Coba Hubungkan Kembali'));
+      await tester.pump();
+
+      // While busy retrying: spinner shown, both buttons disabled
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      var retryButton = tester.widget<ElevatedButton>(
+        find.byType(ElevatedButton),
+      );
+      var signOutButton = tester.widget<OutlinedButton>(
+        find.byType(OutlinedButton),
+      );
+      expect(retryButton.onPressed, isNull);
+      expect(signOutButton.onPressed, isNull);
+
+      // Complete retry
+      retryCompleter.complete();
+      await tester.pumpAndSettle();
+
+      // Buttons re-enabled
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      retryButton = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      signOutButton = tester.widget<OutlinedButton>(
+        find.byType(OutlinedButton),
+      );
+      expect(retryButton.onPressed, isNotNull);
+      expect(signOutButton.onPressed, isNotNull);
+
+      // Now tap Masuk Ulang / Ganti Akun
+      await tester.tap(find.text('Masuk Ulang / Ganti Akun'));
+      await tester.pump();
+
+      // While busy signing out: spinner shown, both buttons disabled
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      retryButton = tester.widget<ElevatedButton>(find.byType(ElevatedButton));
+      signOutButton = tester.widget<OutlinedButton>(
+        find.byType(OutlinedButton),
+      );
+      expect(retryButton.onPressed, isNull);
+      expect(signOutButton.onPressed, isNull);
+
+      // Complete sign out
+      signOutCompleter.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
     },
   );
 }

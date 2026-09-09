@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme.dart';
 import 'auth_controller.dart';
 
-class SessionUnavailablePage extends ConsumerWidget {
+class SessionUnavailablePage extends ConsumerStatefulWidget {
   final String? reason;
-  final VoidCallback? onRetry;
-  final VoidCallback? onSignOut;
+  final FutureOr<void> Function()? onRetry;
+  final FutureOr<void> Function()? onSignOut;
 
   const SessionUnavailablePage({
     super.key,
@@ -16,10 +17,50 @@ class SessionUnavailablePage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SessionUnavailablePage> createState() =>
+      _SessionUnavailablePageState();
+}
+
+class _SessionUnavailablePageState
+    extends ConsumerState<SessionUnavailablePage> {
+  bool _isRetrying = false;
+  bool _isSigningOut = false;
+
+  Future<void> _handleRetry() async {
+    if (_isRetrying || _isSigningOut) return;
+    setState(() => _isRetrying = true);
+    try {
+      if (widget.onRetry != null) {
+        await widget.onRetry!();
+      } else {
+        await ref.read(authControllerProvider.notifier).retrySession();
+      }
+    } finally {
+      if (mounted) setState(() => _isRetrying = false);
+    }
+  }
+
+  Future<void> _handleSignOut() async {
+    if (_isRetrying || _isSigningOut) return;
+    setState(() => _isSigningOut = true);
+    try {
+      if (widget.onSignOut != null) {
+        await widget.onSignOut!();
+      } else {
+        await ref.read(authControllerProvider.notifier).logout();
+      }
+    } finally {
+      if (mounted) setState(() => _isSigningOut = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final effectiveReason =
-        reason ??
+        widget.reason ??
         'Aplikasi tidak dapat memvalidasi token sesi ke server. Periksa koneksi internet Anda atau masuk kembali.';
+
+    final isBusy = _isRetrying || _isSigningOut;
 
     return Scaffold(
       backgroundColor: KokColors.background,
@@ -89,11 +130,7 @@ class SessionUnavailablePage extends ConsumerWidget {
                     width: double.infinity,
                     height: 48,
                     child: ElevatedButton(
-                      onPressed:
-                          onRetry ??
-                          () => ref
-                              .read(authControllerProvider.notifier)
-                              .retrySession(),
+                      onPressed: isBusy ? null : _handleRetry,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: KokColors.bluePrimary,
                         foregroundColor: Colors.white,
@@ -102,13 +139,22 @@ class SessionUnavailablePage extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
-                        'Coba Hubungkan Kembali',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: _isRetrying
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Coba Hubungkan Kembali',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -116,11 +162,7 @@ class SessionUnavailablePage extends ConsumerWidget {
                     width: double.infinity,
                     height: 48,
                     child: OutlinedButton(
-                      onPressed:
-                          onSignOut ??
-                          () => ref
-                              .read(authControllerProvider.notifier)
-                              .logout(),
+                      onPressed: isBusy ? null : _handleSignOut,
                       style: OutlinedButton.styleFrom(
                         foregroundColor: KokColors.cardTitle,
                         side: const BorderSide(color: KokColors.borderGray),
@@ -128,13 +170,22 @@ class SessionUnavailablePage extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
-                        'Masuk Ulang / Ganti Akun',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: _isSigningOut
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: KokColors.cardTitle,
+                              ),
+                            )
+                          : const Text(
+                              'Masuk Ulang / Ganti Akun',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],

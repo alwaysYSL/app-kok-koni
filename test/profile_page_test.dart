@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,6 +34,24 @@ class _FakeProfileAuthController extends AuthController {
   }
 }
 
+class _CompleterAuthController extends AuthController {
+  final UserPrincipal user;
+  final Completer<LogoutResult> completer;
+  _CompleterAuthController(this.user, this.completer);
+
+  @override
+  AuthState build() => AuthSignedIn(user: user, generation: 1);
+
+  @override
+  Future<LogoutResult> logout({
+    Duration revocationTimeout = const Duration(seconds: 5),
+  }) async {
+    final res = await completer.future;
+    state = const AuthSignedOut();
+    return res;
+  }
+}
+
 final testUser = UserPrincipal(
   id: 'usr-garut-kota-001',
   skNumber: 'DEMO-001',
@@ -43,7 +62,7 @@ final testUser = UserPrincipal(
     id: 'garut_kota',
     name: 'Kecamatan Garut Kota',
   ),
-  permissions: {'sports:read'},
+  permissions: {'sports:read', 'reports:export'},
 );
 
 final cecepUser = UserPrincipal(
@@ -57,6 +76,19 @@ final cecepUser = UserPrincipal(
     name: 'Kecamatan Tarogong Kidul',
   ),
   permissions: {'sports:read'},
+);
+
+final cecepUserWithExport = UserPrincipal(
+  id: 'usr-tarogong-kidul-002',
+  skNumber: 'DEMO-002',
+  fullName: 'Pak Cecep',
+  roleTitle: 'Koordinator Kecamatan',
+  scope: const AccessScope(
+    type: AccessScopeType.district,
+    id: 'tarogong_kidul',
+    name: 'Kecamatan Tarogong Kidul',
+  ),
+  permissions: {'sports:read', 'reports:export'},
 );
 
 Widget buildTestableProfileWidget({
@@ -228,12 +260,12 @@ void main() {
     });
 
     testWidgets(
-      'renders Seksi Sinkronisasi Data SICABOR with dynamic time and count',
+      'renders Seksi Status Data Keolahragaan with honest demo label and dynamic time/count',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         await pumpProfilePage(tester, preferences: prefs);
 
-        expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
+        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
         expect(
           find.text('Terakhir dimuat: 14:30 · 3 entri data (Mode Demo)'),
           findsOneWidget,
@@ -241,7 +273,7 @@ void main() {
         expect(find.byIcon(Icons.sync_rounded), findsOneWidget);
         expect(
           find.text(
-            'Status koneksi: Data lokal tersinkronisasi dengan SICABOR Kabupaten Garut.',
+            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
           ),
           findsOneWidget,
         );
@@ -266,7 +298,7 @@ void main() {
     );
 
     testWidgets(
-      'renders Utilitas Koordinator section and opens Rekap Data Kecamatan modal',
+      'renders Utilitas Koordinator section and opens Rekap Data Kecamatan modal for user with reports:export',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         await pumpProfilePage(tester, preferences: prefs);
@@ -304,7 +336,27 @@ void main() {
     );
 
     testWidgets(
-      'tapping Helpdesk KONI Kabupaten opens bottom sheet with contacts',
+      'SC-30: DEMO-002 tanpa permission reports:export tidak dapat mengekspor rekap',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await pumpProfilePage(tester, user: cecepUser, preferences: prefs);
+
+        expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
+        expect(
+          find.text('Fitur tidak tersedia untuk peran ini'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Rekapitulasi Data KOK Tarogong Kidul'), findsNothing);
+        expect(find.text('Salin Teks Rekapitulasi'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'tapping Helpdesk KONI Kabupaten opens bottom sheet with contacts and unverified demo note',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         await pumpProfilePage(tester, preferences: prefs);
@@ -320,6 +372,16 @@ void main() {
 
         // Check contacts in bottom sheet
         expect(find.text('Helpdesk & Sekretariat KONI'), findsOneWidget);
+        expect(
+          find.text('WhatsApp Helpdesk (Kontak Demo - Belum Diverifikasi)'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.',
+          ),
+          findsOneWidget,
+        );
         expect(find.textContaining('0812'), findsOneWidget);
         expect(
           find.textContaining('sekretariat@konigarut.or.id'),
@@ -474,6 +536,74 @@ void main() {
       expect(container.read(authControllerProvider), isA<AuthSignedOut>());
     });
 
+    testWidgets(
+      'sign out dialog awaits logout with busy state and disabled buttons',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final completer = Completer<LogoutResult>();
+        final fakeController = _CompleterAuthController(testUser, completer);
+
+        final container = ProviderContainer(
+          overrides: [
+            preferencesProvider.overrideWithValue(prefs),
+            authControllerProvider.overrideWith(() => fakeController),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final appRouter = GoRouter(
+          initialLocation: '/profile',
+          routes: [
+            GoRoute(path: '/profile', builder: (_, _) => const ProfilePage()),
+          ],
+        );
+        addTearDown(appRouter.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp.router(routerConfig: appRouter),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await tester.tap(find.text('Keluar dari Akun'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Keluar dari Akun?'), findsOneWidget);
+
+        // Tap Ya, Keluar
+        await tester.tap(find.text('Ya, Keluar'));
+        await tester.pump();
+
+        // While busy logging out: CircularProgressIndicator is shown, buttons disabled
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        final batalButton = tester.widget<TextButton>(
+          find.widgetWithText(TextButton, 'Batal'),
+        );
+        expect(batalButton.onPressed, isNull);
+        final keluarButton = tester.widget<ElevatedButton>(
+          find.byType(ElevatedButton),
+        );
+        expect(keluarButton.onPressed, isNull);
+
+        // Complete logout
+        completer.complete(
+          const LogoutResult(
+            localSessionClosed: true,
+            credentialCleared: true,
+            metadataClean: true,
+            remoteRevocationStatus: RemoteRevocationStatus.revoked,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Dialog should be dismissed
+        expect(find.text('Keluar dari Akun?'), findsNothing);
+      },
+    );
+
     testWidgets('renders footer note about kabupaten data coordination', (
       tester,
     ) async {
@@ -482,17 +612,40 @@ void main() {
 
       await tester.scrollUntilVisible(
         find.text(
-          'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
+          'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
         ),
         200,
       );
       expect(
         find.text(
-          'Data keanggotaan dikelola SICABOR — hubungi admin kabupaten untuk perubahan data akun.',
+          'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
         ),
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'SC-31: profile page bebas klaim aktif SICABOR dan menampilkan label jujur',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await pumpProfilePage(tester, preferences: prefs);
+
+        // Forbidden claims must NOT exist
+        expect(find.text('SINKRONISASI DATA SICABOR'), findsNothing);
+        expect(
+          find.textContaining('tersinkronisasi dengan SICABOR'),
+          findsNothing,
+        );
+        expect(find.textContaining('data SICABOR aktif'), findsNothing);
+
+        // Honest labels MUST exist
+        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+        expect(
+          find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
+          findsWidgets,
+        );
+      },
+    );
 
     testWidgets('works seamlessly with DemoKokRepository snapshot', (
       tester,
@@ -511,7 +664,7 @@ void main() {
 
       expect(find.text('Akun'), findsOneWidget);
       expect(find.text('Pak Asep'), findsOneWidget);
-      expect(find.text('SINKRONISASI DATA SICABOR'), findsOneWidget);
+      expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
       expect(find.textContaining('entri data'), findsOneWidget);
     });
 
@@ -549,7 +702,7 @@ void main() {
 
         await pumpProfilePage(
           tester,
-          user: cecepUser,
+          user: cecepUserWithExport,
           snapshot: data,
           preferences: prefs,
         );

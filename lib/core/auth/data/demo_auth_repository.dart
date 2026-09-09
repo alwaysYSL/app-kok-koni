@@ -101,7 +101,8 @@ class DemoAuthRepository implements AuthRepository {
       accessToken = 'access_demo_tarogong_kidul';
       refreshTokenValue = 'token_usr_tarogong_kidul';
       sessionHandle = RemoteSessionHandle('session_usr_tarogong_kidul');
-    } else if (skNumber == 'DEMO-003' && password == 'konigarut123') {
+    } else if (skNumber == 'DEMO-003' &&
+        (password == 'konigarut123' || password == 'kokkabgarut123')) {
       matchedUser = _koniKabUser;
       accessToken = 'access_demo_koni_kab';
       refreshTokenValue = 'token_usr_koni_kab';

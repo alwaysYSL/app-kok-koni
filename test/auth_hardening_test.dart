@@ -73,6 +73,44 @@ class _ControlledAuthRepository implements AuthRepository {
   }
 }
 
+class _TarogongWithExportAuthRepository extends DemoAuthRepository {
+  _TarogongWithExportAuthRepository({
+    required super.tokenStorage,
+    required super.skStore,
+    required super.simulateLatency,
+  });
+
+  @override
+  Future<AuthResult> login({
+    required String skNumber,
+    required String password,
+    required bool staySignedIn,
+  }) async {
+    final res = await super.login(
+      skNumber: skNumber,
+      password: password,
+      staySignedIn: staySignedIn,
+    );
+    final user = res.user;
+    if (res.isSuccess && user != null && user.scope.id == 'tarogong_kidul') {
+      return AuthResult.success(
+        user: UserPrincipal(
+          id: user.id,
+          skNumber: user.skNumber,
+          fullName: user.fullName,
+          roleTitle: user.roleTitle,
+          scope: user.scope,
+          permissions: {...user.permissions, 'reports:export'},
+        ),
+        accessToken: res.accessToken,
+        refreshToken: res.refreshToken,
+        sessionHandle: res.sessionHandle,
+      );
+    }
+    return res;
+  }
+}
+
 class _InMemoryTokenStorage implements AuthTokenStorage {
   StoredCredential? credential;
   bool shouldThrow = false;
@@ -595,7 +633,7 @@ void main() {
           prefs: prefs,
           key: 'test_remembered_sk',
         );
-        final authRepo = DemoAuthRepository(
+        final authRepo = _TarogongWithExportAuthRepository(
           tokenStorage: storage,
           skStore: skStore,
           simulateLatency: false,

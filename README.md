@@ -14,7 +14,12 @@ flutter run -d chrome
 
 Untuk Android, nyalakan emulator atau sambungkan perangkat, jalankan `flutter devices`, lalu `flutter run -d <device-id>`. Build iOS memerlukan macOS dan Xcode. Native Android/iOS belum divalidasi pada tahap ini. Launcher icon native masih bawaan scaffold Flutter.
 
-Akun demo: **DEMO-001** / **kokgarut123**. Masuk demo melakukan validasi lokal, bukan autentikasi backend. Kata sandi tidak disimpan. Opsi Ingat nomor SK hanya menyimpan nomor SK; sesi demo berakhir setelah aplikasi dimulai ulang.
+Akun demo yang tersedia:
+- **DEMO-001** / **kokgarut123**: Pak Asep · Koordinator Kecamatan Garut Kota (memiliki izin `reports:export`).
+- **DEMO-002** / **garutkecamatan123**: Pak Cecep · Koordinator Kecamatan Tarogong Kidul (tanpa izin `reports:export`, untuk pengujian penonaktifan menu rekap).
+- **DEMO-003** / **kokkabgarut123** (atau `konigarut123`): Ibu Rina · Tim Verifikator KONI Kab. Garut (memiliki izin `documents:verify` dan `reports:export`).
+
+Masuk demo melakukan validasi lokal, bukan autentikasi backend. Kata sandi tidak disimpan. Opsi "Ingat nomor SK" hanya menyimpan nomor SK ke penyimpanan lokal yang aman.
 
 ## Yang tersedia
 
@@ -37,6 +42,11 @@ Warna biru tua/biru, latar abu muda, kartu putih, penanda merah mengikuti arah d
 Tab Anggota mengikuti permintaan terbaru: kepengurusan KOK, bukan direktori gabungan atlet/pelatih/official pada wireframe. Atlet/pelatih/official tetap tersedia di detail klub. Cabor merupakan rancangan tambahan yang disesuaikan dengan bahasa visual layar lainnya.
 
 Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas semuanya contoh. Statistik demo: 5 klub, 125 atlet, 10 pelatih, 5 official, 5 pengurus; 8 orang dengan berkas kurang dan 5 lisensi kedaluwarsa. Ini bukan data resmi KONI.
+
+### Label Demo Jujur dan UI Affordance Guard
+
+- **Label Demo Jujur:** Antarmuka secara eksplisit menampilkan label jujur `"Data demo lokal—belum terhubung dengan SICABOR"` pada status data keolahragaan dan footer profil. Kontak helpdesk ditandai sebagai `"(Kontak Demo - Belum Diverifikasi)"` dengan penegasan bahwa kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.
+- **UI Affordance Guard vs Otorisasi Backend:** Pemeriksaan izin di aplikasi Flutter (seperti pengecekan `user.hasPermission('reports:export')` untuk menonaktifkan menu ekspor rekap bagi akun yang tidak berhak) berfungsi murni sebagai *UI affordance guard* guna menyelaraskan keterjangkauan tombol antarmuka dengan peran pengguna, **BUKAN batas otorisasi keamanan backend**. Otorisasi dan validasi hak akses riil wajib ditegakkan secara mutlak oleh backend server SICABOR di masa mendatang.
 
 ## Struktur
 
