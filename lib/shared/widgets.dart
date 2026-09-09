@@ -159,7 +159,7 @@ IconData sportIcon(String sport) => switch (sport) {
   'Sepak Bola' => Icons.sports_soccer_outlined,
   'Bulu Tangkis' => Icons.sports_tennis_outlined,
   'Pencak Silat' => Icons.sports_martial_arts_outlined,
-  'Voli' => Icons.sports_volleyball_outlined,
+  'Voli' || 'Bola Voli' => Icons.sports_volleyball_outlined,
   'Renang' => Icons.pool_outlined,
   _ => Icons.emoji_events_outlined,
 };
@@ -182,7 +182,7 @@ IconData sportIcon(String sport) => switch (sport) {
         background: const Color(0xFFE0F2F1),
         foreground: const Color(0xFF00796B),
       ),
-      'Voli' => (
+      'Voli' || 'Bola Voli' => (
         background: const Color(0xFFFFF8E1),
         foreground: const Color(0xFFF57C00),
       ),

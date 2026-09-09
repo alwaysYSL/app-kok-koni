@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/theme.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
@@ -11,6 +12,12 @@ import 'package:kok_app/features/club_detail/club_brand_palette.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
 import 'package:kok_app/features/detail_pages.dart';
 import 'package:kok_app/shared/widgets.dart';
+
+const garutScope = AccessScope(
+  type: AccessScopeType.district,
+  id: 'garut_kota',
+  name: 'Kecamatan Garut Kota',
+);
 
 Widget createTestApp({
   required KokSnapshot snapshot,
@@ -54,7 +61,7 @@ void main() {
       'renders Voli Bina Muda athlete with dynamic amber/gold club brand palette',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         final voliClub = data!.clubs.firstWhere((c) => c.id == 'voli');
@@ -130,7 +137,7 @@ void main() {
         expect(find.text('Klub'), findsOneWidget);
         expect(find.text('Voli Bina Muda'), findsOneWidget);
         expect(find.text('Cabor'), findsOneWidget);
-        expect(find.text('Voli'), findsOneWidget);
+        expect(find.text('Bola Voli'), findsOneWidget);
         expect(find.text('Kelompok'), findsOneWidget);
         expect(find.text('U-18'), findsOneWidget);
         expect(find.text('Lahir / Usia'), findsOneWidget);
@@ -217,7 +224,7 @@ void main() {
       'renders Garuda Muda athlete with slate/navy palette and berkas kurang badge',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         final garudaClub = data!.clubs.firstWhere((c) => c.id == 'garuda');
@@ -275,7 +282,7 @@ void main() {
       tester,
     ) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(
@@ -301,7 +308,7 @@ void main() {
       'tapping Hubungi pengurus klub opens bottom sheet modal with secretariat details',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         await tester.pumpWidget(
@@ -334,7 +341,7 @@ void main() {
       tester,
     ) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(
@@ -351,7 +358,7 @@ void main() {
 
     testWidgets('tapping share icon shows snackbar feedback', (tester) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(
@@ -374,7 +381,7 @@ void main() {
       'profile card displays DashedDivider and overlapping avatar with border',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         await tester.pumpWidget(

@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import '../core/auth/domain/user_principal.dart';
 
 part 'models.freezed.dart';
 part 'models.g.dart';
@@ -55,6 +56,7 @@ abstract class CommitteeMember with _$CommitteeMember {
 @freezed
 abstract class KokSnapshot with _$KokSnapshot {
   const factory KokSnapshot({
+    required AccessScope scope,
     required List<Club> clubs,
     required List<SportPerson> people,
     required List<CommitteeMember> committee,
@@ -62,4 +64,14 @@ abstract class KokSnapshot with _$KokSnapshot {
   }) = _KokSnapshot;
   factory KokSnapshot.fromJson(Map<String, dynamic> json) =>
       _$KokSnapshotFromJson(json);
+}
+
+extension KokSnapshotDistrictExt on KokSnapshot {
+  @Deprecated('Gunakan snapshot.scope.name')
+  String get districtName => scope.name;
+
+  @Deprecated('Gunakan snapshot.scope.id')
+  String get districtId => scope.id;
+
+  List<String> get sports => clubs.map((c) => c.sport).toSet().toList();
 }

@@ -2,15 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/sports_page.dart';
 
 void main() {
+  const garutScope = AccessScope(
+    type: AccessScopeType.district,
+    id: 'garut_kota',
+    name: 'Kecamatan Garut Kota',
+  );
+
   group('SportsPage Widget Tests', () {
     Widget buildSubject({GoRouter? router}) {
       return ProviderScope(
         overrides: [
-          snapshotProvider.overrideWith((ref) => DemoKokRepository().fetch()),
+          snapshotProvider.overrideWith(
+            (ref) => DemoKokRepository().fetchScope(garutScope),
+          ),
         ],
         child: MaterialApp.router(
           routerConfig:

@@ -39,7 +39,7 @@ void main() {
             () => _FakeHomeAuthController(cecepUser),
           ),
           snapshotProvider.overrideWith(
-            (ref) => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+            (ref) => DemoKokRepository().fetchScope(cecepUser.scope),
           ),
         ],
         child: const MaterialApp(home: HomePage()),
@@ -62,7 +62,7 @@ void main() {
               () => _FakeHomeAuthController(cecepUser),
             ),
             snapshotProvider.overrideWith(
-              (ref) => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+              (ref) => DemoKokRepository().fetchScope(cecepUser.scope),
             ),
           ],
           child: const MaterialApp(home: HomePage()),

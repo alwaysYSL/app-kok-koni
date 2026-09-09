@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/attention_page.dart';
@@ -15,6 +16,11 @@ Widget buildTestableWidget({
   final snap =
       snapshot ??
       KokSnapshot(
+        scope: const AccessScope(
+          type: AccessScopeType.district,
+          id: 'garut_kota',
+          name: 'Kecamatan Garut Kota',
+        ),
         clubs: const [
           Club(
             id: 'garuda',
@@ -269,6 +275,11 @@ void main() {
 
   testWidgets('Shows EmptyState when no people match criteria', (tester) async {
     final emptySnapshot = KokSnapshot(
+      scope: const AccessScope(
+        type: AccessScopeType.district,
+        id: 'garut_kota',
+        name: 'Kecamatan Garut Kota',
+      ),
       clubs: const [
         Club(
           id: 'garuda',
@@ -308,7 +319,15 @@ void main() {
   testWidgets(
     'Works seamlessly with DemoKokRepository snapshot (13 total, 8 docs, 5 licenses)',
     (tester) async {
-      final data = await tester.runAsync(() => DemoKokRepository().fetch());
+      final data = await tester.runAsync(
+        () => DemoKokRepository().fetchScope(
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'garut_kota',
+            name: 'Kecamatan Garut Kota',
+          ),
+        ),
+      );
       await pumpAttentionPage(
         tester,
         child: const AttentionPage(),

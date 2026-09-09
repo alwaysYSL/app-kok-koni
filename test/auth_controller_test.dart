@@ -64,7 +64,7 @@ class CompleterAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession() async {
+  Future<AuthResult> restoreSession([String? refreshToken]) async {
     restoreCallCount++;
     if (restoreCompleter != null) {
       return restoreCompleter!.future;
@@ -74,7 +74,14 @@ class CompleterAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession();
+    return restoreSession(refreshToken);
+  }
+
+  @override
+  Future<RemoteRevocationResult> revokeSession(
+    RemoteSessionHandle session,
+  ) async {
+    return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
   }
 
   @override

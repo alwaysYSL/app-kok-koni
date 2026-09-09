@@ -84,6 +84,7 @@ Map<String, dynamic> _$CommitteeMemberToJson(_CommitteeMember instance) =>
     };
 
 _KokSnapshot _$KokSnapshotFromJson(Map<String, dynamic> json) => _KokSnapshot(
+  scope: AccessScope.fromJson(json['scope']),
   clubs: (json['clubs'] as List<dynamic>)
       .map((e) => Club.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -98,6 +99,7 @@ _KokSnapshot _$KokSnapshotFromJson(Map<String, dynamic> json) => _KokSnapshot(
 
 Map<String, dynamic> _$KokSnapshotToJson(_KokSnapshot instance) =>
     <String, dynamic>{
+      'scope': instance.scope.toJson(),
       'clubs': instance.clubs.map((e) => e.toJson()).toList(),
       'people': instance.people.map((e) => e.toJson()).toList(),
       'committee': instance.committee.map((e) => e.toJson()).toList(),

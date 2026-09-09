@@ -3,10 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/theme.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
+
+const garutScope = AccessScope(
+  type: AccessScopeType.district,
+  id: 'garut_kota',
+  name: 'Kecamatan Garut Kota',
+);
 
 Widget createSearchTestApp({
   required KokSnapshot snapshot,
@@ -65,7 +72,7 @@ void main() {
       'renders search input with autofocus, back button, and category chips',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         await tester.pumpWidget(createSearchTestApp(snapshot: data!));
@@ -89,7 +96,7 @@ void main() {
       'searches for athlete by name and navigates to athlete detail on tap',
       (tester) async {
         final repo = DemoKokRepository();
-        final data = await tester.runAsync(() => repo.fetch());
+        final data = await tester.runAsync(() => repo.fetchScope(garutScope));
         expect(data, isNotNull);
 
         String? navigatedRoute;
@@ -105,7 +112,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Atlet 1 · Voli Bina Muda'), findsOneWidget);
-        expect(find.textContaining('Voli Bina Muda · Voli'), findsWidgets);
+        expect(find.textContaining('Voli Bina Muda · Bola Voli'), findsWidgets);
 
         await tester.tap(find.text('Atlet 1 · Voli Bina Muda'));
         await tester.pumpAndSettle();
@@ -117,7 +124,7 @@ void main() {
 
     testWidgets('category chip filters results by role', (tester) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(createSearchTestApp(snapshot: data!));
@@ -141,7 +148,7 @@ void main() {
 
     testWidgets('displays empty state when no matches found', (tester) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(createSearchTestApp(snapshot: data!));
@@ -160,7 +167,7 @@ void main() {
       tester,
     ) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       String? navigatedRoute;
@@ -187,7 +194,7 @@ void main() {
 
     testWidgets('clears query when clear icon is tapped', (tester) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(createSearchTestApp(snapshot: data!));
@@ -208,7 +215,7 @@ void main() {
       tester,
     ) async {
       final repo = DemoKokRepository();
-      final data = await tester.runAsync(() => repo.fetch());
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
       expect(data, isNotNull);
 
       await tester.pumpWidget(createSearchTestApp(snapshot: data!));

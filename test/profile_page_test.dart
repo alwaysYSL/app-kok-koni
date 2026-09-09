@@ -62,6 +62,7 @@ Widget buildTestableProfileWidget({
   final snap =
       snapshot ??
       KokSnapshot(
+        scope: currentUser.scope,
         clubs: const [
           Club(
             id: 'garuda',
@@ -488,7 +489,15 @@ void main() {
     testWidgets('works seamlessly with DemoKokRepository snapshot', (
       tester,
     ) async {
-      final data = await tester.runAsync(() => DemoKokRepository().fetch());
+      final data = await tester.runAsync(
+        () => DemoKokRepository().fetchScope(
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'garut_kota',
+            name: 'Kecamatan Garut Kota',
+          ),
+        ),
+      );
       final prefs = await SharedPreferences.getInstance();
       await pumpProfilePage(tester, snapshot: data, preferences: prefs);
 
@@ -502,7 +511,13 @@ void main() {
       'Rekapitulasi menampilkan nama wilayah Tarogong Kidul secara dinamis saat akun Tarogong Kidul aktif',
       (tester) async {
         final data = await tester.runAsync(
-          () => DemoKokRepository().fetchDistrict('tarogong_kidul'),
+          () => DemoKokRepository().fetchScope(
+            const AccessScope(
+              type: AccessScopeType.district,
+              id: 'tarogong_kidul',
+              name: 'Kecamatan Tarogong Kidul',
+            ),
+          ),
         );
         final prefs = await SharedPreferences.getInstance();
 

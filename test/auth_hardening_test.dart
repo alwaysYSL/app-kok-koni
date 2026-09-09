@@ -45,7 +45,7 @@ class _ControlledAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession() async {
+  Future<AuthResult> restoreSession([String? refreshToken]) async {
     restoreCallCount++;
     if (restoreCompleter != null) {
       return restoreCompleter!.future;
@@ -55,7 +55,14 @@ class _ControlledAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession();
+    return restoreSession(refreshToken);
+  }
+
+  @override
+  Future<RemoteRevocationResult> revokeSession(
+    RemoteSessionHandle session,
+  ) async {
+    return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
   }
 
   @override
@@ -129,19 +136,16 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
 }
 
 class _CountingKokRepository implements KokRepository {
-  int fetchDistrictCount = 0;
+  int fetchScopeCount = 0;
   final DemoKokRepository _inner = DemoKokRepository();
 
   @override
-  Future<KokSnapshot> fetch() => fetchDistrict('garut_kota');
-
-  @override
-  Future<KokSnapshot> fetchDistrict(
-    String districtId, {
-    CancelToken? cancelToken,
+  Future<KokSnapshot> fetchScope(
+    AccessScope scope, {
+    RequestCancellation? cancellation,
   }) async {
-    fetchDistrictCount++;
-    return _inner.fetchDistrict(districtId, cancelToken: cancelToken);
+    fetchScopeCount++;
+    return _inner.fetchScope(scope, cancellation: cancellation);
   }
 }
 
@@ -279,7 +283,7 @@ void main() {
     // 3. Penolakan Mutlak snapshotProvider tanpa Sesi (Menutup A-03)
     // -------------------------------------------------------------------------
     test(
-      '3. Skenario A-03: snapshotProvider melempar SessionRequiredException saat sessionScope null tanpa memanggil fetchDistrict',
+      '3. Skenario A-03: snapshotProvider melempar SessionRequiredException saat sessionScope null tanpa memanggil fetchScope',
       () async {
         final countingRepo = _CountingKokRepository();
         final container = ProviderContainer(
@@ -303,7 +307,7 @@ void main() {
         );
 
         // Repositori keolahragaan sama sekali tidak boleh dipanggil
-        expect(countingRepo.fetchDistrictCount, equals(0));
+        expect(countingRepo.fetchScopeCount, equals(0));
       },
     );
 

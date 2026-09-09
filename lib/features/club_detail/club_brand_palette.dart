@@ -70,7 +70,7 @@ abstract final class ClubBrandPaletteResolver {
     'Sepak Bola' => (const Color(0xFF315A91), const Color(0xFF17345C)),
     'Bulu Tangkis' => (const Color(0xFF51478A), const Color(0xFF2F285D)),
     'Pencak Silat' => (const Color(0xFFA23A2B), const Color(0xFF642117)),
-    'Voli' => (const Color(0xFFC88B08), const Color(0xFF795000)),
+    'Voli' || 'Bola Voli' => (const Color(0xFFC88B08), const Color(0xFF795000)),
     'Renang' => (const Color(0xFF168A91), const Color(0xFF07555E)),
     _ => (KokColors.blue, KokColors.navy),
   };

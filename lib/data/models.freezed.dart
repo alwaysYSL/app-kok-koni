@@ -879,7 +879,7 @@ as String,
 /// @nodoc
 mixin _$KokSnapshot {
 
- List<Club> get clubs; List<SportPerson> get people; List<CommitteeMember> get committee; DateTime get loadedAt;
+ AccessScope get scope; List<Club> get clubs; List<SportPerson> get people; List<CommitteeMember> get committee; DateTime get loadedAt;
 /// Create a copy of KokSnapshot
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -892,16 +892,16 @@ $KokSnapshotCopyWith<KokSnapshot> get copyWith => _$KokSnapshotCopyWithImpl<KokS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is KokSnapshot&&const DeepCollectionEquality().equals(other.clubs, clubs)&&const DeepCollectionEquality().equals(other.people, people)&&const DeepCollectionEquality().equals(other.committee, committee)&&(identical(other.loadedAt, loadedAt) || other.loadedAt == loadedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is KokSnapshot&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.clubs, clubs)&&const DeepCollectionEquality().equals(other.people, people)&&const DeepCollectionEquality().equals(other.committee, committee)&&(identical(other.loadedAt, loadedAt) || other.loadedAt == loadedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(clubs),const DeepCollectionEquality().hash(people),const DeepCollectionEquality().hash(committee),loadedAt);
+int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(clubs),const DeepCollectionEquality().hash(people),const DeepCollectionEquality().hash(committee),loadedAt);
 
 @override
 String toString() {
-  return 'KokSnapshot(clubs: $clubs, people: $people, committee: $committee, loadedAt: $loadedAt)';
+  return 'KokSnapshot(scope: $scope, clubs: $clubs, people: $people, committee: $committee, loadedAt: $loadedAt)';
 }
 
 
@@ -912,7 +912,7 @@ abstract mixin class $KokSnapshotCopyWith<$Res>  {
   factory $KokSnapshotCopyWith(KokSnapshot value, $Res Function(KokSnapshot) _then) = _$KokSnapshotCopyWithImpl;
 @useResult
 $Res call({
- List<Club> clubs, List<SportPerson> people, List<CommitteeMember> committee, DateTime loadedAt
+ AccessScope scope, List<Club> clubs, List<SportPerson> people, List<CommitteeMember> committee, DateTime loadedAt
 });
 
 
@@ -929,9 +929,10 @@ class _$KokSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of KokSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? clubs = null,Object? people = null,Object? committee = null,Object? loadedAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? scope = null,Object? clubs = null,Object? people = null,Object? committee = null,Object? loadedAt = null,}) {
   return _then(_self.copyWith(
-clubs: null == clubs ? _self.clubs : clubs // ignore: cast_nullable_to_non_nullable
+scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as AccessScope,clubs: null == clubs ? _self.clubs : clubs // ignore: cast_nullable_to_non_nullable
 as List<Club>,people: null == people ? _self.people : people // ignore: cast_nullable_to_non_nullable
 as List<SportPerson>,committee: null == committee ? _self.committee : committee // ignore: cast_nullable_to_non_nullable
 as List<CommitteeMember>,loadedAt: null == loadedAt ? _self.loadedAt : loadedAt // ignore: cast_nullable_to_non_nullable
@@ -1020,10 +1021,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( AccessScope scope,  List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _KokSnapshot() when $default != null:
-return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
+return $default(_that.scope,_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
   return orElse();
 
 }
@@ -1041,10 +1042,10 @@ return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( AccessScope scope,  List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)  $default,) {final _that = this;
 switch (_that) {
 case _KokSnapshot():
-return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
+return $default(_that.scope,_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1061,10 +1062,10 @@ return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( AccessScope scope,  List<Club> clubs,  List<SportPerson> people,  List<CommitteeMember> committee,  DateTime loadedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _KokSnapshot() when $default != null:
-return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
+return $default(_that.scope,_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
   return null;
 
 }
@@ -1076,9 +1077,10 @@ return $default(_that.clubs,_that.people,_that.committee,_that.loadedAt);case _:
 @JsonSerializable()
 
 class _KokSnapshot implements KokSnapshot {
-  const _KokSnapshot({required final  List<Club> clubs, required final  List<SportPerson> people, required final  List<CommitteeMember> committee, required this.loadedAt}): _clubs = clubs,_people = people,_committee = committee;
+  const _KokSnapshot({required this.scope, required final  List<Club> clubs, required final  List<SportPerson> people, required final  List<CommitteeMember> committee, required this.loadedAt}): _clubs = clubs,_people = people,_committee = committee;
   factory _KokSnapshot.fromJson(Map<String, dynamic> json) => _$KokSnapshotFromJson(json);
 
+@override final  AccessScope scope;
  final  List<Club> _clubs;
 @override List<Club> get clubs {
   if (_clubs is EqualUnmodifiableListView) return _clubs;
@@ -1115,16 +1117,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _KokSnapshot&&const DeepCollectionEquality().equals(other._clubs, _clubs)&&const DeepCollectionEquality().equals(other._people, _people)&&const DeepCollectionEquality().equals(other._committee, _committee)&&(identical(other.loadedAt, loadedAt) || other.loadedAt == loadedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _KokSnapshot&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other._clubs, _clubs)&&const DeepCollectionEquality().equals(other._people, _people)&&const DeepCollectionEquality().equals(other._committee, _committee)&&(identical(other.loadedAt, loadedAt) || other.loadedAt == loadedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_clubs),const DeepCollectionEquality().hash(_people),const DeepCollectionEquality().hash(_committee),loadedAt);
+int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_clubs),const DeepCollectionEquality().hash(_people),const DeepCollectionEquality().hash(_committee),loadedAt);
 
 @override
 String toString() {
-  return 'KokSnapshot(clubs: $clubs, people: $people, committee: $committee, loadedAt: $loadedAt)';
+  return 'KokSnapshot(scope: $scope, clubs: $clubs, people: $people, committee: $committee, loadedAt: $loadedAt)';
 }
 
 
@@ -1135,7 +1137,7 @@ abstract mixin class _$KokSnapshotCopyWith<$Res> implements $KokSnapshotCopyWith
   factory _$KokSnapshotCopyWith(_KokSnapshot value, $Res Function(_KokSnapshot) _then) = __$KokSnapshotCopyWithImpl;
 @override @useResult
 $Res call({
- List<Club> clubs, List<SportPerson> people, List<CommitteeMember> committee, DateTime loadedAt
+ AccessScope scope, List<Club> clubs, List<SportPerson> people, List<CommitteeMember> committee, DateTime loadedAt
 });
 
 
@@ -1152,9 +1154,10 @@ class __$KokSnapshotCopyWithImpl<$Res>
 
 /// Create a copy of KokSnapshot
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? clubs = null,Object? people = null,Object? committee = null,Object? loadedAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? scope = null,Object? clubs = null,Object? people = null,Object? committee = null,Object? loadedAt = null,}) {
   return _then(_KokSnapshot(
-clubs: null == clubs ? _self._clubs : clubs // ignore: cast_nullable_to_non_nullable
+scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as AccessScope,clubs: null == clubs ? _self._clubs : clubs // ignore: cast_nullable_to_non_nullable
 as List<Club>,people: null == people ? _self._people : people // ignore: cast_nullable_to_non_nullable
 as List<SportPerson>,committee: null == committee ? _self._committee : committee // ignore: cast_nullable_to_non_nullable
 as List<CommitteeMember>,loadedAt: null == loadedAt ? _self.loadedAt : loadedAt // ignore: cast_nullable_to_non_nullable
