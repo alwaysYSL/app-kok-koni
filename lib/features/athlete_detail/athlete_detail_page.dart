@@ -226,7 +226,7 @@ class _ProfileCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'ID SICABOR · ATL-${person.id}',
+                'ID DEMO · ATL-${person.id}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF6B7280),

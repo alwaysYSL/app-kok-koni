@@ -1,9 +1,11 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/data/repository.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
@@ -14,12 +16,40 @@ void main() {
     name: 'Kecamatan Garut Kota',
   );
 
+  final userWithExport = UserPrincipal(
+    id: 'usr_garut_kota',
+    skNumber: 'DEMO-001',
+    fullName: 'Pak Asep',
+    roleTitle: 'Koordinator Kecamatan',
+    scope: garutScope,
+    permissions: const {'sports:read', 'reports:export'},
+  );
+
+  final userWithoutExport = UserPrincipal(
+    id: 'usr_tarogong_kidul',
+    skNumber: 'DEMO-002',
+    fullName: 'Pak Cecep',
+    roleTitle: 'Koordinator Kecamatan',
+    scope: const AccessScope(
+      type: AccessScopeType.district,
+      id: 'tarogong_kidul',
+      name: 'Kecamatan Tarogong Kidul',
+    ),
+    permissions: const {'sports:read'},
+  );
+
   group('SportDetailPage Widget Tests', () {
-    Widget buildSubject({String sport = 'Sepak Bola', GoRouter? router}) {
+    Widget buildSubject({
+      String sport = 'Sepak Bola',
+      GoRouter? router,
+      AccessScope scope = garutScope,
+      UserPrincipal? user,
+    }) {
       return ProviderScope(
         overrides: [
+          currentUserProvider.overrideWithValue(user),
           snapshotProvider.overrideWith(
-            (ref) => DemoKokRepository().fetchScope(garutScope),
+            (ref) => DemoKokRepository().fetchScope(scope),
           ),
         ],
         child: MaterialApp.router(
@@ -142,5 +172,98 @@ void main() {
 
       expect(find.textContaining('Person:'), findsOneWidget);
     });
+
+    testWidgets(
+      'SC-30: user without reports:export cannot export (share button disabled)',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(
+          buildSubject(sport: 'Sepak Bola', user: userWithoutExport),
+        );
+        await tester.pumpAndSettle();
+
+        final shareBtn = tester.widget<IconButton>(
+          find.widgetWithIcon(IconButton, Icons.share_outlined),
+        );
+        expect(shareBtn.onPressed, isNull);
+        expect(shareBtn.tooltip, 'Akses ekspor laporan tidak diizinkan');
+        final icon = tester.widget<Icon>(find.byIcon(Icons.share_outlined));
+        expect(icon.color, Colors.white38);
+      },
+    );
+
+    testWidgets(
+      'SC-30: user with reports:export can export and summary contains dynamic scope name',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        String? copiedText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copiedText = (call.arguments as Map)['text'] as String?;
+            }
+            return null;
+          },
+        );
+
+        await tester.pumpWidget(
+          buildSubject(sport: 'Sepak Bola', user: userWithExport),
+        );
+        await tester.pumpAndSettle();
+
+        final shareBtn = tester.widget<IconButton>(
+          find.widgetWithIcon(IconButton, Icons.share_outlined),
+        );
+        expect(shareBtn.onPressed, isNotNull);
+        expect(shareBtn.tooltip, 'Bagikan info cabor');
+        final icon = tester.widget<Icon>(find.byIcon(Icons.share_outlined));
+        expect(icon.color, Colors.white);
+
+        await tester.tap(find.widgetWithIcon(IconButton, Icons.share_outlined));
+        await tester.pumpAndSettle();
+
+        expect(copiedText, isNotNull);
+        expect(copiedText, contains('REKAPITULASI CABANG OLAHRAGA'));
+        expect(copiedText, contains('Cabang Olahraga : Sepak Bola'));
+        expect(copiedText, contains('Wilayah         : Kecamatan Garut Kota'));
+        expect(
+          find.text(
+            'Rekapitulasi cabor Sepak Bola berhasil disalin ke papan klip.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'renders dynamic territory name from snapshot scope in header',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const tarogongScope = AccessScope(
+          type: AccessScopeType.district,
+          id: 'tarogong_kidul',
+          name: 'Kecamatan Tarogong Kidul',
+        );
+
+        await tester.pumpWidget(
+          buildSubject(
+            sport: 'Sepak Bola',
+            scope: tarogongScope,
+            user: userWithExport,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Kecamatan Tarogong Kidul'), findsWidgets);
+        expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      },
+    );
   });
 }

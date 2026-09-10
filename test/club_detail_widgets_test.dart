@@ -7,6 +7,7 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_brand_palette.dart';
 import 'package:kok_app/features/club_detail/club_detail_header.dart';
 import 'package:kok_app/features/club_detail/club_detail_tabs.dart';
+import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/club_detail/club_people_tab.dart';
 import 'package:kok_app/features/club_detail/club_person_card.dart';
 import 'package:kok_app/features/dashboard_decorations.dart';
@@ -609,4 +610,44 @@ void main() {
     expect(find.text('Belum ada data official'), findsOneWidget);
     expect(find.text('Reset filter'), findsNothing);
   });
+
+  testWidgets(
+    'ClubPeopleTab displays honest demo label and no active SICABOR claim',
+    (tester) async {
+      final palette = ClubBrandPaletteResolver.resolve(testClub);
+      await tester.pumpWidget(
+        app(
+          ClubPeopleTab(
+            role: 'Atlet',
+            people: const [],
+            palette: palette,
+            onPersonTap: (_) {},
+          ),
+        ),
+      );
+
+      expect(
+        find.text(
+          'Data demo lokal—belum terhubung dengan SICABOR. Perubahan diajukan lewat pengurus klub.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Data milik SICABOR'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'ClubDocumentTab displays honest demo label and no active SICABOR claim',
+    (tester) async {
+      await tester.pumpWidget(app(const ClubDocumentTab(club: testClub)));
+
+      expect(
+        find.text(
+          'Data demo lokal—belum terhubung dengan SICABOR. Perubahan diajukan lewat pengurus klub.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Data milik SICABOR'), findsNothing);
+    },
+  );
 }

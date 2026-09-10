@@ -187,7 +187,10 @@ void main() {
           tester.widget<Text>(find.text('Belum tersedia').first).style!.color,
           const Color(0xFF4B5563),
         );
-        expect(find.textContaining('Data milik SICABOR'), findsOneWidget);
+        expect(
+          find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
+          findsOneWidget,
+        );
         expect(
           find.byWidgetPredicate(
             (widget) => widget is InkWell && widget.onTap != null,

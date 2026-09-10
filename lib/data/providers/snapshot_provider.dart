@@ -89,6 +89,12 @@ final snapshotProvider = FutureProvider<KokSnapshot>(
 
     cancellationController.token.throwIfCancelled();
 
+    if (snapshot.scope != initialContext.scope) {
+      throw StateError(
+        'Repository mengembalikan snapshot dengan scope tidak cocok: ${snapshot.scope} != ${initialContext.scope}',
+      );
+    }
+
     final currentContext = ref.read(dataRequestContextProvider);
     if (currentContext != initialContext) {
       throw const RequestCancelledException(
@@ -101,7 +107,8 @@ final snapshotProvider = FutureProvider<KokSnapshot>(
   retry: (retryCount, error) {
     if (error is SessionRequiredException ||
         error is RequestCancelledException ||
-        error is UnsupportedScopeException) {
+        error is UnsupportedScopeException ||
+        error is StateError) {
       return null;
     }
     return ProviderContainer.defaultRetry(retryCount, error);

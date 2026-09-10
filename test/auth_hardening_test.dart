@@ -639,7 +639,10 @@ void main() {
 
         // Verifikasi identitas Pak Cecep & Kecamatan Tarogong Kidul
         expect(find.text('Pak Cecep'), findsOneWidget);
-        expect(find.text('Koordinator · Kec. Tarogong Kidul'), findsOneWidget);
+        expect(
+          find.text('Koordinator Kecamatan · Kec. Tarogong Kidul'),
+          findsOneWidget,
+        );
 
         // Ketuk tombol rekapitulasi data wilayah
         final rekapButton = find.text('Rekap Data Kecamatan');

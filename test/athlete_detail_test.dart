@@ -116,7 +116,8 @@ void main() {
           find.text('Atlet 1 · Voli Bina Muda'),
         );
         expect(nameText.style?.color, KokColors.cardTitle);
-        expect(find.text('ID SICABOR · ATL-voli-atlet-0'), findsOneWidget);
+        expect(find.text('ID DEMO · ATL-voli-atlet-0'), findsOneWidget);
+        expect(find.textContaining('SICABOR'), findsNothing);
 
         // 3. Status Badge: verified (soft green) independent of club brand color
         expect(find.text('terverifikasi'), findsOneWidget);

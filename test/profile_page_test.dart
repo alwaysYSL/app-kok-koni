@@ -91,6 +91,25 @@ final cecepUserWithExport = UserPrincipal(
   permissions: {'sports:read', 'reports:export'},
 );
 
+final koniKabUser = UserPrincipal(
+  id: 'usr_koni_kab',
+  skNumber: 'DEMO-003',
+  fullName: 'Ibu Rina',
+  roleTitle: 'Tim Verifikator',
+  scope: const AccessScope(
+    type: AccessScopeType.county,
+    id: 'koni_kab',
+    name: 'KONI Kabupaten Garut',
+  ),
+  permissions: {
+    'sports:read',
+    'clubs:read',
+    'members:read',
+    'documents:verify',
+    'reports:export',
+  },
+);
+
 Widget buildTestableProfileWidget({
   required Widget child,
   KokSnapshot? snapshot,
@@ -227,7 +246,10 @@ void main() {
       await tester.pump();
 
       expect(find.text('Pak Asep'), findsOneWidget);
-      expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
+      expect(
+        find.text('Koordinator Kecamatan · Kec. Garut Kota'),
+        findsOneWidget,
+      );
       expect(find.text('Keluar dari Akun'), findsOneWidget);
 
       await tester.tap(find.text('Keluar dari Akun'));
@@ -249,10 +271,45 @@ void main() {
       // Executive Profile Card
       expect(find.text('PA'), findsOneWidget);
       expect(find.text('Pak Asep'), findsOneWidget);
-      expect(find.text('Koordinator · Kec. Garut Kota'), findsOneWidget);
+      expect(
+        find.text('Koordinator Kecamatan · Kec. Garut Kota'),
+        findsOneWidget,
+      );
       expect(find.text('AKSES READ-ONLY'), findsOneWidget);
       expect(find.byType(CustomPaint), findsWidgets);
     });
+
+    testWidgets(
+      'renders district user profile with Koordinator Kecamatan and AKSES READ-ONLY badge',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await pumpProfilePage(tester, preferences: prefs, user: testUser);
+
+        expect(find.text('Pak Asep'), findsOneWidget);
+        expect(
+          find.text('Koordinator Kecamatan · Kec. Garut Kota'),
+          findsOneWidget,
+        );
+        expect(find.text('AKSES READ-ONLY'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders county user profile (usr_koni_kab) with Tim Verifikator and AKSES KABUPATEN badge',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        await pumpProfilePage(tester, preferences: prefs, user: koniKabUser);
+
+        expect(find.text('IR'), findsOneWidget);
+        expect(find.text('Ibu Rina'), findsOneWidget);
+        expect(
+          find.text('Tim Verifikator · KONI Kabupaten Garut'),
+          findsOneWidget,
+        );
+        expect(find.text('AKSES KABUPATEN'), findsOneWidget);
+        expect(find.text('AKSES READ-ONLY'), findsNothing);
+      },
+    );
 
     test('AccountProfileCardPainter shouldRepaint returns false', () {
       const painter = AccountProfileCardPainter();

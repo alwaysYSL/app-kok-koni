@@ -620,9 +620,10 @@ class _ExecutiveProfileCard extends StatelessWidget {
               .join()
               .toUpperCase()
         : 'PA';
-    final district = user != null
-        ? 'Koordinator · ${user!.districtName.replaceFirst('Kecamatan ', 'Kec. ')}'
-        : 'Koordinator · Kec. Garut Kota';
+    final roleTitle = user?.roleTitle ?? 'Koordinator Kecamatan';
+    final scopeName = user?.scope.name ?? 'Kecamatan Garut Kota';
+    final subtitle =
+        '$roleTitle · ${scopeName.replaceFirst('Kecamatan ', 'Kec. ')}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -685,7 +686,7 @@ class _ExecutiveProfileCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        district,
+                        subtitle,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 12,
@@ -706,9 +707,11 @@ class _ExecutiveProfileCard extends StatelessWidget {
                             width: 1,
                           ),
                         ),
-                        child: const Text(
-                          'AKSES READ-ONLY',
-                          style: TextStyle(
+                        child: Text(
+                          user?.scope.type == AccessScopeType.county
+                              ? 'AKSES KABUPATEN'
+                              : 'AKSES READ-ONLY',
+                          style: const TextStyle(
                             color: Color(0xFFFBBF24),
                             fontSize: 12,
                             fontWeight: FontWeight.w700,

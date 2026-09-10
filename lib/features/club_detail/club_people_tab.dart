@@ -120,7 +120,7 @@ class _ClubPeopleTabState extends State<ClubPeopleTab>
         const Padding(
           padding: EdgeInsets.only(top: 10),
           child: Text(
-            'Data milik SICABOR. Perubahan diajukan lewat pengurus klub — aplikasi ini tidak menyunting.',
+            'Data demo lokal—belum terhubung dengan SICABOR. Perubahan diajukan lewat pengurus klub.',
             textAlign: TextAlign.center,
             style: TextStyle(color: KokColors.muted, fontSize: 12, height: 1.4),
           ),

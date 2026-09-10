@@ -385,6 +385,7 @@ void main() {
           ),
           isNull,
         );
+        expect(retryPolicy(1, StateError('Scope mismatch test')), isNull);
 
         // Non-lifecycle exceptions are retried using defaultRetry
         final regularError = Exception('Network timeout');
@@ -392,7 +393,82 @@ void main() {
         expect(retryPolicy(1, regularError), equals(defaultDuration));
       },
     );
+
+    test(
+      'snapshotProvider melempar StateError saat repository mengembalikan snapshot dengan scope tidak cocok',
+      () async {
+        final tokenStorage = InMemoryAuthTokenStorage();
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final skStore = RememberedSkStore(
+          prefs: prefs,
+          key: 'test_remembered_sk',
+        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
+
+        final mismatchRepo = _MismatchedScopeRepository(
+          mismatchedScope: const AccessScope(
+            type: AccessScopeType.district,
+            id: 'tarogong_kidul',
+            name: 'Kecamatan Tarogong Kidul',
+          ),
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(tokenStorage),
+            authRepositoryProvider.overrideWithValue(authRepo),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+            repositoryProvider.overrideWithValue(mismatchRepo),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        // Login Pak Asep (Garut Kota)
+        await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: false,
+          rememberSk: false,
+        );
+
+        expect(
+          () => container.read(snapshotProvider.future),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains(
+                'Repository mengembalikan snapshot dengan scope tidak cocok',
+              ),
+            ),
+          ),
+        );
+      },
+    );
   });
+}
+
+class _MismatchedScopeRepository implements KokRepository {
+  final AccessScope mismatchedScope;
+  _MismatchedScopeRepository({required this.mismatchedScope});
+
+  @override
+  Future<KokSnapshot> fetchScope(
+    AccessScope scope, {
+    RequestCancellation? cancellation,
+  }) async {
+    return KokSnapshot(
+      scope: mismatchedScope,
+      clubs: const [],
+      people: const [],
+      committee: const [],
+      loadedAt: DateTime.now(),
+    );
+  }
 }
 
 class _CancellableTestRepository implements KokRepository {

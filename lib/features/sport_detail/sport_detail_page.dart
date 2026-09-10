@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/auth/presentation/auth_controller.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../shared/widgets.dart';
@@ -61,11 +62,14 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
   }
 
   Future<void> _copySummary({
+    required String scopeName,
     int clubCount = 0,
     int athleteCount = 0,
     int coachCount = 0,
     int verifiedCount = 0,
   }) async {
+    final user = ref.read(currentUserProvider);
+    if (!(user?.hasPermission('reports:export') ?? false)) return;
     final pct = athleteCount > 0
         ? ((verifiedCount / athleteCount) * 100).round()
         : 100;
@@ -73,7 +77,7 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
         '''
 REKAPITULASI CABANG OLAHRAGA
 Cabang Olahraga : ${widget.sport}
-Wilayah         : Kecamatan Garut Kota
+Wilayah         : $scopeName
 Jumlah Klub     : $clubCount
 Total Atlet     : $athleteCount
 Total Pelatih   : $coachCount
@@ -94,6 +98,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   @override
   Widget build(BuildContext context) {
     final palette = SportBrandPaletteResolver.resolve(widget.sport);
+    final user = ref.watch(currentUserProvider);
+    final canExport = user?.hasPermission('reports:export') ?? false;
 
     return DataView(
       builder: (data) {
@@ -141,6 +147,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       _buildHeader(
                         context,
                         palette,
+                        scopeName: data.scope.name,
+                        canExport: canExport,
                         clubCount: clubs.length,
                         athleteCount: athletes.length,
                         coachCount: coaches.length,
@@ -183,6 +191,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             coaches.length,
             verifiedCount,
             palette,
+            data.scope.name,
+            canExport,
           ),
         );
       },
@@ -192,6 +202,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   Widget _buildHeader(
     BuildContext context,
     SportBrandPalette palette, {
+    required String scopeName,
+    required bool canExport,
     required int clubCount,
     required int athleteCount,
     required int coachCount,
@@ -234,18 +246,23 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       },
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.share_outlined,
                         size: 24,
-                        color: Colors.white,
+                        color: canExport ? Colors.white : Colors.white38,
                       ),
-                      tooltip: 'Bagikan info cabor',
-                      onPressed: () => _copySummary(
-                        clubCount: clubCount,
-                        athleteCount: athleteCount,
-                        coachCount: coachCount,
-                        verifiedCount: verifiedCount,
-                      ),
+                      tooltip: canExport
+                          ? 'Bagikan info cabor'
+                          : 'Akses ekspor laporan tidak diizinkan',
+                      onPressed: canExport
+                          ? () => _copySummary(
+                              scopeName: scopeName,
+                              clubCount: clubCount,
+                              athleteCount: athleteCount,
+                              coachCount: coachCount,
+                              verifiedCount: verifiedCount,
+                            )
+                          : null,
                     ),
                   ],
                 ),
@@ -274,7 +291,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  'Kecamatan Garut Kota',
+                  scopeName,
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.85),
                     fontSize: 12,
@@ -1088,6 +1105,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     int coachCount,
     int verifiedCount,
     SportBrandPalette palette,
+    String scopeName,
+    bool canExport,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1099,12 +1118,15 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
         child: SizedBox(
           height: 48,
           child: FilledButton.icon(
-            onPressed: () => _copySummary(
-              clubCount: clubCount,
-              athleteCount: athleteCount,
-              coachCount: coachCount,
-              verifiedCount: verifiedCount,
-            ),
+            onPressed: canExport
+                ? () => _copySummary(
+                    scopeName: scopeName,
+                    clubCount: clubCount,
+                    athleteCount: athleteCount,
+                    coachCount: coachCount,
+                    verifiedCount: verifiedCount,
+                  )
+                : null,
             icon: const Icon(Icons.copy_rounded, size: 18),
             label: const Text('Salin Rekapitulasi Cabor'),
             style: FilledButton.styleFrom(
