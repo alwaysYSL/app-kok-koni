@@ -119,25 +119,36 @@ enum SignInPhase { idle, executing, waitingForCommit, committing }
 
 enum AuthCommandStatus { success, failed, rejected, cancelled }
 
+enum AuthCommandRejection { cleanupRequired, operationInProgress, invalidState }
+
 final class AuthCommandResult {
-  const AuthCommandResult({required this.status, this.errorMessage});
+  const AuthCommandResult({
+    required this.status,
+    this.rejection,
+    this.errorMessage,
+  });
+
   final AuthCommandStatus status;
+  final AuthCommandRejection? rejection;
   final String? errorMessage;
+
   bool get isSuccess => status == AuthCommandStatus.success;
+  bool get isRejected => status == AuthCommandStatus.rejected;
 
   @override
   String toString() =>
-      'AuthCommandResult(status: $status, errorMessage: $errorMessage)';
+      'AuthCommandResult(status: $status, rejection: $rejection, errorMessage: $errorMessage)';
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is AuthCommandResult &&
           other.status == status &&
+          other.rejection == rejection &&
           other.errorMessage == errorMessage;
 
   @override
-  int get hashCode => Object.hash(status, errorMessage);
+  int get hashCode => Object.hash(status, rejection, errorMessage);
 }
 
 final class LogoutResult {
@@ -191,6 +202,7 @@ class AuthController extends Notifier<AuthState> {
   Completer<void>? _cancelTrigger;
   RemoteSessionHandle? _activeRemoteHandle;
   String? _activeCredentialId;
+  Future<LogoutResult>? _activeLogoutFuture;
 
   SignInPhase get signInPhase => _signInPhase;
   int get sessionGeneration => _sessionGeneration;
@@ -430,12 +442,19 @@ class AuthController extends Notifier<AuthState> {
     // 1. Reserve:
     // Validasi state: hanya boleh login dari AuthSignedOut dengan cleanupStatus == LocalCleanupStatus.clean.
     // Jika sedang login atau state lain, tolak dengan AuthCommandStatus.rejected.
-    if (state is! AuthSignedOut ||
-        (state as AuthSignedOut).cleanupStatus != LocalCleanupStatus.clean ||
-        _signInPhase != SignInPhase.idle) {
+    if (state is AuthSignedOut &&
+        (state as AuthSignedOut).cleanupStatus != LocalCleanupStatus.clean) {
       return const AuthCommandResult(
         status: AuthCommandStatus.rejected,
-        errorMessage: 'Login ditolak: status sesi saat ini tidak valid.',
+        rejection: AuthCommandRejection.cleanupRequired,
+        errorMessage: 'Pembersihan sesi lokal sebelumnya belum selesai.',
+      );
+    }
+    if (state is! AuthSignedOut || _signInPhase != SignInPhase.idle) {
+      return const AuthCommandResult(
+        status: AuthCommandStatus.rejected,
+        rejection: AuthCommandRejection.invalidState,
+        errorMessage: 'Operasi login tidak valid pada state saat ini.',
       );
     }
 
@@ -551,10 +570,14 @@ class AuthController extends Notifier<AuthState> {
             generation: _sessionGeneration,
           );
 
-          if (rememberSk) {
-            await skStore.saveSk(skNumber);
-          } else {
-            await skStore.clear();
+          try {
+            if (rememberSk) {
+              await skStore.saveSk(skNumber);
+            } else {
+              await skStore.clear();
+            }
+          } catch (_) {
+            // Kegagalan preferensi non-kritis tidak membatalkan atau merusak sesi yang sudah sah
           }
 
           return const AuthCommandResult(status: AuthCommandStatus.success);
@@ -641,10 +664,14 @@ class AuthController extends Notifier<AuthState> {
           generation: _sessionGeneration,
         );
 
-        if (rememberSk) {
-          await skStore.saveSk(skNumber);
-        } else {
-          await skStore.clear();
+        try {
+          if (rememberSk) {
+            await skStore.saveSk(skNumber);
+          } else {
+            await skStore.clear();
+          }
+        } catch (_) {
+          // Kegagalan preferensi non-kritis tidak membatalkan atau merusak sesi yang sudah sah
         }
 
         return const AuthCommandResult(status: AuthCommandStatus.success);
@@ -671,12 +698,14 @@ class AuthController extends Notifier<AuthState> {
     if (_signInPhase == SignInPhase.committing) {
       return const AuthCommandResult(
         status: AuthCommandStatus.rejected,
-        errorMessage: 'Proses commit tidak dapat dibatalkan.',
+        rejection: AuthCommandRejection.operationInProgress,
+        errorMessage: 'Proses sign in sedang melakukan commit data.',
       );
     }
 
     return const AuthCommandResult(
       status: AuthCommandStatus.rejected,
+      rejection: AuthCommandRejection.invalidState,
       errorMessage: 'Tidak ada proses login aktif.',
     );
   }
@@ -686,6 +715,20 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<LogoutResult> logout({
+    Duration revocationTimeout = const Duration(seconds: 5),
+  }) {
+    final active = _activeLogoutFuture;
+    if (active != null) return active;
+    late final Future<LogoutResult> run;
+    run = _runLogout(revocationTimeout: revocationTimeout).whenComplete(() {
+      if (identical(_activeLogoutFuture, run)) {
+        _activeLogoutFuture = null;
+      }
+    });
+    return _activeLogoutFuture = run;
+  }
+
+  Future<LogoutResult> _runLogout({
     Duration revocationTimeout = const Duration(seconds: 5),
   }) async {
     final compositionTimeout = ref

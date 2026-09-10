@@ -30,17 +30,25 @@ final fakeGarutKotaUser = UserPrincipal(
 
 class InMemoryRememberedSkStore implements RememberedSkStore {
   String? _sk;
+  bool shouldThrowOnSave = false;
+  bool shouldThrowOnClear = false;
 
   @override
   Future<String?> readSk() async => _sk;
 
   @override
   Future<void> saveSk(String sk) async {
+    if (shouldThrowOnSave) {
+      throw const MetadataStorageException('Simulated saveSk failure');
+    }
     _sk = sk;
   }
 
   @override
   Future<void> clear() async {
+    if (shouldThrowOnClear) {
+      throw const MetadataStorageException('Simulated clear failure');
+    }
     _sk = null;
   }
 }
@@ -112,11 +120,17 @@ class CompleterAuthRepository implements AuthRepository {
 
   Duration? revokeDelay;
   bool shouldThrowOnRevoke = false;
+  int revokeCallCount = 0;
+  Completer<void>? revokeCompleter;
 
   @override
   Future<RemoteRevocationResult> revokeSession(
     RemoteSessionHandle session,
   ) async {
+    revokeCallCount++;
+    if (revokeCompleter != null) {
+      await revokeCompleter!.future;
+    }
     if (revokeDelay != null) {
       await Future<void>.delayed(revokeDelay!);
     }
@@ -140,6 +154,8 @@ class FakeSessionMetadataStore implements SessionMetadataStore {
   int? throwOnWriteCallIndex;
   int writeCallCount = 0;
   SessionMetadata? lastWritten;
+  Completer<void>? onWriteCompleter;
+  void Function(SessionMetadata metadata)? onWriteHook;
 
   FakeSessionMetadataStore({this.metadata});
 
@@ -157,6 +173,12 @@ class FakeSessionMetadataStore implements SessionMetadataStore {
   @override
   Future<void> write(SessionMetadata metadata) async {
     writeCallCount++;
+    if (onWriteHook != null) {
+      onWriteHook!(metadata);
+    }
+    if (onWriteCompleter != null) {
+      await onWriteCompleter!.future;
+    }
     if (shouldThrowOnWrite ||
         (throwOnWriteCallIndex != null &&
             writeCallCount == throwOnWriteCallIndex)) {
@@ -2178,4 +2200,361 @@ void main() {
       },
     );
   });
+
+  group(
+    'Concurrency Hardening & Typed Rejections (Patch 3: SC-06, SC-07, SC-13, SC-16, P1-08)',
+    () {
+      test(
+        'SC-06: concurrent logout() returns same Future instance and performs single cleanup cycle',
+        () async {
+          final storage = FakeAuthTokenStorage();
+          final metadataStore = FakeSessionMetadataStore();
+          final fakeRepo = CompleterAuthRepository();
+          final revokeCompleter = Completer<void>();
+          fakeRepo.revokeCompleter = revokeCompleter;
+
+          final container = ProviderContainer(
+            overrides: [
+              authTokenStorageProvider.overrideWithValue(storage),
+              sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(fakeRepo),
+              rememberedSkStoreProvider.overrideWithValue(skStore),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final controller = container.read(authControllerProvider.notifier);
+          await controller.bootstrap();
+
+          final loginRes = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: true,
+            rememberSk: false,
+          );
+          expect(loginRes.isSuccess, isTrue);
+
+          final future1 = controller.logout();
+          final future2 = controller.logout();
+
+          expect(identical(future1, future2), isTrue);
+
+          revokeCompleter.complete();
+
+          final result1 = await future1;
+          final result2 = await future2;
+
+          expect(result1, equals(result2));
+          expect(fakeRepo.revokeCallCount, equals(1));
+          expect(storage.clearIfOwnedCallCount, equals(1));
+          expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+        },
+      );
+
+      test(
+        'SC-07: login during cleanup failed/pending returns AuthCommandStatus.rejected and rejection: AuthCommandRejection.cleanupRequired',
+        () async {
+          final storage = FakeAuthTokenStorage();
+          final metadataStore = FakeSessionMetadataStore();
+
+          final container = ProviderContainer(
+            overrides: [
+              authTokenStorageProvider.overrideWithValue(storage),
+              sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(authRepository),
+              rememberedSkStoreProvider.overrideWithValue(skStore),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final controller = container.read(authControllerProvider.notifier);
+
+          // Bootstrap into failed state
+          storage.shouldThrowOnRead = true;
+          await controller.bootstrap();
+          expect(
+            container.read(authControllerProvider),
+            equals(
+              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed),
+            ),
+          );
+
+          // Attempt login while cleanup is failed -> cleanupRequired
+          final failedResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: false,
+          );
+          expect(failedResult.status, equals(AuthCommandStatus.rejected));
+          expect(failedResult.isRejected, isTrue);
+          expect(
+            failedResult.rejection,
+            equals(AuthCommandRejection.cleanupRequired),
+          );
+          expect(
+            failedResult.errorMessage,
+            equals('Pembersihan sesi lokal sebelumnya belum selesai.'),
+          );
+
+          // Now test when cleanup is pending
+          storage.shouldThrowOnRead = false;
+          final queueBlocker = Completer<void>();
+          final blockerFuture = controller.enqueueMutation(
+            () => queueBlocker.future,
+          );
+
+          final retryFuture = controller.retryLocalCredentialCleanup();
+          expect(
+            container.read(authControllerProvider),
+            equals(
+              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.pending),
+            ),
+          );
+
+          final pendingResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: false,
+          );
+          expect(pendingResult.status, equals(AuthCommandStatus.rejected));
+          expect(pendingResult.isRejected, isTrue);
+          expect(
+            pendingResult.rejection,
+            equals(AuthCommandRejection.cleanupRequired),
+          );
+          expect(
+            pendingResult.errorMessage,
+            equals('Pembersihan sesi lokal sebelumnya belum selesai.'),
+          );
+
+          queueBlocker.complete();
+          await blockerFuture;
+          await retryFuture;
+
+          // Verify invalidState when not AuthSignedOut
+          expect(
+            container.read(authControllerProvider),
+            equals(
+              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+            ),
+          );
+          final loginOk = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: false,
+          );
+          expect(loginOk.isSuccess, isTrue);
+
+          final invalidStateResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: false,
+          );
+          expect(invalidStateResult.status, equals(AuthCommandStatus.rejected));
+          expect(invalidStateResult.isRejected, isTrue);
+          expect(
+            invalidStateResult.rejection,
+            equals(AuthCommandRejection.invalidState),
+          );
+          expect(
+            invalidStateResult.errorMessage,
+            equals('Operasi login tidak valid pada state saat ini.'),
+          );
+        },
+      );
+
+      test(
+        'SC-13: barrier test verifying stale ticket while waiting for mutation queue drops commit without writing credentials/metadata',
+        () async {
+          final storage = FakeAuthTokenStorage();
+          final metadataStore = FakeSessionMetadataStore();
+          final generator = DeterministicCredentialIdGenerator('sc13-cred');
+
+          final container = ProviderContainer(
+            overrides: [
+              authTokenStorageProvider.overrideWithValue(storage),
+              sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(authRepository),
+              rememberedSkStoreProvider.overrideWithValue(skStore),
+              credentialIdGeneratorProvider.overrideWithValue(generator),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final controller = container.read(authControllerProvider.notifier);
+          await controller.bootstrap();
+          expect(
+            container.read(authControllerProvider),
+            equals(
+              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+            ),
+          );
+
+          final queueBlocker = Completer<void>();
+          final blockerFuture = controller.enqueueMutation(
+            () => queueBlocker.future,
+          );
+
+          final loginFuture = controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: true,
+            rememberSk: false,
+          );
+
+          await Future<void>.delayed(Duration.zero);
+          expect(controller.signInPhase, equals(SignInPhase.waitingForCommit));
+
+          final cancelResult = await controller.cancelSignIn();
+          expect(cancelResult.status, equals(AuthCommandStatus.success));
+          expect(cancelResult.isSuccess, isTrue);
+
+          queueBlocker.complete();
+          await blockerFuture;
+
+          final loginResult = await loginFuture;
+          expect(loginResult.status, equals(AuthCommandStatus.cancelled));
+
+          expect(storage.writeCallCount, equals(0));
+          expect(storage.credential, isNull);
+          expect(metadataStore.writeCallCount, equals(0));
+          expect(metadataStore.lastWritten, isNull);
+          expect(
+            container.read(authControllerProvider),
+            equals(
+              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+            ),
+          );
+        },
+      );
+
+      test(
+        'SC-16: barrier test verifying cancel while committing returns AuthCommandStatus.rejected and rejection: AuthCommandRejection.operationInProgress',
+        () async {
+          final storage = FakeAuthTokenStorage();
+          final metadataStore = FakeSessionMetadataStore();
+          final commitBlocker = Completer<void>();
+          final enteredCommit = Completer<void>();
+
+          metadataStore.onWriteHook = (_) {
+            if (!enteredCommit.isCompleted) {
+              enteredCommit.complete();
+            }
+          };
+          metadataStore.onWriteCompleter = commitBlocker;
+
+          final container = ProviderContainer(
+            overrides: [
+              authTokenStorageProvider.overrideWithValue(storage),
+              sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(authRepository),
+              rememberedSkStoreProvider.overrideWithValue(skStore),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final controller = container.read(authControllerProvider.notifier);
+          await controller.bootstrap();
+
+          final loginFuture = controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: true,
+            rememberSk: false,
+          );
+
+          await enteredCommit.future;
+          expect(controller.signInPhase, equals(SignInPhase.committing));
+
+          final cancelResult = await controller.cancelSignIn();
+          expect(cancelResult.status, equals(AuthCommandStatus.rejected));
+          expect(cancelResult.isRejected, isTrue);
+          expect(
+            cancelResult.rejection,
+            equals(AuthCommandRejection.operationInProgress),
+          );
+          expect(
+            cancelResult.errorMessage,
+            equals('Proses sign in sedang melakukan commit data.'),
+          );
+
+          metadataStore.onWriteCompleter = null;
+          metadataStore.onWriteHook = null;
+          commitBlocker.complete();
+
+          final loginResult = await loginFuture;
+          expect(loginResult.isSuccess, isTrue);
+          expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+        },
+      );
+
+      test(
+        'P1-08: login where skStore.saveSk throws MetadataStorageException succeeds with AuthCommandStatus.success and AuthSignedIn state',
+        () async {
+          final storage = FakeAuthTokenStorage();
+          final metadataStore = FakeSessionMetadataStore();
+          final failingSkStore = InMemoryRememberedSkStore()
+            ..shouldThrowOnSave = true;
+
+          final container = ProviderContainer(
+            overrides: [
+              authTokenStorageProvider.overrideWithValue(storage),
+              sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(authRepository),
+              rememberedSkStoreProvider.overrideWithValue(failingSkStore),
+            ],
+          );
+          addTearDown(container.dispose);
+
+          final controller = container.read(authControllerProvider.notifier);
+          await controller.bootstrap();
+
+          // 1. Persistent login with rememberSk: true
+          final persistentResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: true,
+            rememberSk: true,
+          );
+          expect(persistentResult.isSuccess, isTrue);
+          expect(persistentResult.status, equals(AuthCommandStatus.success));
+          expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+
+          // Logout
+          await controller.logout();
+          expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+
+          // 2. Non-persistent login with rememberSk: true
+          final nonPersistentResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: true,
+          );
+          expect(nonPersistentResult.isSuccess, isTrue);
+          expect(nonPersistentResult.status, equals(AuthCommandStatus.success));
+          expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+
+          // 3. Non-persistent login with rememberSk: false when clear throws
+          await controller.logout();
+          failingSkStore.shouldThrowOnSave = false;
+          failingSkStore.shouldThrowOnClear = true;
+
+          final clearFailResult = await controller.login(
+            skNumber: 'DEMO-001',
+            password: 'kokgarut123',
+            staySignedIn: false,
+            rememberSk: false,
+          );
+          expect(clearFailResult.isSuccess, isTrue);
+          expect(clearFailResult.status, equals(AuthCommandStatus.success));
+          expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+        },
+      );
+    },
+  );
 }
