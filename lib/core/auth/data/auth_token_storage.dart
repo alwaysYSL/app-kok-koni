@@ -60,12 +60,6 @@ abstract interface class AuthTokenStorage {
   Future<bool> clearIfOwnedBy(String credentialId);
   Future<void> forceClearForRecovery();
   Future<void> migrateLegacyStorage();
-
-  // Compatibility getters / methods for intermediate compilation
-  Future<String?> readRefreshToken();
-  Future<String?> getRefreshToken();
-  Future<void> saveRefreshToken(String token);
-  Future<void> clear();
 }
 
 class SecureAuthTokenStorage implements AuthTokenStorage {
@@ -124,18 +118,4 @@ class SecureAuthTokenStorage implements AuthTokenStorage {
       await _store.delete(key: _legacyKey);
     }
   }
-
-  // Compatibility implementations
-  @override
-  Future<String?> readRefreshToken() async => (await read())?.refreshToken;
-
-  @override
-  Future<String?> getRefreshToken() => readRefreshToken();
-
-  @override
-  Future<void> saveRefreshToken(String token) =>
-      write(StoredCredential(credentialId: 'legacy', refreshToken: token));
-
-  @override
-  Future<void> clear() => forceClearForRecovery();
 }

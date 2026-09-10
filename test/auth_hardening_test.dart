@@ -47,7 +47,7 @@ class _ControlledAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession([String? refreshToken]) async {
+  Future<AuthResult> restoreSession(String refreshToken) async {
     restoreCallCount++;
     if (restoreCompleter != null) {
       return restoreCompleter!.future;
@@ -66,19 +66,10 @@ class _ControlledAuthRepository implements AuthRepository {
   ) async {
     return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
   }
-
-  @override
-  Future<void> logout() async {
-    logoutCallCount++;
-  }
 }
 
 class _TarogongWithExportAuthRepository extends DemoAuthRepository {
-  _TarogongWithExportAuthRepository({
-    required super.tokenStorage,
-    required super.skStore,
-    required super.simulateLatency,
-  });
+  _TarogongWithExportAuthRepository({super.simulateLatency = false});
 
   @override
   Future<AuthResult> login({
@@ -167,30 +158,6 @@ class _InMemoryTokenStorage implements AuthTokenStorage {
   Future<void> migrateLegacyStorage() async {
     if (shouldThrow) throw StorageException(throwMessage);
   }
-
-  @override
-  Future<String?> getRefreshToken() async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    return credential?.refreshToken;
-  }
-
-  @override
-  Future<String?> readRefreshToken() async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    return credential?.refreshToken;
-  }
-
-  @override
-  Future<void> saveRefreshToken(String t) async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    credential = StoredCredential(credentialId: 'legacy', refreshToken: t);
-  }
-
-  @override
-  Future<void> clear() async {
-    if (shouldThrow) throw StorageException(throwMessage);
-    credential = null;
-  }
 }
 
 class _FakeSessionMetadataStore implements SessionMetadataStore {
@@ -248,7 +215,7 @@ class _MutableAuthController extends AuthController {
 }
 
 final _testGarutUser = UserPrincipal(
-  id: 'usr-garut-kota-001',
+  id: 'usr_garut_kota',
   skNumber: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
@@ -319,8 +286,7 @@ void main() {
         expect(loginSuccess.isSuccess, isFalse);
         expect(loginSuccess.status, equals(AuthCommandStatus.cancelled));
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-        expect(await storage.readRefreshToken(), isNull);
-        expect(await storage.getRefreshToken(), isNull);
+        expect(await storage.read(), isNull);
       },
     );
 
@@ -492,11 +458,7 @@ void main() {
           prefs: prefs,
           key: 'test_remembered_sk',
         );
-        final repo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final repo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -526,22 +488,9 @@ void main() {
     test(
       '6. Skenario A-06: DemoAuthRepository menolak token acak/tidak valid tanpa fallback ke Garut Kota',
       () async {
-        final storage = _InMemoryTokenStorage();
-        await storage.saveRefreshToken('token_acak_palsu_99999');
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(
-          prefs: prefs,
-          key: 'test_remembered_sk',
-        );
+        final repo = DemoAuthRepository(simulateLatency: false);
 
-        final repo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
-
-        final result = await repo.restoreSession();
+        final result = await repo.restoreSession('token_acak_palsu_99999');
 
         expect(result.isSuccess, isFalse);
         expect(result.user, isNull);
@@ -634,8 +583,6 @@ void main() {
           key: 'test_remembered_sk',
         );
         final authRepo = _TarogongWithExportAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
           simulateLatency: false,
         );
 
@@ -836,11 +783,7 @@ void main() {
         // Gagalkan penulisan pertama saat login (penulisan metadata pending)
         metadataStore.throwOnWriteCallIndex = 1;
 
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -882,11 +825,7 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore(
           const SessionMetadata.signedOutClean(),
         );
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -934,11 +873,7 @@ void main() {
         final generator = DeterministicCredentialIdGenerator('ft03');
         late ProviderContainer container;
 
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         container = ProviderContainer(
           overrides: [
@@ -988,11 +923,7 @@ void main() {
         // Gagal saat penulisan ke-2 (penulisan metadata restore-enabled)
         metadataStore.throwOnWriteCallIndex = 2;
 
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -1040,11 +971,7 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore(
           const SessionMetadata.signedOutClean(),
         );
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -1135,11 +1062,7 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore(
           const SessionMetadata.signedOutClean(),
         );
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -1181,11 +1104,7 @@ void main() {
       () async {
         final storage = _InMemoryTokenStorage();
         final metadataStore = _FakeSessionMetadataStore();
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -1227,11 +1146,7 @@ void main() {
       () async {
         final storage = _InMemoryTokenStorage();
         final metadataStore = _FakeSessionMetadataStore();
-        final authRepo = DemoAuthRepository(
-          tokenStorage: storage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [

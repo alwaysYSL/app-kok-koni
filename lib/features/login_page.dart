@@ -223,13 +223,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
                 subtitle: const Text(
-                  'DEMO-003 · kokkabgarut123 · Admin KONI Kab. Garut',
+                  'DEMO-003 · konigarut123 · Admin KONI Kab. Garut',
                   style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
                 onTap: () {
                   setState(() {
                     _sk.text = 'DEMO-003';
-                    _password.text = 'kokkabgarut123';
+                    _password.text = 'konigarut123';
                     _error = null;
                   });
                   Navigator.pop(sheetContext);

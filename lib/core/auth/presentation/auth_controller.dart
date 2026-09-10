@@ -89,10 +89,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   if (composition != null) {
     return composition.authRepository;
   }
-  return DemoAuthRepository(
-    tokenStorage: ref.watch(authTokenStorageProvider),
-    skStore: ref.watch(rememberedSkStoreProvider),
-  );
+  return DemoAuthRepository();
 });
 
 final credentialIdGeneratorProvider = Provider<CredentialIdGenerator>((ref) {

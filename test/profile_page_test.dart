@@ -53,7 +53,7 @@ class _CompleterAuthController extends AuthController {
 }
 
 final testUser = UserPrincipal(
-  id: 'usr-garut-kota-001',
+  id: 'usr_garut_kota',
   skNumber: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
@@ -66,7 +66,7 @@ final testUser = UserPrincipal(
 );
 
 final cecepUser = UserPrincipal(
-  id: 'usr-tarogong-kidul-002',
+  id: 'usr_tarogong_kidul',
   skNumber: 'DEMO-002',
   fullName: 'Pak Cecep',
   roleTitle: 'Koordinator Kecamatan',
@@ -79,7 +79,7 @@ final cecepUser = UserPrincipal(
 );
 
 final cecepUserWithExport = UserPrincipal(
-  id: 'usr-tarogong-kidul-002',
+  id: 'usr_tarogong_kidul',
   skNumber: 'DEMO-002',
   fullName: 'Pak Cecep',
   roleTitle: 'Koordinator Kecamatan',

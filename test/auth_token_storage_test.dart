@@ -183,19 +183,6 @@ class InMemoryAuthTokenStorage implements AuthTokenStorage {
       throw const StorageException('Keystore locked');
     }
   }
-
-  @override
-  Future<String?> readRefreshToken() async => (await read())?.refreshToken;
-
-  @override
-  Future<String?> getRefreshToken() => readRefreshToken();
-
-  @override
-  Future<void> saveRefreshToken(String token) async =>
-      write(StoredCredential(credentialId: 'legacy', refreshToken: token));
-
-  @override
-  Future<void> clear() => forceClearForRecovery();
 }
 
 void main() {
@@ -557,22 +544,6 @@ void main() {
     test('migrateLegacyStorage does nothing if legacy key absent', () async {
       await storage.migrateLegacyStorage();
       expect(store.data[legacyKey], isNull);
-    });
-
-    test('compatibility methods function correctly', () async {
-      expect(await storage.readRefreshToken(), isNull);
-      expect(await storage.getRefreshToken(), isNull);
-
-      await storage.saveRefreshToken('compat-token');
-      expect(await storage.readRefreshToken(), 'compat-token');
-      expect(await storage.getRefreshToken(), 'compat-token');
-
-      final current = await storage.read();
-      expect(current?.credentialId, 'legacy');
-      expect(current?.refreshToken, 'compat-token');
-
-      await storage.clear();
-      expect(await storage.readRefreshToken(), isNull);
     });
   });
 

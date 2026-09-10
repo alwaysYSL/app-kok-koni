@@ -17,7 +17,7 @@ class _FakeHomeAuthController extends AuthController {
 
 void main() {
   final cecepUser = UserPrincipal(
-    id: 'usr-tarogong-kidul-002',
+    id: 'usr_tarogong_kidul',
     skNumber: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',

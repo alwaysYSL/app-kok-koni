@@ -81,30 +81,10 @@ final class _ControllableTokenStorage implements AuthTokenStorage {
 
   @override
   Future<void> migrateLegacyStorage() async {}
-
-  @override
-  Future<void> clear() async {
-    credential = null;
-  }
-
-  @override
-  Future<String?> getRefreshToken() async => credential?.refreshToken;
-
-  @override
-  Future<String?> readRefreshToken() async => credential?.refreshToken;
-
-  @override
-  Future<void> saveRefreshToken(String token) async {
-    credential = StoredCredential(
-      credentialId: 'cred-remediation',
-      refreshToken: token,
-    );
-  }
 }
 
 final class _TrackingAuthRepository extends DemoAuthRepository {
-  _TrackingAuthRepository({required super.tokenStorage, required super.skStore})
-    : super(simulateLatency: false);
+  _TrackingAuthRepository() : super(simulateLatency: false);
 
   RemoteSessionHandle? lastRevokedHandle;
   int revokeCount = 0;
@@ -176,11 +156,7 @@ void main() {
             appCompositionProvider.overrideWithValue(composition1),
             preferencesProvider.overrideWithValue(prefs),
             authRepositoryProvider.overrideWithValue(
-              DemoAuthRepository(
-                tokenStorage: composition1.authTokenStorage,
-                skStore: composition1.rememberedSkStore,
-                simulateLatency: false,
-              ),
+              DemoAuthRepository(simulateLatency: false),
             ),
             repositoryProvider.overrideWithValue(
               DemoKokRepository(simulateLatency: false),
@@ -202,7 +178,7 @@ void main() {
         // Step 1: Persistent login as DEMO-003 (Ibu Rina, KONI Kab)
         final loginResult = await controller1.login(
           skNumber: 'DEMO-003',
-          password: 'kokkabgarut123',
+          password: 'konigarut123',
           staySignedIn: true,
           rememberSk: false,
         );
@@ -211,7 +187,7 @@ void main() {
         final signedInState1 = container1.read(authControllerProvider);
         expect(signedInState1, isA<AuthSignedIn>());
         final user1 = (signedInState1 as AuthSignedIn).user;
-        expect(user1.id, 'usr-koni-kab-003');
+        expect(user1.id, 'usr_koni_kab');
         expect(user1.fullName, 'Ibu Rina');
         expect(user1.scope.type, AccessScopeType.county);
         expect(user1.scope.id, 'koni_kab');
@@ -236,11 +212,7 @@ void main() {
             appCompositionProvider.overrideWithValue(composition2),
             preferencesProvider.overrideWithValue(prefs),
             authRepositoryProvider.overrideWithValue(
-              DemoAuthRepository(
-                tokenStorage: composition2.authTokenStorage,
-                skStore: composition2.rememberedSkStore,
-                simulateLatency: false,
-              ),
+              DemoAuthRepository(simulateLatency: false),
             ),
             repositoryProvider.overrideWithValue(
               DemoKokRepository(simulateLatency: false),
@@ -256,7 +228,7 @@ void main() {
         final state2 = container2.read(authControllerProvider);
         expect(state2, isA<AuthSignedIn>());
         final user2 = (state2 as AuthSignedIn).user;
-        expect(user2.id, 'usr-koni-kab-003');
+        expect(user2.id, 'usr_koni_kab');
         expect(user2.fullName, 'Ibu Rina');
         expect(user2.scope.type, AccessScopeType.county);
         expect(user2.scope.id, 'koni_kab');
@@ -318,11 +290,7 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.remembered_sk',
         );
-        final authRepo = DemoAuthRepository(
-          tokenStorage: tokenStorage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -441,11 +409,7 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.remembered_sk',
         );
-        final authRepo = DemoAuthRepository(
-          tokenStorage: tokenStorage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container1 = ProviderContainer(
           overrides: [
@@ -555,10 +519,7 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.remembered_sk',
         );
-        final trackingRepo = _TrackingAuthRepository(
-          tokenStorage: tokenStorage,
-          skStore: skStore,
-        );
+        final trackingRepo = _TrackingAuthRepository();
 
         final container = ProviderContainer(
           overrides: [

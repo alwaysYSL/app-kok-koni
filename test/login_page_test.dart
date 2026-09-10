@@ -1,50 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/features/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class _FakeTokenStorage implements AuthTokenStorage {
-  String? token;
-
-  @override
-  Future<StoredCredential?> read() async => token != null
-      ? StoredCredential(credentialId: 'legacy', refreshToken: token!)
-      : null;
-
-  @override
-  Future<void> write(StoredCredential credential) async =>
-      token = credential.refreshToken;
-
-  @override
-  Future<bool> clearIfOwnedBy(String credentialId) async {
-    if (token != null) {
-      token = null;
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  Future<void> forceClearForRecovery() async => token = null;
-
-  @override
-  Future<void> migrateLegacyStorage() async {}
-
-  @override
-  Future<String?> getRefreshToken() async => token;
-  @override
-  Future<String?> readRefreshToken() async => token;
-  @override
-  Future<void> saveRefreshToken(String t) async => token = t;
-  @override
-  Future<void> clear() async => token = null;
-}
 
 class _MockLoginStateAuthController extends AuthController {
   final AuthState initialState;
@@ -73,13 +35,8 @@ void main() {
 
     SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
     final prefs = await SharedPreferences.getInstance();
-    final tokenStorage = _FakeTokenStorage();
     final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
-    final repo = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+    final repo = DemoAuthRepository(simulateLatency: false);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -111,13 +68,8 @@ void main() {
 
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final tokenStorage = _FakeTokenStorage();
     final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
-    final repo = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+    final repo = DemoAuthRepository(simulateLatency: false);
 
     await tester.pumpWidget(
       ProviderScope(

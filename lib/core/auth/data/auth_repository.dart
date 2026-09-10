@@ -77,11 +77,9 @@ abstract interface class AuthRepository {
     required bool staySignedIn,
   });
 
-  Future<AuthResult> restoreSession([String? refreshToken]);
+  Future<AuthResult> restoreSession(String refreshToken);
 
   Future<AuthResult> refreshToken(String refreshToken);
 
   Future<RemoteRevocationResult> revokeSession(RemoteSessionHandle session);
-
-  Future<void> logout();
 }

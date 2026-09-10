@@ -2,18 +2,12 @@ import 'dart:async';
 import '../domain/auth_failure.dart';
 import '../domain/user_principal.dart';
 import 'auth_repository.dart';
-import 'auth_token_storage.dart';
-import 'remembered_sk_store.dart';
 
 class DemoAuthRepository implements AuthRepository {
-  final AuthTokenStorage tokenStorage;
-  final RememberedSkStore? skStore;
   final bool simulateLatency;
 
-  AuthTokenStorage get storage => tokenStorage;
-
   static final _garutKotaUser = UserPrincipal(
-    id: 'usr-garut-kota-001',
+    id: 'usr_garut_kota',
     skNumber: 'DEMO-001',
     fullName: 'Pak Asep',
     roleTitle: 'Koordinator Kecamatan',
@@ -31,7 +25,7 @@ class DemoAuthRepository implements AuthRepository {
   );
 
   static final _tarogongKidulUser = UserPrincipal(
-    id: 'usr-tarogong-kidul-002',
+    id: 'usr_tarogong_kidul',
     skNumber: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',
@@ -44,7 +38,7 @@ class DemoAuthRepository implements AuthRepository {
   );
 
   static final _koniKabUser = UserPrincipal(
-    id: 'usr-koni-kab-003',
+    id: 'usr_koni_kab',
     skNumber: 'DEMO-003',
     fullName: 'Ibu Rina',
     roleTitle: 'Tim Verifikator',
@@ -58,15 +52,11 @@ class DemoAuthRepository implements AuthRepository {
       'clubs:read',
       'members:read',
       'documents:verify',
+      'reports:export',
     },
   );
 
-  DemoAuthRepository({
-    AuthTokenStorage? storage,
-    AuthTokenStorage? tokenStorage,
-    this.skStore,
-    this.simulateLatency = true,
-  }) : tokenStorage = storage ?? tokenStorage ?? _DefaultAuthTokenStorage();
+  DemoAuthRepository({this.simulateLatency = true});
 
   Future<void> _maybeDelay() async {
     if (simulateLatency) {
@@ -101,8 +91,7 @@ class DemoAuthRepository implements AuthRepository {
       accessToken = 'access_demo_tarogong_kidul';
       refreshTokenValue = 'token_usr_tarogong_kidul';
       sessionHandle = RemoteSessionHandle('session_usr_tarogong_kidul');
-    } else if (skNumber == 'DEMO-003' &&
-        (password == 'konigarut123' || password == 'kokkabgarut123')) {
+    } else if (skNumber == 'DEMO-003' && password == 'konigarut123') {
       matchedUser = _koniKabUser;
       accessToken = 'access_demo_koni_kab';
       refreshTokenValue = 'token_usr_koni_kab';
@@ -122,10 +111,9 @@ class DemoAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession([String? refreshToken]) async {
+  Future<AuthResult> restoreSession(String refreshToken) async {
     await _maybeDelay();
-    final token = refreshToken ?? await tokenStorage.getRefreshToken();
-    if (token == null || token.isEmpty) {
+    if (refreshToken.trim().isEmpty) {
       return const AuthResult.failed(
         SessionExpiredFailure(
           'Tidak ada sesi yang tersimpan di perangkat ini.',
@@ -133,25 +121,25 @@ class DemoAuthRepository implements AuthRepository {
       );
     }
 
-    if (token == 'token_usr_garut_kota') {
+    if (refreshToken == 'token_usr_garut_kota') {
       return AuthResult.success(
         user: _garutKotaUser,
         accessToken: 'access_demo_garut_kota',
-        refreshToken: token,
+        refreshToken: refreshToken,
         sessionHandle: RemoteSessionHandle('session_usr_garut_kota'),
       );
-    } else if (token == 'token_usr_tarogong_kidul') {
+    } else if (refreshToken == 'token_usr_tarogong_kidul') {
       return AuthResult.success(
         user: _tarogongKidulUser,
         accessToken: 'access_demo_tarogong_kidul',
-        refreshToken: token,
+        refreshToken: refreshToken,
         sessionHandle: RemoteSessionHandle('session_usr_tarogong_kidul'),
       );
-    } else if (token == 'token_usr_koni_kab') {
+    } else if (refreshToken == 'token_usr_koni_kab') {
       return AuthResult.success(
         user: _koniKabUser,
         accessToken: 'access_demo_koni_kab',
-        refreshToken: token,
+        refreshToken: refreshToken,
         sessionHandle: RemoteSessionHandle('session_usr_koni_kab'),
       );
     }
@@ -171,57 +159,6 @@ class DemoAuthRepository implements AuthRepository {
     RemoteSessionHandle session,
   ) async {
     await _maybeDelay();
-    return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
-  }
-
-  @override
-  Future<void> logout() async {
-    await _maybeDelay();
-    await tokenStorage.clear();
-  }
-}
-
-final class _DefaultAuthTokenStorage implements AuthTokenStorage {
-  StoredCredential? _credential;
-
-  @override
-  Future<StoredCredential?> read() async => _credential;
-
-  @override
-  Future<void> write(StoredCredential credential) async {
-    _credential = credential;
-  }
-
-  @override
-  Future<bool> clearIfOwnedBy(String credentialId) async {
-    if (_credential?.credentialId == credentialId) {
-      _credential = null;
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  Future<void> forceClearForRecovery() async {
-    _credential = null;
-  }
-
-  @override
-  Future<void> migrateLegacyStorage() async {}
-
-  @override
-  Future<String?> readRefreshToken() async => _credential?.refreshToken;
-
-  @override
-  Future<String?> getRefreshToken() => readRefreshToken();
-
-  @override
-  Future<void> saveRefreshToken(String token) async {
-    _credential = StoredCredential(credentialId: 'demo', refreshToken: token);
-  }
-
-  @override
-  Future<void> clear() async {
-    _credential = null;
+    return const RemoteRevocationResult(RemoteRevocationStatus.notApplicable);
   }
 }

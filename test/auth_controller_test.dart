@@ -16,7 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_token_storage_test.dart';
 
 final fakeGarutKotaUser = UserPrincipal(
-  id: 'usr-garut-kota-001',
+  id: 'usr_garut_kota',
   skNumber: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
@@ -104,7 +104,7 @@ class CompleterAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession([String? refreshToken]) async {
+  Future<AuthResult> restoreSession(String refreshToken) async {
     restoreCallCount++;
     lastRestoreRefreshToken = refreshToken;
     if (restoreCompleter != null) {
@@ -138,11 +138,6 @@ class CompleterAuthRepository implements AuthRepository {
       throw Exception('Revoke error');
     }
     return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
-  }
-
-  @override
-  Future<void> logout() async {
-    logoutCallCount++;
   }
 }
 
@@ -273,22 +268,6 @@ class FakeAuthTokenStorage implements AuthTokenStorage {
     }
     migrateLegacyCallCount++;
   }
-
-  @override
-  Future<String?> readRefreshToken() async => credential?.refreshToken;
-
-  @override
-  Future<String?> getRefreshToken() async => credential?.refreshToken;
-
-  @override
-  Future<void> saveRefreshToken(String token) async {
-    credential = StoredCredential(credentialId: 'legacy', refreshToken: token);
-  }
-
-  @override
-  Future<void> clear() async {
-    await forceClearForRecovery();
-  }
 }
 
 class ControlledAuthRepo implements AuthRepository {
@@ -300,7 +279,7 @@ class ControlledAuthRepo implements AuthRepository {
   ControlledAuthRepo({this.restoreResult, this.restoreException});
 
   @override
-  Future<AuthResult> restoreSession([String? refreshToken]) async {
+  Future<AuthResult> restoreSession(String refreshToken) async {
     restoreCallCount++;
     lastRestoreRefreshToken = refreshToken;
     if (restoreException != null) {
@@ -328,9 +307,6 @@ class ControlledAuthRepo implements AuthRepository {
   ) async {
     return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
   }
-
-  @override
-  Future<void> logout() async {}
 }
 
 void main() {
@@ -344,11 +320,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
     skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
-    authRepository = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+    authRepository = DemoAuthRepository(simulateLatency: false);
   });
 
   group('Mutation Queue Resilience', () {
@@ -1395,7 +1367,7 @@ void main() {
         expect(loginResult.isSuccess, isFalse);
         expect(loginResult.status, equals(AuthCommandStatus.cancelled));
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-        expect(await fakeStorage.getRefreshToken(), isNull);
+        expect(await fakeStorage.read(), isNull);
       },
     );
   });

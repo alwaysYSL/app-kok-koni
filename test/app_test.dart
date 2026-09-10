@@ -69,15 +69,6 @@ class _FakeTokenStorage implements AuthTokenStorage {
 
   @override
   Future<void> migrateLegacyStorage() async {}
-
-  @override
-  Future<String?> getRefreshToken() async => _token;
-  @override
-  Future<String?> readRefreshToken() async => _token;
-  @override
-  Future<void> saveRefreshToken(String token) async => _token = token;
-  @override
-  Future<void> clear() async => _token = null;
 }
 
 class _FakeSessionMetadataStore implements SessionMetadataStore {
@@ -118,14 +109,12 @@ Future<ProviderContainer> start(
         : const SessionMetadata.signedOutClean(),
   );
   if (initialToken != null) {
-    await tokenStorage.saveRefreshToken(initialToken);
+    await tokenStorage.write(
+      StoredCredential(credentialId: 'legacy', refreshToken: initialToken),
+    );
   }
   final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
-  final authRepo = DemoAuthRepository(
-    tokenStorage: tokenStorage,
-    skStore: skStore,
-    simulateLatency: false,
-  );
+  final authRepo = DemoAuthRepository(simulateLatency: false);
   final container = ProviderContainer(
     overrides: [
       preferencesProvider.overrideWithValue(prefs),

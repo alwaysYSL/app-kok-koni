@@ -63,10 +63,7 @@ final class AppComposition {
 
     final AuthRepository authRepo;
     if (profile.authMode == AuthMode.demo) {
-      authRepo = DemoAuthRepository(
-        tokenStorage: tokenStorage,
-        skStore: skStore,
-      );
+      authRepo = DemoAuthRepository(simulateLatency: false);
     } else {
       throw StateError(
         'Adapter RemoteAuthRepository belum tersedia (fail-closed).',

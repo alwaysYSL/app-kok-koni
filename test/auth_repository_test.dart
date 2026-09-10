@@ -1,28 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'auth_token_storage_test.dart';
 
 void main() {
-  late InMemoryAuthTokenStorage tokenStorage;
-  late RememberedSkStore skStore;
   late DemoAuthRepository repository;
 
-  setUp(() async {
-    tokenStorage = InMemoryAuthTokenStorage();
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
-    repository = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+  setUp(() {
+    repository = DemoAuthRepository(simulateLatency: false);
   });
 
   group('RemoteSessionHandle Contract', () {
@@ -144,13 +131,12 @@ void main() {
     });
   });
 
-  group('DemoAuthRepository Session Restore, Revoke, & Logout', () {
-    test('restore session saat token tersimpan (Garut Kota)', () async {
-      await tokenStorage.saveRefreshToken('token_usr_garut_kota');
-      final result = await repository.restoreSession();
+  group('DemoAuthRepository Session Restore & Revoke', () {
+    test('restore session dengan token Garut Kota via parameter', () async {
+      final result = await repository.restoreSession('token_usr_garut_kota');
 
       expect(result.isSuccess, isTrue);
-      expect(result.user?.id, 'usr-garut-kota-001');
+      expect(result.user?.id, 'usr_garut_kota');
       expect(result.sessionHandle, isNotNull);
     });
 
@@ -160,7 +146,7 @@ void main() {
       );
 
       expect(result.isSuccess, isTrue);
-      expect(result.user?.id, 'usr-tarogong-kidul-002');
+      expect(result.user?.id, 'usr_tarogong_kidul');
       expect(result.user?.scope.id, 'tarogong_kidul');
       expect(result.sessionHandle, isNotNull);
     });
@@ -171,46 +157,37 @@ void main() {
         final result = await repository.restoreSession('token_usr_koni_kab');
 
         expect(result.isSuccess, isTrue);
-        expect(result.user?.id, 'usr-koni-kab-003');
+        expect(result.user?.id, 'usr_koni_kab');
         expect(result.user?.scope.id, 'koni_kab');
         expect(result.sessionHandle, isNotNull);
       },
     );
 
-    test(
-      'restore session gagal saat storage kosong dan argumen null',
-      () async {
-        final result = await repository.restoreSession();
-        expect(result.isSuccess, isFalse);
-        expect(result.failure, isA<SessionExpiredFailure>());
-      },
-    );
+    test('restore session gagal saat argumen token kosong', () async {
+      final result = await repository.restoreSession('');
+      expect(result.isSuccess, isFalse);
+      expect(result.failure, isA<SessionExpiredFailure>());
+      expect(
+        result.failure?.message,
+        'Tidak ada sesi yang tersimpan di perangkat ini.',
+      );
+    });
 
     test(
       'restoreSession menolak token acak atau tak dikenal dengan SessionExpiredFailure',
       () async {
-        final storage = InMemoryAuthTokenStorage();
-        await storage.saveRefreshToken('token_acak_palsu_123');
-        final repo = DemoAuthRepository(storage: storage);
-
-        final result = await repo.restoreSession();
+        final result = await repository.restoreSession('token_acak_palsu_123');
         expect(result.isSuccess, isFalse);
         expect(result.failure, isA<SessionExpiredFailure>());
         expect(result.user, isNull);
       },
     );
 
-    test('revokeSession mengembalikan status revoked', () async {
+    test('revokeSession mengembalikan status notApplicable', () async {
       final handle = RemoteSessionHandle('test_revocation_token');
       final revocation = await repository.revokeSession(handle);
 
-      expect(revocation.status, RemoteRevocationStatus.revoked);
-    });
-
-    test('logout menghapus token dari storage', () async {
-      await tokenStorage.saveRefreshToken('token_usr_garut_kota');
-      await repository.logout();
-      expect(await tokenStorage.readRefreshToken(), isNull);
+      expect(revocation.status, RemoteRevocationStatus.notApplicable);
     });
   });
 

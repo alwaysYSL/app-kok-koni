@@ -25,11 +25,7 @@ void main() {
         prefs: prefs,
         key: 'test_remembered_sk',
       );
-      final authRepo = DemoAuthRepository(
-        tokenStorage: tokenStorage,
-        skStore: skStore,
-        simulateLatency: false,
-      );
+      final authRepo = DemoAuthRepository(simulateLatency: false);
 
       final container = ProviderContainer(
         overrides: [
@@ -52,11 +48,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
-    final authRepo = DemoAuthRepository(
-      tokenStorage: tokenStorage,
-      skStore: skStore,
-      simulateLatency: false,
-    );
+    final authRepo = DemoAuthRepository(simulateLatency: false);
 
     final container = ProviderContainer(
       overrides: [
@@ -217,11 +209,7 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
-        final authRepo = DemoAuthRepository(
-          tokenStorage: tokenStorage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
 
         final container = ProviderContainer(
           overrides: [
@@ -246,7 +234,7 @@ void main() {
         final context = container.read(dataRequestContextProvider);
         expect(context, isNotNull);
         expect(context?.environment, currentEnvironment);
-        expect(context?.userId, 'usr-garut-kota-001');
+        expect(context?.userId, 'usr_garut_kota');
         expect(context?.scope.id, 'garut_kota');
         expect(context?.generation, greaterThanOrEqualTo(1));
 
@@ -298,11 +286,7 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
-        final authRepo = DemoAuthRepository(
-          tokenStorage: tokenStorage,
-          skStore: skStore,
-          simulateLatency: false,
-        );
+        final authRepo = DemoAuthRepository(simulateLatency: false);
         final slowRepo = _SlowIgnoringCancellationRepository();
 
         final container = ProviderContainer(
