@@ -15,9 +15,9 @@ flutter run -d chrome
 Untuk Android, nyalakan emulator atau sambungkan perangkat, jalankan `flutter devices`, lalu `flutter run -d <device-id>`. Build iOS memerlukan macOS dan Xcode. Native Android/iOS belum divalidasi pada tahap ini. Launcher icon native masih bawaan scaffold Flutter.
 
 Akun demo yang tersedia:
-- **DEMO-001** / **kokgarut123**: Pak Asep · Koordinator Kecamatan Garut Kota (memiliki izin `reports:export`).
-- **DEMO-002** / **garutkecamatan123**: Pak Cecep · Koordinator Kecamatan Tarogong Kidul (tanpa izin `reports:export`, untuk pengujian penonaktifan menu rekap).
-- **DEMO-003** / **kokkabgarut123** (atau `konigarut123`): Ibu Rina · Tim Verifikator KONI Kab. Garut (memiliki izin `documents:verify` dan `reports:export`).
+- **DEMO-001** (`usr_garut_kota`) / **kokgarut123**: Pak Asep · Koordinator Kecamatan Garut Kota (memiliki izin `sports:read`, `clubs:read`, `members:read`, `reports:export`).
+- **DEMO-002** (`usr_tarogong_kidul`) / **koktarogong123**: Pak Cecep · Koordinator Kecamatan Tarogong Kidul (memiliki izin `sports:read`, `clubs:read`, `members:read` — tanpa izin `reports:export`, untuk pengujian penonaktifan menu rekap).
+- **DEMO-003** (`usr_koni_kab`) / **konigarut123**: Ibu Rina · Tim Verifikator KONI Kab. Garut (memiliki izin `sports:read`, `clubs:read`, `members:read`, `documents:verify`, dan `reports:export`).
 
 Masuk demo melakukan validasi lokal, bukan autentikasi backend. Kata sandi tidak disimpan. Opsi "Ingat nomor SK" hanya menyimpan nomor SK ke penyimpanan lokal yang aman.
 

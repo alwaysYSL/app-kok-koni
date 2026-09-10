@@ -59,7 +59,6 @@ class CompleterAuthRepository implements AuthRepository {
   AuthResult? loginResult;
   int restoreCallCount = 0;
   int loginCallCount = 0;
-  int logoutCallCount = 0;
   String? lastRestoreRefreshToken;
 
   CompleterAuthRepository({
