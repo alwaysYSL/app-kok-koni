@@ -302,10 +302,7 @@ void main() {
         );
         final storage = _InMemoryTokenStorage();
         await storage.write(
-          const StoredCredential(
-            credentialId: 'cred-a07',
-            refreshToken: 'token-a07',
-          ),
+          StoredCredential(credentialId: 'cred-a07', refreshToken: 'token-a07'),
         );
         final metadataStore = _FakeSessionMetadataStore(
           SessionMetadata.restoreEnabled('cred-a07'),
@@ -966,7 +963,7 @@ void main() {
     test(
       'FT-05: clearIfOwnedBy return false saat logout -> foreign credential utuh, state failed',
       () async {
-        final foreignCred = const StoredCredential(
+        final foreignCred = StoredCredential(
           credentialId: 'foreign-cred-999',
           refreshToken: 'foreign-token',
         );
@@ -1019,7 +1016,7 @@ void main() {
     test(
       'FT-06: Restore expired dan clearIfOwnedBy gagal -> AuthSignedOut(failed)',
       () async {
-        final expiredCred = const StoredCredential(
+        final expiredCred = StoredCredential(
           credentialId: 'cred-expired-ft06',
           refreshToken: 'token-expired',
         );

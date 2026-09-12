@@ -2,8 +2,8 @@ import '../domain/auth_failure.dart';
 import '../domain/user_principal.dart';
 
 final class RemoteSessionHandle {
-  const RemoteSessionHandle._(this.revocationToken);
-  final String revocationToken;
+  const RemoteSessionHandle._(this._revocationToken);
+  final String _revocationToken;
 
   factory RemoteSessionHandle(String token) {
     if (token.trim().isEmpty || token.length > 8192) {
@@ -18,10 +18,11 @@ final class RemoteSessionHandle {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is RemoteSessionHandle && other.revocationToken == revocationToken;
+      other is RemoteSessionHandle &&
+          other._revocationToken == _revocationToken;
 
   @override
-  int get hashCode => revocationToken.hashCode;
+  int get hashCode => _revocationToken.hashCode;
 }
 
 enum RemoteRevocationStatus { revoked, notApplicable, failed }

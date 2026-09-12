@@ -257,8 +257,33 @@ void main() {
   });
 
   group('StoredCredential', () {
+    test('direct construction rejects invalid IDs and refresh tokens', () {
+      for (final id in ['', '   ', 'x' * 129]) {
+        expect(
+          () => StoredCredential(credentialId: id, refreshToken: 'valid-token'),
+          throwsA(isA<CorruptCredentialException>()),
+        );
+      }
+      for (final token in ['', ' \t\n', 'x' * 8193]) {
+        expect(
+          () => StoredCredential(credentialId: 'valid-id', refreshToken: token),
+          throwsA(isA<CorruptCredentialException>()),
+        );
+      }
+    });
+
+    test('direct construction and JSON accept exact maximum lengths', () {
+      final credential = StoredCredential(
+        credentialId: 'i' * 128,
+        refreshToken: 't' * 8192,
+      );
+      expect(credential.credentialId.length, 128);
+      expect(credential.refreshToken.length, 8192);
+      expect(StoredCredential.fromJson(credential.toJson()), credential);
+    });
+
     test('redacts toString() completely', () {
-      const cred = StoredCredential(
+      final cred = StoredCredential(
         credentialId: 'user-cred-id-123',
         refreshToken: 'super_secret_refresh_token_xyz',
       );
@@ -271,7 +296,7 @@ void main() {
     });
 
     test('toJson produces expected structure', () {
-      const cred = StoredCredential(
+      final cred = StoredCredential(
         credentialId: 'cid-1',
         refreshToken: 'token-1',
       );
@@ -425,7 +450,7 @@ void main() {
     );
 
     test('read() and write() round-trip preserves stored credential', () async {
-      const cred = StoredCredential(
+      final cred = StoredCredential(
         credentialId: 'cred-pak-asep',
         refreshToken: 'rf-pak-asep-secret',
       );
@@ -466,10 +491,7 @@ void main() {
         store.throwOnWrite = true;
         expect(
           () => storage.write(
-            const StoredCredential(
-              credentialId: 'cred-1',
-              refreshToken: 'tok-1',
-            ),
+            StoredCredential(credentialId: 'cred-1', refreshToken: 'tok-1'),
           ),
           throwsA(isA<StorageException>()),
         );
@@ -480,7 +502,7 @@ void main() {
       'clearIfOwnedBy returns true and deletes if credentialId matches',
       () async {
         await storage.write(
-          const StoredCredential(
+          StoredCredential(
             credentialId: 'cred-owner-A',
             refreshToken: 'token-A',
           ),
@@ -497,7 +519,7 @@ void main() {
       'clearIfOwnedBy returns false and does not delete if credentialId does not match',
       () async {
         await storage.write(
-          const StoredCredential(
+          StoredCredential(
             credentialId: 'cred-owner-B',
             refreshToken: 'token-B',
           ),
@@ -517,10 +539,7 @@ void main() {
 
     test('forceClearForRecovery unconditionally deletes key', () async {
       await storage.write(
-        const StoredCredential(
-          credentialId: 'cred-any',
-          refreshToken: 'token-any',
-        ),
+        StoredCredential(credentialId: 'cred-any', refreshToken: 'token-any'),
       );
       expect(store.data[testKey], isNotNull);
 

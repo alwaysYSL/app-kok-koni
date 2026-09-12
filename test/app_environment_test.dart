@@ -394,7 +394,7 @@ void main() {
 
         // Write Demo data
         await demoComposition.authTokenStorage.write(
-          const StoredCredential(
+          StoredCredential(
             credentialId: 'demo_cid',
             refreshToken: 'demo_token',
           ),
@@ -406,7 +406,7 @@ void main() {
 
         // Write Staging data
         await stagingComposition.authTokenStorage.write(
-          const StoredCredential(
+          StoredCredential(
             credentialId: 'staging_cid',
             refreshToken: 'staging_token',
           ),

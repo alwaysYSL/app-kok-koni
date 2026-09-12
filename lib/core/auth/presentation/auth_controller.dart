@@ -118,15 +118,22 @@ enum AuthCommandStatus { success, failed, rejected, cancelled }
 
 enum AuthCommandRejection { cleanupRequired, operationInProgress, invalidState }
 
+enum AuthCommandFailure {
+  invalidPersistentCredential,
+  credentialIdGenerationFailed,
+}
+
 final class AuthCommandResult {
   const AuthCommandResult({
     required this.status,
     this.rejection,
+    this.internalFailure,
     this.errorMessage,
   });
 
   final AuthCommandStatus status;
   final AuthCommandRejection? rejection;
+  final AuthCommandFailure? internalFailure;
   final String? errorMessage;
 
   bool get isSuccess => status == AuthCommandStatus.success;
@@ -134,7 +141,7 @@ final class AuthCommandResult {
 
   @override
   String toString() =>
-      'AuthCommandResult(status: $status, rejection: $rejection, errorMessage: $errorMessage)';
+      'AuthCommandResult(status: $status, rejection: $rejection, internalFailure: $internalFailure, errorMessage: $errorMessage)';
 
   @override
   bool operator ==(Object other) =>
@@ -142,10 +149,12 @@ final class AuthCommandResult {
       other is AuthCommandResult &&
           other.status == status &&
           other.rejection == rejection &&
+          other.internalFailure == internalFailure &&
           other.errorMessage == errorMessage;
 
   @override
-  int get hashCode => Object.hash(status, rejection, errorMessage);
+  int get hashCode =>
+      Object.hash(status, rejection, internalFailure, errorMessage);
 }
 
 final class LogoutResult {
@@ -189,6 +198,18 @@ final class SignInCancelledException implements Exception {
   String toString() => 'SignInCancelledException()';
 }
 
+final class _LogoutFlight {
+  const _LogoutFlight({
+    required this.sourceGeneration,
+    required this.cleanupGeneration,
+    required this.future,
+  });
+
+  final int sourceGeneration;
+  final int cleanupGeneration;
+  final Future<LogoutResult> future;
+}
+
 class AuthController extends Notifier<AuthState> {
   int _sessionGeneration = 0;
   int _operationEpoch = 0;
@@ -199,14 +220,12 @@ class AuthController extends Notifier<AuthState> {
   Completer<void>? _cancelTrigger;
   RemoteSessionHandle? _activeRemoteHandle;
   String? _activeCredentialId;
-  Future<LogoutResult>? _activeLogoutFuture;
+  _LogoutFlight? _activeLogoutFlight;
 
   SignInPhase get signInPhase => _signInPhase;
   int get sessionGeneration => _sessionGeneration;
   int get currentGeneration => _sessionGeneration;
   int get operationEpoch => _operationEpoch;
-  RemoteSessionHandle? get activeRemoteHandle => _activeRemoteHandle;
-  String? get activeCredentialId => _activeCredentialId;
 
   @visibleForTesting
   Future<T> enqueueMutation<T>(Future<T> Function() mutation) =>
@@ -581,6 +600,37 @@ class AuthController extends Notifier<AuthState> {
         }
 
         // Persisten:
+        // Validate all persistent material before the first local mutation.
+        final refreshToken = result.refreshToken;
+        if (refreshToken == null ||
+            refreshToken.trim().isEmpty ||
+            refreshToken.length > 8192) {
+          return _failPersistentCredential(
+            AuthCommandFailure.invalidPersistentCredential,
+          );
+        }
+
+        final String credId;
+        try {
+          credId = credentialIdGenerator.generate();
+        } catch (_) {
+          return _failPersistentCredential(
+            AuthCommandFailure.credentialIdGenerationFailed,
+          );
+        }
+
+        final StoredCredential credential;
+        try {
+          credential = StoredCredential(
+            credentialId: credId,
+            refreshToken: refreshToken,
+          );
+        } on CorruptCredentialException {
+          return _failPersistentCredential(
+            AuthCommandFailure.invalidPersistentCredential,
+          );
+        }
+
         // FT-01: Tulis metadata pending
         try {
           await metadataStore.write(const SessionMetadata.cleanupPending());
@@ -594,16 +644,9 @@ class AuthController extends Notifier<AuthState> {
           );
         }
 
-        final credId = credentialIdGenerator.generate();
-
         // FT-02: Tulis credential ke tokenStorage
         try {
-          await tokenStorage.write(
-            StoredCredential(
-              credentialId: credId,
-              refreshToken: result.refreshToken!,
-            ),
-          );
+          await tokenStorage.write(credential);
         } catch (_) {
           await _tryWriteFailedMetadata(metadataStore);
           state = const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed);
@@ -680,6 +723,15 @@ class AuthController extends Notifier<AuthState> {
     });
   }
 
+  AuthCommandResult _failPersistentCredential(AuthCommandFailure failure) {
+    state = const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean);
+    return AuthCommandResult(
+      status: AuthCommandStatus.failed,
+      internalFailure: failure,
+      errorMessage: 'Kredensial sesi persisten tidak valid.',
+    );
+  }
+
   Future<AuthCommandResult> cancelSignIn() async {
     if (_signInPhase == SignInPhase.executing ||
         _signInPhase == SignInPhase.waitingForCommit) {
@@ -714,15 +766,51 @@ class AuthController extends Notifier<AuthState> {
   Future<LogoutResult> logout({
     Duration revocationTimeout = const Duration(seconds: 5),
   }) {
-    final active = _activeLogoutFuture;
-    if (active != null) return active;
-    late final Future<LogoutResult> run;
-    run = _runLogout(revocationTimeout: revocationTimeout).whenComplete(() {
-      if (identical(_activeLogoutFuture, run)) {
-        _activeLogoutFuture = null;
-      }
-    });
-    return _activeLogoutFuture = run;
+    final active = _activeLogoutFlight;
+    if (active != null &&
+        (active.sourceGeneration == _sessionGeneration ||
+            (active.cleanupGeneration == _sessionGeneration &&
+                (state is AuthSigningOut || state is AuthSignedOut)))) {
+      return active.future;
+    }
+
+    if (state is AuthSignedOut &&
+        (state as AuthSignedOut).cleanupStatus != LocalCleanupStatus.clean) {
+      return Future.value(
+        const LogoutResult(
+          localSessionClosed: true,
+          credentialCleared: false,
+          metadataClean: false,
+          remoteRevocationStatus: RemoteRevocationStatus.notApplicable,
+        ),
+      );
+    }
+
+    final completion = Completer<LogoutResult>();
+    final flight = _LogoutFlight(
+      sourceGeneration: _sessionGeneration,
+      cleanupGeneration: _sessionGeneration + 1,
+      future: completion.future,
+    );
+    // Publish before AuthSigningOut can notify a reentrant logout caller.
+    _activeLogoutFlight = flight;
+    unawaited(
+      _runLogout(revocationTimeout: revocationTimeout).then<void>(
+        (result) {
+          if (identical(_activeLogoutFlight, flight)) {
+            _activeLogoutFlight = null;
+          }
+          completion.complete(result);
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (identical(_activeLogoutFlight, flight)) {
+            _activeLogoutFlight = null;
+          }
+          completion.completeError(error, stackTrace);
+        },
+      ),
+    );
+    return flight.future;
   }
 
   Future<LogoutResult> _runLogout({
@@ -771,7 +859,15 @@ class AuthController extends Notifier<AuthState> {
                 activeCredentialId,
               );
             } else {
-              credClearSuccess = true;
+              // A missing in-memory owner is not proof that storage is empty.
+              // Read it while holding the mutation queue before allowing clean
+              // metadata; a foreign or unreadable credential keeps cleanup
+              // failed and is left for explicit recovery.
+              try {
+                credClearSuccess = await tokenStorage.read() == null;
+              } catch (_) {
+                credClearSuccess = false;
+              }
             }
 
             var metadataCleanSuccess = false;

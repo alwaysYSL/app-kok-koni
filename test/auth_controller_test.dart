@@ -120,6 +120,7 @@ class CompleterAuthRepository implements AuthRepository {
   Duration? revokeDelay;
   bool shouldThrowOnRevoke = false;
   int revokeCallCount = 0;
+  final List<RemoteSessionHandle> revokedHandles = [];
   Completer<void>? revokeCompleter;
 
   @override
@@ -127,6 +128,7 @@ class CompleterAuthRepository implements AuthRepository {
     RemoteSessionHandle session,
   ) async {
     revokeCallCount++;
+    revokedHandles.add(session);
     if (revokeCompleter != null) {
       await revokeCompleter!.future;
     }
@@ -311,13 +313,16 @@ class ControlledAuthRepo implements AuthRepository {
 class SequencedLogoutAuthRepository implements AuthRepository {
   final List<AuthResult> loginResults;
   final Completer<void> firstRevocation;
+  final Completer<void>? secondRevocation;
   final Completer<void> firstRevocationStarted = Completer<void>();
+  final Completer<void> secondRevocationStarted = Completer<void>();
   final List<RemoteSessionHandle> revokedHandles = [];
   int _loginIndex = 0;
 
   SequencedLogoutAuthRepository({
     required this.loginResults,
     required this.firstRevocation,
+    this.secondRevocation,
   });
 
   @override
@@ -343,6 +348,9 @@ class SequencedLogoutAuthRepository implements AuthRepository {
     if (revokedHandles.length == 1) {
       firstRevocationStarted.complete();
       await firstRevocation.future;
+    } else if (revokedHandles.length == 2) {
+      secondRevocationStarted.complete();
+      await secondRevocation?.future;
     }
     return const RemoteRevocationResult(RemoteRevocationStatus.revoked);
   }
@@ -449,7 +457,7 @@ void main() {
           restoreCompleter: bootstrapCompleter,
         );
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-single-flight',
             refreshToken: 'token-single-flight',
           ),
@@ -553,7 +561,7 @@ void main() {
       'Row 2a: absent metadata + orphan credential -> force clear + metadata clean -> AuthSignedOut(clean)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'orphan-1',
             refreshToken: 'tok-orphan',
           ),
@@ -592,7 +600,7 @@ void main() {
       'Row 2b: absent metadata + orphan credential -> force clear gagal -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'orphan-1',
             refreshToken: 'tok-orphan',
           ),
@@ -624,7 +632,7 @@ void main() {
       'Row 2c: absent metadata + orphan credential -> write metadata clean gagal -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'orphan-1',
             refreshToken: 'tok-orphan',
           ),
@@ -839,7 +847,7 @@ void main() {
       'Row 6a: restoreAllowed false + clean + orphan credential -> force clear + metadata clean -> AuthSignedOut(clean)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'orphan-row6',
             refreshToken: 'tok-row6',
           ),
@@ -879,7 +887,7 @@ void main() {
       'Row 6b: restoreAllowed false + clean + orphan credential -> force clear gagal -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'orphan-row6',
             refreshToken: 'tok-row6',
           ),
@@ -977,7 +985,7 @@ void main() {
     test(
       'Row 8: restoreAllowed true + credential ID mismatch -> foreign credential utuh, state failed',
       () async {
-        final foreignCred = const StoredCredential(
+        final foreignCred = StoredCredential(
           credentialId: 'cred-foreign-999',
           refreshToken: 'tok-foreign-999',
         );
@@ -1017,7 +1025,7 @@ void main() {
       'Row 9a: restoreAllowed true + credential ID cocok -> restoreSession berhasil -> AuthSignedIn',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-asep',
             refreshToken: 'token_usr_garut_kota',
           ),
@@ -1059,7 +1067,7 @@ void main() {
       'Row 9b: restoreAllowed true + credential ID cocok -> restore timeout failure -> AuthTemporarilyUnavailable',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-asep',
             refreshToken: 'tok-timeout',
           ),
@@ -1099,7 +1107,7 @@ void main() {
       'Row 9c: restoreAllowed true + credential ID cocok -> restore melempar TimeoutException -> AuthTemporarilyUnavailable',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-asep',
             refreshToken: 'tok-timeout',
           ),
@@ -1134,7 +1142,7 @@ void main() {
       'Row 10a: restore expired -> clearIfOwnedBy + metadata clean sukses -> AuthSignedOut(clean)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-expired',
             refreshToken: 'tok-expired',
           ),
@@ -1178,7 +1186,7 @@ void main() {
       'Row 10b: restore expired -> clearIfOwnedBy return false -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-expired',
             refreshToken: 'tok-expired',
           ),
@@ -1216,7 +1224,7 @@ void main() {
       'Row 10c: restore expired -> clearIfOwnedBy melempar exception -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-expired',
             refreshToken: 'tok-expired',
           ),
@@ -1254,7 +1262,7 @@ void main() {
       'Row 10d: restore expired -> write metadata clean gagal -> AuthSignedOut(failed)',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-expired',
             refreshToken: 'tok-expired',
           ),
@@ -1499,8 +1507,7 @@ void main() {
         expect(result.isSuccess, isTrue);
         expect(result.status, equals(AuthCommandStatus.success));
         expect(container.read(authControllerProvider), isA<AuthSignedIn>());
-        expect(controller.activeRemoteHandle, isNotNull);
-        expect(controller.activeCredentialId, isNull);
+        expect(storage.writeCallCount, 0);
         expect(storage.credential, isNull);
         expect(
           metadataStore.lastWritten,
@@ -1544,12 +1551,16 @@ void main() {
           container.read(authControllerProvider),
           isA<AuthTemporarilyUnavailable>(),
         );
-        expect(controller.activeRemoteHandle, isNull);
+        expect(storage.credential, isNull);
+        expect(
+          (await controller.logout()).remoteRevocationStatus,
+          RemoteRevocationStatus.notApplicable,
+        );
       },
     );
 
     test(
-      'login persisten: menulis pending, token storage, restore-enabled, menyimpan activeCredentialId',
+      'login persisten: menulis pending, token storage, restore-enabled dengan ID yang sama',
       () async {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
@@ -1577,8 +1588,6 @@ void main() {
 
         expect(result.isSuccess, isTrue);
         expect(container.read(authControllerProvider), isA<AuthSignedIn>());
-        expect(controller.activeCredentialId, equals('custom-cred-1'));
-        expect(controller.activeRemoteHandle, isNotNull);
         expect(storage.credential?.credentialId, equals('custom-cred-1'));
         expect(
           metadataStore.lastWritten,
@@ -1683,11 +1692,14 @@ void main() {
           rememberSk: false,
         );
         expect(loginRes.isSuccess, isTrue);
-        expect(controller.activeCredentialId, isNotNull);
+        expect(storage.credential, isNotNull);
         final genBefore = controller.currentGeneration;
 
         // Panggil logout
-        final logoutResult = await controller.logout();
+        final logoutFuture = controller.logout();
+        expect(container.read(authControllerProvider), isA<AuthSigningOut>());
+        expect(container.read(currentUserProvider), isNull);
+        final logoutResult = await logoutFuture;
 
         expect(logoutResult.localSessionClosed, isTrue);
         expect(logoutResult.credentialCleared, isTrue);
@@ -1697,8 +1709,9 @@ void main() {
           equals(RemoteRevocationStatus.revoked),
         );
 
-        expect(controller.activeRemoteHandle, isNull);
-        expect(controller.activeCredentialId, isNull);
+        expect(fakeRepo.revokedHandles, [
+          RemoteSessionHandle('remote_handle_1'),
+        ]);
         expect(controller.currentGeneration, greaterThan(genBefore));
         expect(storage.clearIfOwnedCallCount, equals(1));
         expect(storage.credential, isNull);
@@ -1789,6 +1802,52 @@ void main() {
         expect(storage.clearIfOwnedCallCount, equals(0));
       },
     );
+
+    test(
+      'logout sesi nonpersisten tidak menandai clean bila credential asing tersimpan',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final container = ProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+        await controller.login(
+          skNumber: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: false,
+          rememberSk: false,
+        );
+
+        final foreignCredential = StoredCredential(
+          credentialId: 'foreign-nonpersistent',
+          refreshToken: 'foreign-refresh-token',
+        );
+        storage.credential = foreignCredential;
+
+        final result = await controller.logout();
+
+        expect(result.credentialCleared, isFalse);
+        expect(result.metadataClean, isFalse);
+        expect(storage.credential, foreignCredential);
+        expect(
+          metadataStore.metadata,
+          const SessionMetadata.cleanupFailed(),
+        );
+        expect(
+          container.read(authControllerProvider),
+          const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed),
+        );
+      },
+    );
   });
 
   group('Recovery (retryLocalCredentialCleanup)', () {
@@ -1821,7 +1880,7 @@ void main() {
       'retryLocalCredentialCleanup berhasil mengubah state ke clean bila forceClear dan metadata clean sukses',
       () async {
         final storage = FakeAuthTokenStorage(
-          credential: const StoredCredential(
+          credential: StoredCredential(
             credentialId: 'cred-failed',
             refreshToken: 'tok-failed',
           ),
@@ -2026,7 +2085,7 @@ void main() {
     test(
       'FT-05: clearIfOwnedBy return false saat logout -> foreign credential utuh, state failed',
       () async {
-        final foreignCred = const StoredCredential(
+        final foreignCred = StoredCredential(
           credentialId: 'foreign-123',
           refreshToken: 'foreign-token',
         );
@@ -2070,7 +2129,7 @@ void main() {
     test(
       'logout kedua setelah FT-05 tetap melaporkan credential dan metadata belum bersih',
       () async {
-        final foreignCredential = const StoredCredential(
+        final foreignCredential = StoredCredential(
           credentialId: 'foreign-after-ft05',
           refreshToken: 'foreign-token-after-ft05',
         );
@@ -2097,10 +2156,20 @@ void main() {
         storage.credential = foreignCredential;
 
         await controller.logout();
+        final writesBefore = metadataStore.writeCallCount;
+        final clearsBefore = storage.clearIfOwnedCallCount;
         final secondLogout = await controller.logout();
 
         expect(secondLogout.credentialCleared, isFalse);
         expect(secondLogout.metadataClean, isFalse);
+        expect(secondLogout.localSessionClosed, isTrue);
+        expect(
+          secondLogout.remoteRevocationStatus,
+          RemoteRevocationStatus.notApplicable,
+        );
+        expect(metadataStore.writeCallCount, writesBefore);
+        expect(storage.clearIfOwnedCallCount, clearsBefore);
+        expect(storage.forceClearCallCount, 0);
         expect(storage.credential, equals(foreignCredential));
         expect(
           container.read(authControllerProvider),
@@ -2108,15 +2177,19 @@ void main() {
         );
         expect(
           metadataStore.metadata,
-          isNot(equals(const SessionMetadata.signedOutClean())),
+          equals(const SessionMetadata.cleanupFailed()),
         );
+        expect(await controller.retryLocalCredentialCleanup(), isTrue);
+        expect(storage.forceClearCallCount, 1);
+        expect(storage.credential, isNull);
+        expect(metadataStore.metadata, const SessionMetadata.signedOutClean());
       },
     );
 
     test(
       'FT-06: Restore expired dan clearIfOwnedBy gagal -> AuthSignedOut(failed)',
       () async {
-        final expiredCred = const StoredCredential(
+        final expiredCred = StoredCredential(
           credentialId: 'cred-ft06',
           refreshToken: 'tok-ft06',
         );
@@ -2629,207 +2702,379 @@ void main() {
         },
       );
 
+      for (final completeAWhileBIsSignedIn in [false, true]) {
+        test(
+          completeAWhileBIsSignedIn
+              ? 'logout B retains its credential when A revocation completes before B logout'
+              : 'logout B starts an independent cleanup while logout A revocation is pending',
+          () async {
+            final firstRevocation = Completer<void>();
+            final secondRevocation = Completer<void>();
+            final repository = SequencedLogoutAuthRepository(
+              firstRevocation: firstRevocation,
+              secondRevocation: secondRevocation,
+              loginResults: [
+                AuthResult.success(
+                  user: UserPrincipal(
+                    id: 'session-a-user',
+                    skNumber: 'SESSION-A',
+                    fullName: 'Session A',
+                    roleTitle: 'Tester',
+                    scope: const AccessScope(
+                      type: AccessScopeType.county,
+                      id: 'a',
+                      name: 'A',
+                    ),
+                  ),
+                  accessToken: 'access-a',
+                  refreshToken: 'refresh-a',
+                  sessionHandle: RemoteSessionHandle('remote-handle-a'),
+                ),
+                AuthResult.success(
+                  user: UserPrincipal(
+                    id: 'session-b-user',
+                    skNumber: 'SESSION-B',
+                    fullName: 'Session B',
+                    roleTitle: 'Tester',
+                    scope: const AccessScope(
+                      type: AccessScopeType.county,
+                      id: 'b',
+                      name: 'B',
+                    ),
+                  ),
+                  accessToken: 'access-b',
+                  refreshToken: 'refresh-b',
+                  sessionHandle: RemoteSessionHandle('remote-handle-b'),
+                ),
+              ],
+            );
+            final storage = FakeAuthTokenStorage();
+            final metadataStore = FakeSessionMetadataStore();
+            final container = ProviderContainer(
+              overrides: [
+                authRepositoryProvider.overrideWithValue(repository),
+                authTokenStorageProvider.overrideWithValue(storage),
+                sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+                rememberedSkStoreProvider.overrideWithValue(skStore),
+              ],
+            );
+            addTearDown(container.dispose);
+
+            final controller = container.read(authControllerProvider.notifier);
+            await controller.bootstrap();
+            await controller.login(
+              skNumber: 'SESSION-A',
+              password: 'password-a',
+              staySignedIn: true,
+              rememberSk: false,
+            );
+
+            final logoutA = controller.logout();
+            expect(identical(controller.logout(), logoutA), isTrue);
+            await repository.firstRevocationStarted.future;
+            expect(identical(controller.logout(), logoutA), isTrue);
+            expect(
+              container.read(authControllerProvider),
+              equals(
+                const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+              ),
+            );
+
+            await controller.login(
+              skNumber: 'SESSION-B',
+              password: 'password-b',
+              staySignedIn: true,
+              rememberSk: false,
+            );
+            final stateB = container.read(authControllerProvider);
+            final credentialB = storage.credential;
+            expect(stateB, isA<AuthSignedIn>());
+            expect(credentialB?.refreshToken, 'refresh-b');
+            if (completeAWhileBIsSignedIn) {
+              firstRevocation.complete();
+              await logoutA;
+              expect(container.read(authControllerProvider), stateB);
+              expect(storage.credential, credentialB);
+            }
+            final logoutB = controller.logout();
+            expect(identical(logoutA, logoutB), isFalse);
+            expect(identical(controller.logout(), logoutB), isTrue);
+            await repository.secondRevocationStarted.future;
+            if (!completeAWhileBIsSignedIn) {
+              firstRevocation.complete();
+              await logoutA;
+              // A's completion must not discard B's still-pending flight.
+              expect(identical(controller.logout(), logoutB), isTrue);
+            }
+            secondRevocation.complete();
+            await logoutB;
+
+            expect(storage.credential, isNull);
+            expect(
+              container.read(authControllerProvider),
+              equals(
+                const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+              ),
+            );
+            expect(repository.revokedHandles, [
+              RemoteSessionHandle('remote-handle-a'),
+              RemoteSessionHandle('remote-handle-b'),
+            ]);
+          },
+        );
+      }
+
       test(
-        'logout B starts an independent cleanup while logout A revocation is pending',
+        'logout kedua during pending recovery leaves cleanup to the recovery queue',
         () async {
-          final firstRevocation = Completer<void>();
-          final repository = SequencedLogoutAuthRepository(
-            firstRevocation: firstRevocation,
-            loginResults: [
-              AuthResult.success(
-                user: UserPrincipal(
-                  id: 'session-a-user',
-                  skNumber: 'SESSION-A',
-                  fullName: 'Session A',
-                  roleTitle: 'Tester',
-                  scope: const AccessScope(
-                    type: AccessScopeType.county,
-                    id: 'a',
-                    name: 'A',
-                  ),
-                ),
-                accessToken: 'access-a',
-                refreshToken: 'refresh-a',
-                sessionHandle: RemoteSessionHandle('remote-handle-a'),
-              ),
-              AuthResult.success(
-                user: UserPrincipal(
-                  id: 'session-b-user',
-                  skNumber: 'SESSION-B',
-                  fullName: 'Session B',
-                  roleTitle: 'Tester',
-                  scope: const AccessScope(
-                    type: AccessScopeType.county,
-                    id: 'b',
-                    name: 'B',
-                  ),
-                ),
-                accessToken: 'access-b',
-                refreshToken: 'refresh-b',
-                sessionHandle: RemoteSessionHandle('remote-handle-b'),
-              ),
-            ],
+          final orphan = StoredCredential(
+            credentialId: 'orphan-id',
+            refreshToken: 'orphan-token',
           );
-          final storage = FakeAuthTokenStorage();
-          final metadataStore = FakeSessionMetadataStore();
+          final storage = FakeAuthTokenStorage(credential: orphan);
+          final metadataStore = FakeSessionMetadataStore(
+            metadata: const SessionMetadata.cleanupFailed(),
+          );
           final container = ProviderContainer(
             overrides: [
-              authRepositoryProvider.overrideWithValue(repository),
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              authRepositoryProvider.overrideWithValue(authRepository),
             ],
           );
           addTearDown(container.dispose);
-
           final controller = container.read(authControllerProvider.notifier);
           await controller.bootstrap();
-          await controller.login(
-            skNumber: 'SESSION-A',
-            password: 'password-a',
-            staySignedIn: true,
-            rememberSk: false,
-          );
-
-          final logoutA = controller.logout();
-          await repository.firstRevocationStarted.future;
+          final releaseQueue = Completer<void>();
+          final blocker = controller.enqueueMutation(() => releaseQueue.future);
+          final recovery = controller.retryLocalCredentialCleanup();
+          final logout = await controller.logout();
+          expect(logout.credentialCleared, isFalse);
+          expect(logout.metadataClean, isFalse);
+          expect(storage.credential, orphan);
+          expect(storage.forceClearCallCount, 0);
+          expect(metadataStore.writeCallCount, 0);
+          expect(metadataStore.metadata, const SessionMetadata.cleanupFailed());
           expect(
             container.read(authControllerProvider),
-            equals(
-              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
-            ),
+            const AuthSignedOut(cleanupStatus: LocalCleanupStatus.pending),
           );
-
-          await controller.login(
-            skNumber: 'SESSION-B',
-            password: 'password-b',
-            staySignedIn: true,
-            rememberSk: false,
-          );
-          final logoutB = controller.logout();
-          final hasIndependentLogout = !identical(logoutA, logoutB);
-
-          firstRevocation.complete();
-          await logoutA;
-          await logoutB;
-
-          expect(hasIndependentLogout, isTrue);
+          releaseQueue.complete();
+          await blocker;
+          expect(await recovery, isTrue);
           expect(storage.credential, isNull);
+          expect(storage.forceClearCallCount, 1);
+          expect(
+            metadataStore.metadata,
+            const SessionMetadata.signedOutClean(),
+          );
           expect(
             container.read(authControllerProvider),
-            equals(
-              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
-            ),
-          );
-          expect(repository.revokedHandles, hasLength(2));
-          expect(
-            repository.revokedHandles[0],
-            isNot(equals(repository.revokedHandles[1])),
+            const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
           );
         },
       );
 
-      test('persistent credential precondition rejects invalid values before local writes', () async {
-        final cases = <
-          ({
-            String name,
-            AuthResult result,
-            CredentialIdGenerator generator,
-            String expectedFailure,
-          })
-        >[
-          (
-            name: 'null refresh token',
-            result: AuthResult.success(
-              user: fakeGarutKotaUser,
-              refreshToken: null,
-            ),
-            generator: const FixedCredentialIdGenerator('credential-null'),
-            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
-          ),
-          (
-            name: 'empty refresh token',
-            result: AuthResult.success(
-              user: fakeGarutKotaUser,
-              refreshToken: '',
-            ),
-            generator: const FixedCredentialIdGenerator('credential-empty'),
-            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
-          ),
-          (
-            name: 'generator exception',
-            result: AuthResult.success(
-              user: fakeGarutKotaUser,
-              refreshToken: 'valid-refresh-token',
-            ),
-            generator: const ThrowingCredentialIdGenerator(),
-            expectedFailure: 'AuthCommandFailure.credentialIdGenerationFailed',
-          ),
-          (
-            name: 'blank credential ID',
-            result: AuthResult.success(
-              user: fakeGarutKotaUser,
-              refreshToken: 'valid-refresh-token',
-            ),
-            generator: const FixedCredentialIdGenerator('   '),
-            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
-          ),
-          (
-            name: 'overlong credential ID',
-            result: AuthResult.success(
-              user: fakeGarutKotaUser,
-              refreshToken: 'valid-refresh-token',
-            ),
-            generator: FixedCredentialIdGenerator('x' * 129),
-            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
-          ),
-        ];
-
-        for (final testCase in cases) {
+      test(
+        'persistent credential precondition accepts exact length limits',
+        () async {
           final storage = FakeAuthTokenStorage();
           final metadataStore = FakeSessionMetadataStore();
-          final repository = CompleterAuthRepository(
-            loginResult: testCase.result,
-          );
           final container = ProviderContainer(
             overrides: [
-              authRepositoryProvider.overrideWithValue(repository),
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+              authRepositoryProvider.overrideWithValue(
+                CompleterAuthRepository(
+                  loginResult: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 't' * 8192,
+                  ),
+                ),
+              ),
+              credentialIdGeneratorProvider.overrideWithValue(
+                FixedCredentialIdGenerator('i' * 128),
+              ),
               rememberedSkStoreProvider.overrideWithValue(skStore),
-              credentialIdGeneratorProvider.overrideWithValue(testCase.generator),
             ],
           );
           addTearDown(container.dispose);
-
           final controller = container.read(authControllerProvider.notifier);
           await controller.bootstrap();
-
           final result = await controller.login(
             skNumber: 'DEMO-001',
-            password: 'kokgarut123',
+            password: 'password',
             staySignedIn: true,
             rememberSk: false,
           );
+          expect(result.status, AuthCommandStatus.success);
+          expect(result.internalFailure, isNull);
+          expect(storage.credential?.credentialId, 'i' * 128);
+          expect(storage.credential?.refreshToken, 't' * 8192);
+          expect(
+            metadataStore.metadata,
+            SessionMetadata.restoreEnabled('i' * 128),
+          );
+          expect(metadataStore.writeCallCount, 2);
+          expect(storage.writeCallCount, 1);
+          expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+        },
+      );
 
-          expect(result.status, AuthCommandStatus.failed, reason: testCase.name);
-          expect(
-            container.read(authControllerProvider),
-            equals(
-              const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
-            ),
-            reason: testCase.name,
-          );
-          expect(metadataStore.writeCallCount, 0, reason: testCase.name);
-          expect(storage.writeCallCount, 0, reason: testCase.name);
-          final dynamic typedResult = result;
-          expect(
-            typedResult.internalFailure.toString(),
-            equals(testCase.expectedFailure),
-            reason: testCase.name,
-          );
-        }
-      });
+      test(
+        'persistent credential precondition rejects invalid values before local writes',
+        () async {
+          final cases =
+              <
+                ({
+                  String name,
+                  AuthResult result,
+                  CredentialIdGenerator generator,
+                  AuthCommandFailure expectedFailure,
+                })
+              >[
+                (
+                  name: 'null refresh token',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: null,
+                  ),
+                  generator: const FixedCredentialIdGenerator(
+                    'credential-null',
+                  ),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'empty refresh token',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: '',
+                  ),
+                  generator: const FixedCredentialIdGenerator(
+                    'credential-empty',
+                  ),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'whitespace refresh token',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: ' \t\n',
+                  ),
+                  generator: const ThrowingCredentialIdGenerator(),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'overlong refresh token',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 't' * 8193,
+                  ),
+                  generator: const FixedCredentialIdGenerator('valid-id'),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'empty credential ID',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 'valid-refresh-token',
+                  ),
+                  generator: const FixedCredentialIdGenerator(''),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'generator exception',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 'valid-refresh-token',
+                  ),
+                  generator: const ThrowingCredentialIdGenerator(),
+                  expectedFailure:
+                      AuthCommandFailure.credentialIdGenerationFailed,
+                ),
+                (
+                  name: 'blank credential ID',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 'valid-refresh-token',
+                  ),
+                  generator: const FixedCredentialIdGenerator('   '),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+                (
+                  name: 'overlong credential ID',
+                  result: AuthResult.success(
+                    user: fakeGarutKotaUser,
+                    refreshToken: 'valid-refresh-token',
+                  ),
+                  generator: FixedCredentialIdGenerator('x' * 129),
+                  expectedFailure:
+                      AuthCommandFailure.invalidPersistentCredential,
+                ),
+              ];
+
+          for (final testCase in cases) {
+            final storage = FakeAuthTokenStorage();
+            final metadataStore = FakeSessionMetadataStore();
+            final repository = CompleterAuthRepository(
+              loginResult: testCase.result,
+            );
+            final container = ProviderContainer(
+              overrides: [
+                authRepositoryProvider.overrideWithValue(repository),
+                authTokenStorageProvider.overrideWithValue(storage),
+                sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+                rememberedSkStoreProvider.overrideWithValue(skStore),
+                credentialIdGeneratorProvider.overrideWithValue(
+                  testCase.generator,
+                ),
+              ],
+            );
+            addTearDown(container.dispose);
+
+            final controller = container.read(authControllerProvider.notifier);
+            await controller.bootstrap();
+
+            final result = await controller.login(
+              skNumber: 'DEMO-001',
+              password: 'kokgarut123',
+              staySignedIn: true,
+              rememberSk: false,
+            );
+
+            expect(
+              result.status,
+              AuthCommandStatus.failed,
+              reason: testCase.name,
+            );
+            expect(
+              container.read(authControllerProvider),
+              equals(
+                const AuthSignedOut(cleanupStatus: LocalCleanupStatus.clean),
+              ),
+              reason: testCase.name,
+            );
+            expect(metadataStore.writeCallCount, 0, reason: testCase.name);
+            expect(storage.writeCallCount, 0, reason: testCase.name);
+            expect(
+              controller.signInPhase,
+              SignInPhase.idle,
+              reason: testCase.name,
+            );
+            expect(
+              result.internalFailure,
+              equals(testCase.expectedFailure),
+              reason: testCase.name,
+            );
+          }
+        },
+      );
     },
   );
 }

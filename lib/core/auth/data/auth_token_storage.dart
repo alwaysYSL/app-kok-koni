@@ -11,10 +11,14 @@ final class CorruptCredentialException extends StorageException {
 }
 
 final class StoredCredential {
-  const StoredCredential({
-    required this.credentialId,
-    required this.refreshToken,
-  });
+  StoredCredential({required this.credentialId, required this.refreshToken}) {
+    if (credentialId.trim().isEmpty || credentialId.length > 128) {
+      throw const CorruptCredentialException('credentialId tidak valid');
+    }
+    if (refreshToken.trim().isEmpty || refreshToken.length > 8192) {
+      throw const CorruptCredentialException('refreshToken tidak valid');
+    }
+  }
 
   final String credentialId;
   final String refreshToken;
@@ -25,10 +29,10 @@ final class StoredCredential {
     }
     final id = value['credentialId'];
     final token = value['refreshToken'];
-    if (id is! String || id.trim().isEmpty || id.length > 128) {
+    if (id is! String) {
       throw const CorruptCredentialException('credentialId tidak valid');
     }
-    if (token is! String || token.trim().isEmpty || token.length > 8192) {
+    if (token is! String) {
       throw const CorruptCredentialException('refreshToken tidak valid');
     }
     return StoredCredential(credentialId: id, refreshToken: token);

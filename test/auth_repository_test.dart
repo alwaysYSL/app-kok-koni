@@ -15,7 +15,9 @@ void main() {
   group('RemoteSessionHandle Contract', () {
     test('instansiasi valid dan redacted toString()', () {
       final handle = RemoteSessionHandle('valid_token_123');
-      expect(handle.revocationToken, 'valid_token_123');
+      expect(handle, RemoteSessionHandle('valid_token_123'));
+      expect(handle.hashCode, RemoteSessionHandle('valid_token_123').hashCode);
+      expect(handle, isNot(RemoteSessionHandle('different-token')));
       expect(handle.toString(), 'RemoteSessionHandle([REDACTED])');
     });
 
@@ -31,7 +33,7 @@ void main() {
         throwsA(isA<FormatException>()),
       );
       final maxToken = 'a' * 8192;
-      expect(RemoteSessionHandle(maxToken).revocationToken.length, 8192);
+      expect(RemoteSessionHandle(maxToken), RemoteSessionHandle(maxToken));
     });
   });
 
@@ -51,7 +53,10 @@ void main() {
         expect(result.user?.scope.type, AccessScopeType.district);
         expect(result.refreshToken, 'token_usr_garut_kota');
         expect(result.sessionHandle, isNotNull);
-        expect(result.sessionHandle?.revocationToken, isNotEmpty);
+        expect(
+          result.sessionHandle,
+          RemoteSessionHandle('session_usr_garut_kota'),
+        );
       },
     );
 
