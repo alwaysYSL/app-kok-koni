@@ -66,12 +66,6 @@ abstract class KokSnapshot with _$KokSnapshot {
       _$KokSnapshotFromJson(json);
 }
 
-extension KokSnapshotDistrictExt on KokSnapshot {
-  @Deprecated('Gunakan snapshot.scope.name')
-  String get districtName => scope.name;
-
-  @Deprecated('Gunakan snapshot.scope.id')
-  String get districtId => scope.id;
-
+extension KokSnapshotExt on KokSnapshot {
   List<String> get sports => clubs.map((c) => c.sport).toSet().toList();
 }

@@ -6,9 +6,12 @@ import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
-import 'package:kok_app/core/config/app_environment.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/models.dart';
-import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/kok_repository.dart';
+import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/request_cancellation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_token_storage_test.dart';
 
@@ -26,9 +29,19 @@ void main() {
         key: 'test_remembered_sk',
       );
       final authRepo = DemoAuthRepository(simulateLatency: false);
+      final composition = AppComposition.fromProfile(
+        const DeploymentProfile(
+          environment: AppEnv.demo,
+          authMode: AuthMode.demo,
+          dataMode: DataMode.demo,
+        ),
+        preferences: prefs,
+        secureStore: FakeSecureKeyValStore(),
+      );
 
       final container = ProviderContainer(
         overrides: [
+          appCompositionProvider.overrideWithValue(composition),
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepo),
           rememberedSkStoreProvider.overrideWithValue(skStore),
@@ -39,19 +52,29 @@ void main() {
       await container.read(authControllerProvider.notifier).bootstrap();
       expect(await skStore.readSk(), 'DEMO-001');
       expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-      expect(container.read(sessionScopeProvider), isNull);
+      expect(container.read(dataRequestContextProvider), isNull);
     },
   );
 
-  test('SessionScope mengisolasi snapshot data antar akun kecamatan', () async {
+  test('DataRequestContext mengisolasi snapshot data antar akun kecamatan', () async {
     final tokenStorage = InMemoryAuthTokenStorage();
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
     final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
     final authRepo = DemoAuthRepository(simulateLatency: false);
+    final composition = AppComposition.fromProfile(
+      const DeploymentProfile(
+        environment: AppEnv.demo,
+        authMode: AuthMode.demo,
+        dataMode: DataMode.demo,
+      ),
+      preferences: prefs,
+      secureStore: FakeSecureKeyValStore(),
+    );
 
     final container = ProviderContainer(
       overrides: [
+        appCompositionProvider.overrideWithValue(composition),
         authTokenStorageProvider.overrideWithValue(tokenStorage),
         authRepositoryProvider.overrideWithValue(authRepo),
         rememberedSkStoreProvider.overrideWithValue(skStore),
@@ -70,15 +93,15 @@ void main() {
       rememberSk: false,
     );
 
-    final scopeAsep = container.read(sessionScopeProvider);
-    expect(scopeAsep?.districtId, 'garut_kota');
+    final scopeAsep = container.read(dataRequestContextProvider);
+    expect(scopeAsep?.scope.id, 'garut_kota');
     final snapshotAsep = await container.read(snapshotProvider.future);
-    expect(snapshotAsep.districtName, 'Kecamatan Garut Kota');
+    expect(snapshotAsep.scope.name, 'Kecamatan Garut Kota');
     expect(snapshotAsep.clubs.length, 5);
 
     // Logout
     await controller.logout();
-    expect(container.read(sessionScopeProvider), isNull);
+    expect(container.read(dataRequestContextProvider), isNull);
 
     // Login Pak Cecep (Tarogong Kidul)
     await controller.login(
@@ -88,10 +111,10 @@ void main() {
       rememberSk: false,
     );
 
-    final scopeCecep = container.read(sessionScopeProvider);
-    expect(scopeCecep?.districtId, 'tarogong_kidul');
+    final scopeCecep = container.read(dataRequestContextProvider);
+    expect(scopeCecep?.scope.id, 'tarogong_kidul');
     final snapshotCecep = await container.read(snapshotProvider.future);
-    expect(snapshotCecep.districtName, 'Kecamatan Tarogong Kidul');
+    expect(snapshotCecep.scope.name, 'Kecamatan Tarogong Kidul');
     expect(snapshotCecep.clubs.length, 4);
   });
 
@@ -210,9 +233,19 @@ void main() {
         final prefs = await SharedPreferences.getInstance();
         final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
         final authRepo = DemoAuthRepository(simulateLatency: false);
+        final composition = AppComposition.fromProfile(
+          const DeploymentProfile(
+            environment: AppEnv.demo,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ),
+          preferences: prefs,
+          secureStore: FakeSecureKeyValStore(),
+        );
 
         final container = ProviderContainer(
           overrides: [
+            appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
             rememberedSkStoreProvider.overrideWithValue(skStore),
@@ -233,7 +266,7 @@ void main() {
 
         final context = container.read(dataRequestContextProvider);
         expect(context, isNotNull);
-        expect(context?.environment, currentEnvironment);
+        expect(context?.environment, DeploymentProfile.fromEnvironment().environment);
         expect(context?.userId, 'usr_garut_kota');
         expect(context?.scope.id, 'garut_kota');
         expect(context?.generation, greaterThanOrEqualTo(1));
@@ -248,7 +281,7 @@ void main() {
       () async {
         final testRepo = _CancellableTestRepository();
         const testContext = DataRequestContext(
-          environment: AppEnvironment.demo,
+          environment: AppEnv.demo,
           userId: 'usr_001',
           scope: AccessScope(
             type: AccessScopeType.district,
@@ -288,9 +321,19 @@ void main() {
         final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
         final authRepo = DemoAuthRepository(simulateLatency: false);
         final slowRepo = _SlowIgnoringCancellationRepository();
+        final composition = AppComposition.fromProfile(
+          const DeploymentProfile(
+            environment: AppEnv.demo,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ),
+          preferences: prefs,
+          secureStore: FakeSecureKeyValStore(),
+        );
 
         final container = ProviderContainer(
           overrides: [
+            appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
             rememberedSkStoreProvider.overrideWithValue(skStore),
@@ -413,9 +456,19 @@ void main() {
             name: 'Kecamatan Tarogong Kidul',
           ),
         );
+        final composition = AppComposition.fromProfile(
+          const DeploymentProfile(
+            environment: AppEnv.demo,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ),
+          preferences: prefs,
+          secureStore: FakeSecureKeyValStore(),
+        );
 
         final container = ProviderContainer(
-          overrides: [
+        overrides: [
+          appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
             rememberedSkStoreProvider.overrideWithValue(skStore),

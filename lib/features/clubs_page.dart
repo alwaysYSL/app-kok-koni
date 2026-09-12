@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
-import '../data/repository.dart';
+import '../data/club_filters.dart';
+import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 
 class ClubsPage extends ConsumerStatefulWidget {

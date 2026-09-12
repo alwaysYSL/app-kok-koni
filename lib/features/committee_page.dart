@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
-import '../data/repository.dart';
+import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 
 enum CommitteeSortOption { defaultStructure, nameAsc, nameDesc, divisionAsc }

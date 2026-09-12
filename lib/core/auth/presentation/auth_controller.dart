@@ -1,12 +1,9 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../composition/app_composition.dart';
-import '../../preferences.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
-import '../data/demo_auth_repository.dart';
 import '../data/remembered_sk_store.dart';
 import '../data/session_metadata_store.dart';
 import '../domain/auth_failure.dart';
@@ -16,88 +13,29 @@ import '../domain/user_principal.dart';
 
 export '../data/auth_repository.dart' show RemoteRevocationStatus;
 
-String get _defaultEnvName =>
-    DeploymentProfile.fromEnvironment().environment.name;
-
 final authTokenStorageProvider = Provider<AuthTokenStorage>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.authTokenStorage;
-  }
-  return SecureAuthTokenStorage(
-    store: const FlutterSecureKeyValStore(
-      FlutterSecureStorage(
-        aOptions: AndroidOptions(encryptedSharedPreferences: true),
-        iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-      ),
-    ),
-    key: 'kok.auth.v2.$_defaultEnvName.credential',
-  );
+  return composition.authTokenStorage;
 });
 
 final sessionMetadataStoreProvider = Provider<SessionMetadataStore>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.sessionMetadataStore;
-  }
-  try {
-    final prefs = ref.watch(preferencesProvider);
-    return SharedPrefsSessionMetadataStore(
-      prefs: prefs,
-      key: 'kok.auth.v2.$_defaultEnvName.metadata',
-    );
-  } catch (_) {
-    return _FallbackSessionMetadataStore();
-  }
+  return composition.sessionMetadataStore;
 });
-
-class _FallbackSessionMetadataStore implements SessionMetadataStore {
-  SessionMetadata? _metadata;
-
-  @override
-  Future<SessionMetadata?> read() async => _metadata;
-
-  @override
-  Future<void> write(SessionMetadata metadata) async {
-    _metadata = metadata;
-  }
-
-  @override
-  Future<void> clear() async {
-    _metadata = null;
-  }
-}
 
 final rememberedSkStoreProvider = Provider<RememberedSkStore>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.rememberedSkStore;
-  }
-  try {
-    final prefs = ref.watch(preferencesProvider);
-    return RememberedSkStore(
-      prefs: prefs,
-      key: 'kok.auth.v2.$_defaultEnvName.remembered_sk',
-    );
-  } catch (_) {
-    return RememberedSkStore(key: 'kok.auth.v2.$_defaultEnvName.remembered_sk');
-  }
+  return composition.rememberedSkStore;
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.authRepository;
-  }
-  return DemoAuthRepository();
+  return composition.authRepository;
 });
 
 final credentialIdGeneratorProvider = Provider<CredentialIdGenerator>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.credentialIdGenerator;
-  }
-  return UuidCredentialIdGenerator();
+  return composition.credentialIdGenerator;
 });
 
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
@@ -816,12 +754,10 @@ class AuthController extends Notifier<AuthState> {
   Future<LogoutResult> _runLogout({
     Duration revocationTimeout = const Duration(seconds: 5),
   }) async {
-    final compositionTimeout = ref
-        .read(appCompositionProvider)
-        ?.revocationTimeout;
+    final compositionTimeout = ref.read(appCompositionProvider).revocationTimeout;
     final effectiveTimeout = (revocationTimeout != const Duration(seconds: 5))
         ? revocationTimeout
-        : (compositionTimeout ?? revocationTimeout);
+        : compositionTimeout;
 
     final remoteHandle = _activeRemoteHandle;
     final activeCredentialId = _activeCredentialId;

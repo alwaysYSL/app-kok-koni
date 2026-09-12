@@ -4,7 +4,7 @@ import '../../core/auth/domain/auth_state.dart';
 import '../../core/auth/domain/user_principal.dart';
 import '../../core/auth/presentation/auth_controller.dart';
 import '../../core/composition/app_composition.dart';
-import '../demo_kok_repository.dart';
+import '../../core/config/deployment_profile.dart';
 import '../kok_repository.dart';
 import '../models.dart';
 import '../request_cancellation.dart';
@@ -48,21 +48,15 @@ final class DataRequestContext {
 
 final repositoryProvider = Provider<KokRepository>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  if (composition != null) {
-    return composition.kokRepository;
-  }
-  return DemoKokRepository();
+  return composition.kokRepository;
 });
 
 final dataRequestContextProvider = Provider<DataRequestContext?>((ref) {
   final authState = ref.watch(authControllerProvider);
   if (authState is AuthSignedIn) {
     final composition = ref.watch(appCompositionProvider);
-    final env =
-        composition?.profile.environment ??
-        DeploymentProfile.fromEnvironment().environment;
     return DataRequestContext(
-      environment: env,
+      environment: composition.profile.environment,
       userId: authState.user.id,
       scope: authState.user.scope,
       generation: authState.generation,

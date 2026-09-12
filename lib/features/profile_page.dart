@@ -6,7 +6,7 @@ import '../core/auth/presentation/auth_controller.dart';
 import '../core/preferences.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
-import '../data/repository.dart';
+import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 
 class AccountProfileCardPainter extends CustomPainter {
@@ -176,7 +176,7 @@ class ProfilePage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Rekapitulasi Data KOK ${data.districtName.replaceFirst('Kecamatan ', '')}',
+                'Rekapitulasi Data KOK ${data.scope.name.replaceFirst('Kecamatan ', '')}',
                 style: const TextStyle(
                   fontFamily: 'KokSans',
                   fontSize: 18,
@@ -186,7 +186,7 @@ class ProfilePage extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Ringkasan data keolahragaan wilayah ${data.districtName}.',
+                'Ringkasan data keolahragaan wilayah ${data.scope.name}.',
                 style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 18),
@@ -245,14 +245,14 @@ class ProfilePage extends ConsumerWidget {
                         '${data.loadedAt.hour.toString().padLeft(2, '0')}:${data.loadedAt.minute.toString().padLeft(2, '0')}';
                     final summaryText =
                         '''
-REKAPITULASI DATA ${data.districtName.toUpperCase()}
+REKAPITULASI DATA ${data.scope.name.toUpperCase()}
 Waktu: $timeStr WIB
 Total Cabang Olahraga: $caborCount
 Total Klub: $klubCount
 Total Atlet: $atletCount
 Total Pelatih: $pelatihCount
 Total Berkas Belum Lengkap: $missingCount
-Status: Terdaftar pada Sistem KOK ${data.districtName}''';
+Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -610,9 +610,9 @@ class _ExecutiveProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user?.name ?? 'Pak Asep';
+    final name = user?.fullName ?? 'Pak Asep';
     final initials = user != null
-        ? user!.name
+        ? user!.fullName
               .split(' ')
               .where((s) => s.isNotEmpty)
               .map((s) => s[0])

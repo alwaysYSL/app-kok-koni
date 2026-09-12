@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/models.dart';
-import '../../data/repository.dart';
+import '../../data/club_filters.dart';
 import '../../shared/widgets.dart';
 import '../detail_pages.dart';
 import 'club_brand_palette.dart';

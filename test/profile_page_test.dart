@@ -9,7 +9,8 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
-import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

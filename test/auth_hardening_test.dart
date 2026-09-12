@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kok_app/app.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/config/app_environment.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
@@ -19,7 +19,10 @@ import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/presentation/session_signing_out_page.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
-import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/kok_repository.dart';
+import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/features/login_page.dart';
 
 // Test doubles for auth hardening scenarios
@@ -361,8 +364,8 @@ void main() {
         );
         addTearDown(container.dispose);
 
-        // Pastikan sessionScopeProvider bernilai null
-        expect(container.read(sessionScopeProvider), isNull);
+        // Data request context harus null tanpa sesi aktif.
+        expect(container.read(dataRequestContextProvider), isNull);
 
         // Pembacaan snapshotProvider harus menolak dengan SessionRequiredException
         expect(
@@ -500,67 +503,67 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 7. Validasi validateAppConfiguration Fail-Closed di Lingkungan Produksi (Menutup A-04)
+    // 7. Validasi DeploymentProfile Fail-Closed di Lingkungan Produksi (Menutup A-04)
     // -------------------------------------------------------------------------
     test(
-      '7. Skenario A-04: validateAppConfiguration melempar StateError saat production memakai adapter/data demo',
+      '7. Skenario A-04: DeploymentProfile melempar StateError saat production memakai adapter/data demo',
       () {
         // Produksi dengan demo auth -> StateError
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: true,
-            usesDemoData: false,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.remote,
+          ).validate(),
           throwsStateError,
         );
 
         // Produksi dengan demo data -> StateError
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: false,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.demo,
+          ).validate(),
           throwsStateError,
         );
 
         // Produksi dengan keduanya demo -> StateError
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: true,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ).validate(),
           throwsStateError,
         );
 
         // Demo & Staging lolos normal
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.demo,
-            usesDemoAuth: true,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.demo,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ).validate(),
           returnsNormally,
         );
 
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.staging,
-            usesDemoAuth: true,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.staging,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ).validate(),
           returnsNormally,
         );
 
         // Produksi dengan adapter riil lolos normal
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: false,
-            usesDemoData: false,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.remote,
+          ).validate(),
           returnsNormally,
         );
       },

@@ -10,7 +10,7 @@ import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
-import 'package:kok_app/core/config/app_environment.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/kok_repository.dart';
@@ -142,7 +142,7 @@ void main() {
 
         final composition1 = AppComposition.fromProfile(
           const DeploymentProfile(
-            environment: AppEnvironment.demo,
+            environment: AppEnv.demo,
             authMode: AuthMode.demo,
             dataMode: DataMode.demo,
           ),
@@ -199,7 +199,7 @@ void main() {
         // Step 3: Bootstrap fresh container 2 using the same persistent storage
         final composition2 = AppComposition.fromProfile(
           const DeploymentProfile(
-            environment: AppEnvironment.demo,
+            environment: AppEnv.demo,
             authMode: AuthMode.demo,
             dataMode: DataMode.demo,
           ),
@@ -586,7 +586,7 @@ void main() {
 
         // Profile deployment production (remote auth + remote data)
         const prodProfile = DeploymentProfile(
-          environment: AppEnvironment.production,
+          environment: AppEnv.production,
           authMode: AuthMode.remote,
           dataMode: DataMode.remote,
         );
@@ -612,7 +612,7 @@ void main() {
 
         // Illegal combinations must fail closed via validate()
         const illegalAuthProfile = DeploymentProfile(
-          environment: AppEnvironment.production,
+          environment: AppEnv.production,
           authMode: AuthMode.demo,
           dataMode: DataMode.remote,
         );
@@ -628,7 +628,7 @@ void main() {
         );
 
         const illegalDataProfile = DeploymentProfile(
-          environment: AppEnvironment.production,
+          environment: AppEnv.production,
           authMode: AuthMode.remote,
           dataMode: DataMode.demo,
         );

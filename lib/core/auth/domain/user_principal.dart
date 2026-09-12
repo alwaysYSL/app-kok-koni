@@ -61,18 +61,6 @@ final class UserPrincipal {
   final String? profileImageUrl;
   final Set<String> permissions;
 
-  @Deprecated('Gunakan principal.fullName')
-  String get name => fullName;
-
-  @Deprecated('Gunakan principal.roleTitle')
-  String get role => roleTitle;
-
-  @Deprecated('Gunakan principal.scope.id')
-  String get districtId => scope.id;
-
-  @Deprecated('Gunakan principal.scope.name')
-  String get districtName => scope.name;
-
   bool hasPermission(String permission) => permissions.contains(permission);
 
   @override

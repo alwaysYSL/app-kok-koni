@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/data/models.dart';
-import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/club_filters.dart';
+import 'package:kok_app/data/request_cancellation.dart';
+import 'package:kok_app/data/kok_repository.dart';
 
 void main() {
   const garutKotaScope = AccessScope(

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/auth/data/secure_key_val_store.dart';
 import 'core/composition/app_composition.dart';
+import 'core/config/deployment_profile.dart';
 import 'core/preferences.dart';
 
 Future<void> main() async {

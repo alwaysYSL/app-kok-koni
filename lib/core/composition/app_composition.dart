@@ -11,8 +11,6 @@ import '../config/deployment_profile.dart';
 import '../../data/demo_kok_repository.dart';
 import '../../data/kok_repository.dart';
 
-export '../config/deployment_profile.dart';
-
 final class AppComposition {
   const AppComposition({
     required this.profile,
@@ -92,4 +90,6 @@ final class AppComposition {
   }
 }
 
-final appCompositionProvider = Provider<AppComposition?>((ref) => null);
+final appCompositionProvider = Provider<AppComposition>((ref) {
+  throw StateError('AppComposition must be injected at startup.');
+});

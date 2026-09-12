@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/auth/presentation/auth_controller.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
-import '../data/repository.dart';
+import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 import 'clubs_page.dart';
 import 'dashboard_decorations.dart';
@@ -109,11 +109,11 @@ class HomePage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  user?.districtName ??
-                                      (data.districtName ==
+                                  user?.scope.name ??
+                                      (data.scope.name ==
                                               'Kecamatan Garut Kota'
                                           ? 'Kec. Garut Kota'
-                                          : data.districtName),
+                                          : data.scope.name),
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w800,
@@ -124,7 +124,7 @@ class HomePage extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   user != null
-                                      ? '${user.name} · ${user.role}'
+                                      ? '${user.fullName} · ${user.roleTitle}'
                                       : 'Pak Asep · Koordinator',
                                   style: const TextStyle(
                                     fontSize: 12,
@@ -155,7 +155,7 @@ class HomePage extends ConsumerWidget {
                                 alignment: Alignment.center,
                                 child: Text(
                                   user != null
-                                      ? user.name
+                                      ? user.fullName
                                             .split(' ')
                                             .where((s) => s.isNotEmpty)
                                             .map((s) => s[0])

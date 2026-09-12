@@ -13,6 +13,7 @@ import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/session_unavailable_page.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/preferences.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/features/club_detail/club_document_tab.dart';
 import 'package:kok_app/features/clubs_page.dart';
@@ -654,7 +655,7 @@ void main() {
       expect(find.byType(HomePage), findsOneWidget);
       expect(find.textContaining('Pak Asep'), findsWidgets);
       expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
-      expect(container.read(currentUserProvider)?.name, 'Pak Asep');
+      expect(container.read(currentUserProvider)?.fullName, 'Pak Asep');
     });
 
     testWidgets(

@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
-import 'package:kok_app/data/repository.dart';
+import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
 void main() {

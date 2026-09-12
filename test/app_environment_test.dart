@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
@@ -10,9 +9,8 @@ import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
-import 'package:kok_app/core/config/app_environment.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
-import 'package:kok_app/data/kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 
 class _FakeSecureKeyValStore implements SecureKeyValStore {
@@ -525,73 +523,77 @@ void main() {
       },
     );
 
-    test(
-      'Standalone test without appCompositionProvider falls back safely',
-      () {
-        final container = ProviderContainer();
-        addTearDown(container.dispose);
+    test('providers fail fast without an injected AppComposition', () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
 
-        // Standalone access should not crash or throw unhandled exceptions
+      void expectMissingComposition(Object Function() readProvider) {
         expect(
-          container.read(authTokenStorageProvider),
-          isA<AuthTokenStorage>(),
+          readProvider,
+          throwsA(
+            predicate<Object>(
+              (error) => error.toString().contains(
+                'AppComposition must be injected at startup.',
+              ),
+              'a provider error containing the fail-fast message',
+            ),
+          ),
         );
-        expect(
-          container.read(sessionMetadataStoreProvider),
-          isA<SessionMetadataStore>(),
-        );
-        expect(container.read(authRepositoryProvider), isA<AuthRepository>());
-        expect(
-          container.read(credentialIdGeneratorProvider),
-          isA<CredentialIdGenerator>(),
-        );
-        expect(container.read(repositoryProvider), isA<KokRepository>());
-      },
-    );
+      }
+
+      expectMissingComposition(() => container.read(appCompositionProvider));
+      expectMissingComposition(() => container.read(authTokenStorageProvider));
+      expectMissingComposition(
+        () => container.read(sessionMetadataStoreProvider),
+      );
+      expectMissingComposition(() => container.read(rememberedSkStoreProvider));
+      expectMissingComposition(() => container.read(authRepositoryProvider));
+      expectMissingComposition(() => container.read(repositoryProvider));
+    });
   });
 
-  group('Legacy AppEnvironment Backward Compatibility Tests', () {
+  group('DeploymentProfile direct validation tests', () {
     test(
-      'validateAppConfiguration melempar StateError saat production menggunakan demo auth atau data',
+      'DeploymentProfile.validate melempar StateError saat production menggunakan demo auth atau data',
       () {
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: true,
-            usesDemoData: false,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.remote,
+          ).validate(),
           throwsStateError,
         );
 
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.production,
-            usesDemoAuth: false,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.demo,
+          ).validate(),
           throwsStateError,
         );
       },
     );
 
     test(
-      'validateAppConfiguration lolos saat demo atau staging menggunakan demo auth',
+      'DeploymentProfile.validate lolos saat demo atau staging menggunakan demo auth',
       () {
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.demo,
-            usesDemoAuth: true,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.demo,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ).validate(),
           returnsNormally,
         );
 
         expect(
-          () => validateAppConfiguration(
-            environment: AppEnvironment.staging,
-            usesDemoAuth: true,
-            usesDemoData: true,
-          ),
+          () => const DeploymentProfile(
+            environment: AppEnv.staging,
+            authMode: AuthMode.demo,
+            dataMode: DataMode.demo,
+          ).validate(),
           returnsNormally,
         );
       },
