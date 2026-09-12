@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
+import 'package:kok_app/core/auth/data/remote_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
@@ -11,6 +12,7 @@ import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/remote_kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 
 class _FakeSecureKeyValStore implements SecureKeyValStore {
@@ -289,55 +291,45 @@ void main() {
       expect(composition.revocationTimeout, const Duration(seconds: 5));
     });
 
-    test('fromProfile fails closed on remote auth (Phase A)', () {
-      const stagingRemoteAuth = DeploymentProfile(
-        environment: AppEnv.staging,
-        authMode: AuthMode.remote,
-        dataMode: DataMode.demo,
-        apiBaseUrl: 'https://api.example.test',
-      );
+    test(
+      'fromProfile builds fail-closed remote adapters without guessing endpoints',
+      () {
+        const stagingRemoteAuth = DeploymentProfile(
+          environment: AppEnv.staging,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.demo,
+          apiBaseUrl: 'https://api.example.test',
+        );
 
-      expect(
-        () => AppComposition.fromProfile(
+        final stagingComposition = AppComposition.fromProfile(
           stagingRemoteAuth,
           preferences: prefs,
           secureStore: secureStore,
-        ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains(
-              'Adapter RemoteAuthRepository belum tersedia (fail-closed).',
-            ),
-          ),
-        ),
-      );
+        );
+        expect(stagingComposition.authRepository, isA<RemoteAuthRepository>());
+        expect(stagingComposition.kokRepository, isA<DemoKokRepository>());
+        expect(stagingComposition.apiClient, isNotNull);
 
-      const prodRemoteAuth = DeploymentProfile(
-        environment: AppEnv.production,
-        authMode: AuthMode.remote,
-        dataMode: DataMode.remote,
-        apiBaseUrl: 'https://api.example.test',
-      );
+        const prodRemoteAuth = DeploymentProfile(
+          environment: AppEnv.production,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://api.example.test',
+        );
 
-      expect(
-        () => AppComposition.fromProfile(
+        final productionComposition = AppComposition.fromProfile(
           prodRemoteAuth,
           preferences: prefs,
           secureStore: secureStore,
-        ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            contains(
-              'Adapter RemoteAuthRepository belum tersedia (fail-closed).',
-            ),
-          ),
-        ),
-      );
-    });
+        );
+        expect(
+          productionComposition.authRepository,
+          isA<RemoteAuthRepository>(),
+        );
+        expect(productionComposition.kokRepository, isA<RemoteKokRepository>());
+        expect(productionComposition.apiClient, isNotNull);
+      },
+    );
 
     test('fromProfile validates profile before composition', () {
       const invalidProfile = DeploymentProfile(

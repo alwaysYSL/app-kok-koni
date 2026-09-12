@@ -4,13 +4,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../auth/data/auth_repository.dart';
 import '../auth/data/auth_token_storage.dart';
 import '../auth/data/demo_auth_repository.dart';
+import '../auth/data/remote_auth_repository.dart';
 import '../auth/data/remembered_sk_store.dart';
 import '../auth/data/session_metadata_store.dart';
 import '../auth/domain/credential_id_generator.dart';
 import '../config/deployment_profile.dart';
 import '../network/auth_session_tokens.dart';
+import '../network/api_client.dart';
 import '../../data/demo_kok_repository.dart';
 import '../../data/kok_repository.dart';
+import '../../data/remote_kok_repository.dart';
 
 final class AppComposition {
   AppComposition({
@@ -22,6 +25,7 @@ final class AppComposition {
     required this.kokRepository,
     required this.credentialIdGenerator,
     AuthSessionTokens? sessionTokens,
+    this.apiClient,
     this.revocationTimeout = const Duration(seconds: 5),
   }) : sessionTokens = sessionTokens ?? AuthSessionTokens();
 
@@ -33,6 +37,7 @@ final class AppComposition {
   final KokRepository kokRepository;
   final CredentialIdGenerator credentialIdGenerator;
   final AuthSessionTokens sessionTokens;
+  final ApiClient? apiClient;
   final Duration revocationTimeout;
 
   factory AppComposition.fromProfile(
@@ -40,12 +45,14 @@ final class AppComposition {
     required SharedPreferences preferences,
     required SecureKeyValStore secureStore,
     CredentialIdGenerator? credentialIdGenerator,
+    AuthSessionTokens? sessionTokens,
     Duration revocationTimeout = const Duration(seconds: 5),
   }) {
     profile.validate();
 
     final envName = profile.environment.name;
     final idGen = credentialIdGenerator ?? UuidCredentialIdGenerator();
+    final bridge = sessionTokens ?? AuthSessionTokens();
 
     final tokenStorage = SecureAuthTokenStorage(
       store: secureStore,
@@ -62,22 +69,29 @@ final class AppComposition {
       key: 'kok.auth.v2.$envName.remembered_sk',
     );
 
+    final ApiClient? apiClient;
     final AuthRepository authRepo;
     if (profile.authMode == AuthMode.demo) {
+      apiClient = null;
       authRepo = DemoAuthRepository(simulateLatency: false);
     } else {
-      throw StateError(
-        'Adapter RemoteAuthRepository belum tersedia (fail-closed).',
+      late final RemoteAuthRepository remoteAuthRepository;
+      final client = ApiClient(
+        profile: profile,
+        tokens: bridge,
+        refreshSession: (refreshToken) =>
+            remoteAuthRepository.refreshToken(refreshToken),
       );
+      remoteAuthRepository = RemoteAuthRepository(client);
+      apiClient = client;
+      authRepo = remoteAuthRepository;
     }
 
     final KokRepository kokRepo;
     if (profile.dataMode == DataMode.demo) {
       kokRepo = DemoKokRepository();
     } else {
-      throw StateError(
-        'Adapter RemoteKokRepository belum tersedia (fail-closed).',
-      );
+      kokRepo = RemoteKokRepository(apiClient!);
     }
 
     return AppComposition(
@@ -88,6 +102,8 @@ final class AppComposition {
       authRepository: authRepo,
       kokRepository: kokRepo,
       credentialIdGenerator: idGen,
+      sessionTokens: bridge,
+      apiClient: apiClient,
       revocationTimeout: revocationTimeout,
     );
   }
