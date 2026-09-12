@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../kok_repository.dart';
@@ -5,9 +6,13 @@ import '../models.dart';
 import '../request_cancellation.dart';
 import 'snapshot_provider.dart';
 
-Future<T> _runGranularRequest<T>(
+@visibleForTesting
+Future<T> runGranularRequest<T>(
   Ref ref,
-  Future<T> Function(RequestCancellation cancellation) request,
+  Future<T> Function(
+    RequestCancellation cancellation,
+    DataRequestContext context,
+  ) request,
 ) async {
   final context = ref.watch(dataRequestContextProvider);
   if (context == null) {
@@ -17,17 +22,18 @@ Future<T> _runGranularRequest<T>(
   final cancellationController = RequestCancellationController();
   ref.onDispose(() => cancellationController.cancel('Provider disposed'));
 
-  final result = await request(cancellationController.token);
+  final result = await request(cancellationController.token, context);
   cancellationController.token.throwIfCancelled();
 
-  if (ref.read(dataRequestContextProvider) != context) {
+  if (!ref.mounted || ref.read(dataRequestContextProvider) != context) {
     throw const RequestCancelledException('Stale granular response rejected');
   }
 
   return result;
 }
 
-Duration? _granularRetry(int retryCount, Object error) {
+@visibleForTesting
+Duration? granularRetry(int retryCount, Object error) {
   if (error is SessionRequiredException ||
       error is RequestCancelledException ||
       error is UnsupportedScopeException ||
@@ -38,22 +44,22 @@ Duration? _granularRetry(int retryCount, Object error) {
 }
 
 final clubDetailProvider = FutureProvider.family<Club, String>((ref, clubId) {
-  return _runGranularRequest(
+  return runGranularRequest(
     ref,
-    (cancellation) => ref
+    (cancellation, _) => ref
         .read(repositoryProvider)
         .fetchClubDetail(clubId, cancellation: cancellation),
   );
-}, retry: _granularRetry);
+}, retry: granularRetry);
 
 final clubMembersProvider =
     FutureProvider.family<List<SportPerson>, ({String clubId, String? role})>((
       ref,
       params,
     ) {
-      return _runGranularRequest(
+      return runGranularRequest(
         ref,
-        (cancellation) => ref
+        (cancellation, _) => ref
             .read(repositoryProvider)
             .fetchClubMembers(
               params.clubId,
@@ -61,33 +67,34 @@ final clubMembersProvider =
               cancellation: cancellation,
             ),
       );
-    }, retry: _granularRetry);
+    }, retry: granularRetry);
 
 final personDetailProvider = FutureProvider.family<SportPerson, String>((
   ref,
   personId,
 ) {
-  return _runGranularRequest(
+  return runGranularRequest(
     ref,
-    (cancellation) => ref
+    (cancellation, _) => ref
         .read(repositoryProvider)
         .fetchPersonDetail(personId, cancellation: cancellation),
   );
-}, retry: _granularRetry);
+}, retry: granularRetry);
 
 final committeeProvider = FutureProvider<List<CommitteeMember>>((ref) {
-  return _runGranularRequest(ref, (cancellation) {
-    final context = ref.read(dataRequestContextProvider);
-    return ref
+  return runGranularRequest(
+    ref,
+    (cancellation, context) => ref
         .read(repositoryProvider)
-        .fetchCommittee(context!.scope, cancellation: cancellation);
-  });
-}, retry: _granularRetry);
+        .fetchCommittee(context.scope, cancellation: cancellation),
+  );
+}, retry: granularRetry);
 
 final helpdeskProvider = FutureProvider<HelpdeskContact?>((ref) {
-  return _runGranularRequest(
+  return runGranularRequest(
     ref,
-    (cancellation) =>
+    (cancellation, _) =>
         ref.read(repositoryProvider).fetchHelpdesk(cancellation: cancellation),
   );
-}, retry: _granularRetry);
+}, retry: granularRetry);
+
