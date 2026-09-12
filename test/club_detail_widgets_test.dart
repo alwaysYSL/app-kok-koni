@@ -678,5 +678,36 @@ void main() {
     expect(find.text('pending'), findsOneWidget);
     expect(find.text('SK Klub'), findsNothing);
     expect(find.text('Kepengurusan'), findsNothing);
+
+    // Verify status colors
+    final verifiedText = tester.widget<Text>(find.text('verified'));
+    expect(verifiedText.style?.color, const Color(0xFF176B38));
+
+    final pendingText = tester.widget<Text>(find.text('pending'));
+    expect(pendingText.style?.color, const Color(0xFFB45309));
   });
+
+  testWidgets(
+    'ClubDocumentTab status colors correctly map green, amber, and red statuses',
+    (tester) async {
+      final club = testClub.copyWith(
+        documents: const [
+          ClubDocument(id: 'd1', name: 'Dokumen 1', status: 'Lengkap'),
+          ClubDocument(id: 'd2', name: 'Dokumen 2', status: 'Dalam Proses'),
+          ClubDocument(id: 'd3', name: 'Dokumen 3', status: 'Ditolak'),
+        ],
+      );
+
+      await tester.pumpWidget(app(ClubDocumentTab(club: club)));
+
+      final lengkapText = tester.widget<Text>(find.text('Lengkap'));
+      expect(lengkapText.style?.color, const Color(0xFF176B38));
+
+      final prosesText = tester.widget<Text>(find.text('Dalam Proses'));
+      expect(prosesText.style?.color, const Color(0xFFB45309));
+
+      final ditolakText = tester.widget<Text>(find.text('Ditolak'));
+      expect(ditolakText.style?.color, const Color(0xFFDC2626));
+    },
+  );
 }

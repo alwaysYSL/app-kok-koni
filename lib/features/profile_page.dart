@@ -3,11 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/auth/domain/user_principal.dart';
 import '../core/auth/presentation/auth_controller.dart';
+import '../core/composition/app_composition.dart';
+import '../core/config/deployment_profile.dart';
 import '../core/preferences.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
+
+bool _isDemoDataMode(WidgetRef ref) {
+  try {
+    return ref.watch(appCompositionProvider).profile.dataMode == DataMode.demo;
+  } catch (_) {
+    return true;
+  }
+}
 
 class AccountProfileCardPainter extends CustomPainter {
   const AccountProfileCardPainter();
@@ -38,6 +48,7 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final isDemoData = _isDemoDataMode(ref);
 
     return Scaffold(
       appBar: AppBar(
@@ -117,12 +128,14 @@ class ProfilePage extends ConsumerWidget {
           const SizedBox(height: 8),
           _LogoutButton(onPressed: () => _showSignOutDialog(context, ref)),
           const SizedBox(height: 12),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
-              'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
+              isDemoData
+                  ? 'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.'
+                  : 'Hubungi admin kabupaten untuk koordinasi akun.',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: Color(0xFF9CA3AF),
                 height: 1.4,
@@ -787,6 +800,8 @@ class _SyncStatusCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDemoData = _isDemoDataMode(ref);
+    final demoBadge = isDemoData ? ' (Mode Demo)' : '';
     final timeStr =
         '${data.loadedAt.hour.toString().padLeft(2, '0')}:${data.loadedAt.minute.toString().padLeft(2, '0')}';
     return Container(
@@ -820,7 +835,7 @@ class _SyncStatusCard extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Terakhir dimuat: $timeStr · ${data.people.length} entri data (Mode Demo)',
+                  'Terakhir dimuat: $timeStr · ${data.people.length} entri data$demoBadge',
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
@@ -860,9 +875,11 @@ class _SyncStatusCard extends ConsumerWidget {
           const SizedBox(height: 12),
           const DashedDivider(color: Color(0xFFE5E7EB)),
           const SizedBox(height: 12),
-          const Text(
-            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
-            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+          Text(
+            isDemoData
+                ? 'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.'
+                : 'Status koneksi: Terhubung dengan SICABOR.',
+            style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
           ),
         ],
       ),

@@ -9,6 +9,23 @@ class ClubDocumentTab extends StatelessWidget {
 
   final Club club;
 
+  Color _statusColor(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('verif') ||
+        s.contains('lengkap') ||
+        s.contains('tersedia') ||
+        s.contains('sah')) {
+      return const Color(0xFF176B38);
+    }
+    if (s.contains('pending') ||
+        s.contains('review') ||
+        s.contains('tinjau') ||
+        s.contains('proses')) {
+      return const Color(0xFFB45309);
+    }
+    return const Color(0xFFDC2626);
+  }
+
   @override
   Widget build(BuildContext context) {
     final documents = club.documents;
@@ -59,8 +76,8 @@ class ClubDocumentTab extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text(
                     document.status,
-                    style: const TextStyle(
-                      color: Color(0xFF176B38),
+                    style: TextStyle(
+                      color: _statusColor(document.status),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),

@@ -188,6 +188,23 @@ class _ProfileCard extends StatelessWidget {
   final ClubBrandPalette palette;
   final String coachName;
 
+  String _idLabel(SportPerson person) {
+    final upperId = person.id.toUpperCase();
+    if (upperId.startsWith('ATL-') ||
+        upperId.startsWith('PEL-') ||
+        upperId.startsWith('OFF-')) {
+      return 'ID · ${person.id}';
+    }
+    switch (person.role.toLowerCase()) {
+      case 'pelatih':
+        return 'ID · PEL-${person.id}';
+      case 'official':
+        return 'ID · OFF-${person.id}';
+      default:
+        return 'ID · ATL-${person.id}';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -222,7 +239,7 @@ class _ProfileCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'ID · ATL-${person.id}',
+                _idLabel(person),
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF6B7280),

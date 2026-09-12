@@ -78,7 +78,11 @@ class _SportsPageState extends State<SportsPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 1. Header Ringkas (Model 1)
-              _buildCompactHeader(allSports.length, totalAthletes),
+              _buildCompactHeader(
+                allSports.length,
+                totalAthletes,
+                data.scope.name,
+              ),
               const SizedBox(height: 14),
 
               // 2. Kartu Sebaran Atlet Horizontal (Format A)
@@ -204,7 +208,11 @@ class _SportsPageState extends State<SportsPage> {
     ),
   );
 
-  Widget _buildCompactHeader(int totalSports, int totalAthletes) {
+  Widget _buildCompactHeader(
+    int totalSports,
+    int totalAthletes,
+    String scopeName,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Row(
@@ -214,8 +222,8 @@ class _SportsPageState extends State<SportsPage> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
+              children: [
+                const Text(
                   'Cabang Olahraga Aktif',
                   style: TextStyle(
                     fontSize: 18,
@@ -223,10 +231,10 @@ class _SportsPageState extends State<SportsPage> {
                     color: KokColors.cardTitle,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  'Kecamatan Garut Kota',
-                  style: TextStyle(
+                  scopeName,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: KokColors.textSecondary,
                   ),

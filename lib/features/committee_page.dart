@@ -169,7 +169,11 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
     );
   }
 
-  void _showMemberDetailModal(BuildContext context, CommitteeMember m) {
+  void _showMemberDetailModal(
+    BuildContext context,
+    CommitteeMember m,
+    String scopeName,
+  ) {
     final initial = m.name.isNotEmpty
         ? m.name.substring(0, 1).toUpperCase()
         : '?';
@@ -254,7 +258,7 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                     DetailRow('Jabatan', m.position),
                     DetailRow('Bidang', m.division),
                     DetailRow('Periode', m.period),
-                    const DetailRow('Kecamatan', 'Garut Kota'),
+                    DetailRow('Kecamatan', scopeName),
                   ],
                 ),
               ),
@@ -432,9 +436,9 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
-                      'Kecamatan Garut Kota',
-                      style: TextStyle(
+                    Text(
+                      data.scope.name,
+                      style: const TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF0C2464),
@@ -600,7 +604,8 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                 ...members.map(
                   (m) => CommitteeMemberCard(
                     member: m,
-                    onTap: () => _showMemberDetailModal(context, m),
+                    onTap: () =>
+                        _showMemberDetailModal(context, m, data.scope.name),
                   ),
                 ),
               const SizedBox(height: 8),

@@ -126,5 +126,35 @@ void main() {
         expect(find.text('Detail: Bulu Tangkis'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'renders dynamic territory scope title when snapshot has custom scope',
+      (tester) async {
+        const customScope = AccessScope(
+          type: AccessScopeType.district,
+          id: 'tarogong_kidul',
+          name: 'Kecamatan Tarogong Kidul',
+        );
+
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              snapshotProvider.overrideWith(
+                (ref) => DemoKokRepository().fetchScope(customScope),
+              ),
+            ],
+            child: const MaterialApp(home: SportsPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cabang Olahraga Aktif'), findsOneWidget);
+        expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
+        expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      },
+    );
   });
 }

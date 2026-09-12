@@ -295,6 +295,9 @@ void main() {
       // Header title shows Detail Pelatih
       expect(find.text('Detail Pelatih'), findsOneWidget);
 
+      // Role-aware ID label
+      expect(find.text('ID · PEL-garuda-pelatih-0'), findsOneWidget);
+
       // Status badge: lisensi kedaluwarsa
       expect(find.text('lisensi kedaluwarsa'), findsOneWidget);
 
@@ -467,6 +470,71 @@ void main() {
           ),
         );
         expect(avatarContainer, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'profile card formats role-aware ID for official and avoids prefix doubling',
+      (tester) async {
+        final snapshot = KokSnapshot(
+          scope: garutScope,
+          clubs: const [
+            Club(
+              id: 'club-1',
+              name: 'Klub Prima',
+              sport: 'Atletik',
+              village: 'Pakuwon',
+            ),
+          ],
+          people: const [
+            SportPerson(
+              id: '123',
+              name: 'Official Budi',
+              clubId: 'club-1',
+              role: 'Official',
+              group: 'Manajer',
+            ),
+            SportPerson(
+              id: 'PEL-456',
+              name: 'Coach Joko',
+              clubId: 'club-1',
+              role: 'Pelatih',
+              group: 'Lisensi B',
+            ),
+            SportPerson(
+              id: 'ATL-789',
+              name: 'Atlet Susi',
+              clubId: 'club-1',
+              role: 'Atlet',
+              group: 'Senior',
+            ),
+          ],
+          committee: const [],
+          loadedAt: DateTime(2026, 9, 12),
+        );
+
+        // Test Official with raw id 123
+        await tester.pumpWidget(
+          createTestApp(snapshot: snapshot, initialLocation: '/person/123'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('ID · OFF-123'), findsOneWidget);
+
+        // Test Coach with pre-prefixed ID PEL-456
+        await tester.pumpWidget(
+          createTestApp(snapshot: snapshot, initialLocation: '/person/PEL-456'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('ID · PEL-456'), findsOneWidget);
+        expect(find.text('ID · PEL-PEL-456'), findsNothing);
+
+        // Test Athlete with pre-prefixed ID ATL-789
+        await tester.pumpWidget(
+          createTestApp(snapshot: snapshot, initialLocation: '/person/ATL-789'),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('ID · ATL-789'), findsOneWidget);
+        expect(find.text('ID · ATL-ATL-789'), findsNothing);
       },
     );
   });

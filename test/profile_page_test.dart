@@ -7,12 +7,15 @@ import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'test_composition.dart';
 
 class _FakeProfileAuthController extends AuthController {
   final UserPrincipal user;
@@ -133,6 +136,7 @@ Widget buildTestableProfileWidget({
   GoRouter? router,
   UserPrincipal? user,
   AuthController? authController,
+  AppComposition? composition,
 }) {
   final currentUser = user ?? testUser;
   final controller = authController ?? _FakeProfileAuthController(currentUser);
@@ -198,6 +202,8 @@ Widget buildTestableProfileWidget({
 
   return ProviderScope(
     overrides: [
+      if (composition != null)
+        appCompositionProvider.overrideWithValue(composition),
       authControllerProvider.overrideWith(() => controller),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
@@ -215,6 +221,7 @@ Future<void> pumpProfilePage(
   GoRouter? router,
   UserPrincipal? user,
   AuthController? authController,
+  AppComposition? composition,
 }) async {
   tester.view.physicalSize = const Size(390, 1200);
   tester.view.devicePixelRatio = 1;
@@ -239,6 +246,7 @@ Future<void> pumpProfilePage(
       router: appRouter,
       user: user,
       authController: authController,
+      composition: composition,
     ),
   );
   await tester.pumpAndSettle();
@@ -957,6 +965,109 @@ void main() {
         expect(clipboardCalled, isFalse);
         expect(
           find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'renders demo labels and status when composition dataMode is demo',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final demoComposition = buildTestAppComposition();
+
+        await pumpProfilePage(
+          tester,
+          preferences: prefs,
+          composition: demoComposition,
+        );
+
+        // Demo badge on sync card
+        expect(
+          find.text('Terakhir dimuat: 14:30 · 3 entri data (Mode Demo)'),
+          findsOneWidget,
+        );
+
+        // Demo connection status
+        expect(
+          find.text(
+            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
+          ),
+          findsOneWidget,
+        );
+
+        // Demo footer note
+        await tester.scrollUntilVisible(
+          find.text(
+            'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
+          ),
+          200,
+        );
+        expect(
+          find.text(
+            'Data demo lokal—belum terhubung dengan SICABOR. Hubungi admin kabupaten untuk koordinasi akun.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'renders connected status and omits Mode Demo when composition dataMode is remote',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final base = buildTestAppComposition();
+        final remoteComposition = AppComposition(
+          profile: const DeploymentProfile(
+            environment: AppEnv.staging,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.remote,
+            apiBaseUrl: 'https://staging-api.example.test',
+          ),
+          authTokenStorage: base.authTokenStorage,
+          sessionMetadataStore: base.sessionMetadataStore,
+          rememberedSkStore: base.rememberedSkStore,
+          authRepository: base.authRepository,
+          kokRepository: base.kokRepository,
+          credentialIdGenerator: base.credentialIdGenerator,
+        );
+
+        await pumpProfilePage(
+          tester,
+          preferences: prefs,
+          composition: remoteComposition,
+        );
+
+        // Omits (Mode Demo) on sync card
+        expect(
+          find.text('Terakhir dimuat: 14:30 · 3 entri data'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('(Mode Demo)'), findsNothing);
+
+        // Connected status
+        expect(
+          find.text('Status koneksi: Terhubung dengan SICABOR.'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
+          ),
+          findsNothing,
+        );
+
+        // Remote footer note without demo claim
+        await tester.scrollUntilVisible(
+          find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
+          200,
+        );
+        expect(
+          find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Data demo lokal—belum terhubung dengan SICABOR.'),
           findsNothing,
         );
       },
