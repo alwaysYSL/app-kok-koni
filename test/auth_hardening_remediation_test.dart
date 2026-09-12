@@ -18,6 +18,7 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'test_composition.dart';
 
 // ---------------------------------------------------------------------------
 // Test Doubles & Helpers
@@ -292,7 +293,7 @@ void main() {
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -411,7 +412,7 @@ void main() {
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container1 = ProviderContainer(
+        final container1 = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -451,7 +452,7 @@ void main() {
         // 3. Simulated app restart: dispose container 1 and boot container 2
         container1.dispose();
 
-        final container2 = ProviderContainer(
+        final container2 = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -521,7 +522,7 @@ void main() {
         );
         final trackingRepo = _TrackingAuthRepository();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),

@@ -116,8 +116,18 @@ Future<ProviderContainer> start(
   }
   final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
   final authRepo = DemoAuthRepository(simulateLatency: false);
+  final composition = AppComposition.fromProfile(
+    const DeploymentProfile(
+      environment: AppEnv.demo,
+      authMode: AuthMode.demo,
+      dataMode: DataMode.demo,
+    ),
+    preferences: prefs,
+    secureStore: _FakeSecureKeyValStore(),
+  );
   final container = ProviderContainer(
     overrides: [
+      appCompositionProvider.overrideWithValue(composition),
       preferencesProvider.overrideWithValue(prefs),
       authTokenStorageProvider.overrideWithValue(tokenStorage),
       sessionMetadataStoreProvider.overrideWithValue(metadataStore),

@@ -7,19 +7,19 @@ Frontend Flutter proyek kerja praktik. Versi 0.1.0 adalah prototipe interaktif d
 Diuji menggunakan Flutter 3.44.4 / Dart 3.12.2. Dependency terkunci dalam `pubspec.lock`.
 
 ```powershell
-cd 'F:\Kuliah Bullshit\KP\Kerja-Praktik-Koni-KOK'
+cd <repository-root>
 flutter pub get
 flutter run -d chrome
 ```
 
-Untuk Android, nyalakan emulator atau sambungkan perangkat, jalankan `flutter devices`, lalu `flutter run -d <device-id>`. Build iOS memerlukan macOS dan Xcode. Native Android/iOS belum divalidasi pada tahap ini. Launcher icon native masih bawaan scaffold Flutter.
+Untuk Android, nyalakan emulator atau sambungkan perangkat, jalankan `flutter devices`, lalu `flutter run -d <device-id>`. Build debug Android divalidasi dengan `flutter build apk --debug` pada Patch 3.1; build iOS memerlukan macOS dan Xcode. Launcher icon native masih bawaan scaffold Flutter.
 
 Akun demo yang tersedia:
 - **DEMO-001** (`usr_garut_kota`) / **kokgarut123**: Pak Asep · Koordinator Kecamatan Garut Kota (memiliki izin `sports:read`, `clubs:read`, `members:read`, `reports:export`).
 - **DEMO-002** (`usr_tarogong_kidul`) / **koktarogong123**: Pak Cecep · Koordinator Kecamatan Tarogong Kidul (memiliki izin `sports:read`, `clubs:read`, `members:read` — tanpa izin `reports:export`, untuk pengujian penonaktifan menu rekap).
 - **DEMO-003** (`usr_koni_kab`) / **konigarut123**: Ibu Rina · Tim Verifikator KONI Kab. Garut (memiliki izin `sports:read`, `clubs:read`, `members:read`, `documents:verify`, dan `reports:export`).
 
-Masuk demo melakukan validasi lokal, bukan autentikasi backend. Kata sandi tidak disimpan. Opsi "Ingat nomor SK" hanya menyimpan nomor SK ke penyimpanan lokal yang aman.
+Masuk demo melakukan validasi lokal, bukan autentikasi backend. Kata sandi tidak disimpan. Opsi "Ingat nomor SK" hanya menyimpan nomor SK sebagai preferensi lokal non-rahasia di `SharedPreferences`; refresh credential persisten memiliki boundary storage terpisah.
 
 ## Yang tersedia
 
@@ -53,7 +53,10 @@ Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas se
 - `lib/app.dart`: router go_router, session guard, navigasi 5 tab.
 - `lib/core`: tema/tokens, session controller Riverpod, preferences.
 - `lib/data/models.dart`: model immutable Freezed + JSON.
-- `lib/data/repository.dart`: interface repository, data demo, provider async, konfigurasi Dio, filter klub.
+- `lib/core/composition/app_composition.dart`: composition root wajib untuk storage, auth, dan repository.
+- `lib/data/providers/snapshot_provider.dart`: provider data berscope dan stale-response guard.
+- `lib/data/kok_repository.dart` dan `lib/data/demo_kok_repository.dart`: kontrak repository serta fixture demo.
+- `lib/data/club_filters.dart`: helper filter/sort klub.
 - `lib/features`: halaman per fitur.
 - `lib/shared`: komponen bersama dan state loading/error.
 - `assets/branding`: logo dan maskot asli.
@@ -61,7 +64,7 @@ Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas se
 
 ## Integrasi SICABOR berikutnya
 
-Implementasikan `KokRepository.fetch()` untuk backend kemudian override `repositoryProvider`. `dioProvider` disiapkan dengan timeout dan `SICABOR_BASE_URL`; mengisi URL saja tidak mengganti mode demo. Belum ada endpoint, bentuk response, mekanisme autentikasi, atau token yang ditebak.
+Implementasikan `KokRepository.fetchScope()` untuk backend kemudian override `repositoryProvider` melalui `AppComposition`. Belum ada endpoint, bentuk response, mekanisme autentikasi, atau token SICABOR yang ditebak.
 
 Data model saat ini adalah kontrak internal UI. Buat DTO/mapping terpisah bila response API berbeda. Setelah backend tersedia, ganti session demo dengan login API serta penyimpanan token yang sesuai platform. Scope kecamatan dan hak akses harus ditegakkan oleh server.
 
@@ -70,7 +73,7 @@ Masih membutuhkan kontrak login/refresh/logout, daftar cabor/klub/orang/pengurus
 ## Validasi dan regenerasi
 
 ```powershell
-dart run build_runner build
+flutter pub run build_runner build
 dart format lib test
 flutter analyze
 flutter test

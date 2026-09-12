@@ -14,6 +14,7 @@ import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_token_storage_test.dart';
+import 'test_composition.dart';
 
 final fakeGarutKotaUser = UserPrincipal(
   id: 'usr_garut_kota',
@@ -390,7 +391,7 @@ void main() {
     test(
       'mutasi pertama melempar Exception, mutasi kedua tetap dieksekusi dengan sukses',
       () async {
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
@@ -419,7 +420,7 @@ void main() {
     );
 
     test('antrian mutasi dieksekusi secara sekuensial', () async {
-      final container = ProviderContainer(
+      final container = createTestProviderContainer(
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
@@ -466,7 +467,7 @@ void main() {
           metadata: SessionMetadata.restoreEnabled('cred-single-flight'),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -507,7 +508,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -535,7 +536,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore(metadata: null);
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -569,7 +570,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore(metadata: null);
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -608,7 +609,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore(metadata: null);
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -641,7 +642,7 @@ void main() {
           ..shouldThrowOnWrite = true;
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -670,7 +671,7 @@ void main() {
           ..shouldThrowCorrupt = true;
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -699,7 +700,7 @@ void main() {
           ..shouldThrowOnRead = true;
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -729,7 +730,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -760,7 +761,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -790,7 +791,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -821,7 +822,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -857,7 +858,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -897,7 +898,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -927,7 +928,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -961,7 +962,7 @@ void main() {
         )..shouldThrowOnWrite = true;
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -995,7 +996,7 @@ void main() {
         );
         final repo = ControlledAuthRepo();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1041,7 +1042,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1081,7 +1082,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1119,7 +1120,7 @@ void main() {
           restoreException: TimeoutException('Timeout'),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1156,7 +1157,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1200,7 +1201,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1238,7 +1239,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1276,7 +1277,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1301,7 +1302,7 @@ void main() {
     test(
       'bootstrap mengarahkan ke AuthSignedOut jika storage kosong',
       () async {
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
@@ -1321,7 +1322,7 @@ void main() {
     test(
       'login sukses menaikkan session generation dan set AuthSignedIn',
       () async {
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
@@ -1350,7 +1351,7 @@ void main() {
     );
 
     test('logout membersihkan sesi dan menaikkan generation counter', () async {
-      final container = ProviderContainer(
+      final container = createTestProviderContainer(
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
@@ -1389,7 +1390,7 @@ void main() {
         final fakeStorage = InMemoryAuthTokenStorage();
         final fakeSkStore = InMemoryRememberedSkStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(fakeStorage),
@@ -1437,7 +1438,7 @@ void main() {
 
   group('Two-Phase Login & Logical Cancellation', () {
     test('login ditolak jika state bukan AuthSignedOut clean', () async {
-      final container = ProviderContainer(
+      final container = createTestProviderContainer(
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
@@ -1484,7 +1485,7 @@ void main() {
       () async {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1523,7 +1524,7 @@ void main() {
       () async {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1565,7 +1566,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
         final generator = DeterministicCredentialIdGenerator('custom-cred');
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1607,7 +1608,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -1645,7 +1646,7 @@ void main() {
     );
 
     test('cancelSignIn saat idle ditolak dengan status rejected', () async {
-      final container = ProviderContainer(
+      final container = createTestProviderContainer(
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
@@ -1671,7 +1672,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore();
         final fakeRepo = CompleterAuthRepository();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1734,7 +1735,7 @@ void main() {
         final fakeRepo = CompleterAuthRepository()
           ..revokeDelay = const Duration(milliseconds: 100);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1776,7 +1777,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore();
         final fakeRepo = CompleterAuthRepository();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1808,7 +1809,7 @@ void main() {
       () async {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1838,10 +1839,7 @@ void main() {
         expect(result.credentialCleared, isFalse);
         expect(result.metadataClean, isFalse);
         expect(storage.credential, foreignCredential);
-        expect(
-          metadataStore.metadata,
-          const SessionMetadata.cleanupFailed(),
-        );
+        expect(metadataStore.metadata, const SessionMetadata.cleanupFailed());
         expect(
           container.read(authControllerProvider),
           const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed),
@@ -1854,7 +1852,7 @@ void main() {
     test(
       'retryLocalCredentialCleanup ditolak bila state bukan AuthSignedOut failed',
       () async {
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
@@ -1889,7 +1887,7 @@ void main() {
           metadata: const SessionMetadata.cleanupFailed(),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1931,7 +1929,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore()
           ..throwOnWriteCallIndex = 1;
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -1968,7 +1966,7 @@ void main() {
         final storage = FakeAuthTokenStorage()..shouldThrowOnWrite = true;
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2009,7 +2007,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore();
         late ProviderContainer container;
 
-        container = ProviderContainer(
+        container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2050,7 +2048,7 @@ void main() {
         final metadataStore = FakeSessionMetadataStore()
           ..throwOnWriteCallIndex = 2; // Gagal saat write restore-enabled
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2092,7 +2090,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2135,7 +2133,7 @@ void main() {
         );
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2204,7 +2202,7 @@ void main() {
           ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2231,7 +2229,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2271,7 +2269,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2310,7 +2308,7 @@ void main() {
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2359,7 +2357,7 @@ void main() {
           final revokeCompleter = Completer<void>();
           fakeRepo.revokeCompleter = revokeCompleter;
 
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2403,7 +2401,7 @@ void main() {
           final storage = FakeAuthTokenStorage();
           final metadataStore = FakeSessionMetadataStore();
 
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2520,7 +2518,7 @@ void main() {
           final metadataStore = FakeSessionMetadataStore();
           final generator = DeterministicCredentialIdGenerator('sc13-cred');
 
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2593,7 +2591,7 @@ void main() {
           };
           metadataStore.onWriteCompleter = commitBlocker;
 
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2646,7 +2644,7 @@ void main() {
           final failingSkStore = InMemoryRememberedSkStore()
             ..shouldThrowOnSave = true;
 
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2750,7 +2748,7 @@ void main() {
             );
             final storage = FakeAuthTokenStorage();
             final metadataStore = FakeSessionMetadataStore();
-            final container = ProviderContainer(
+            final container = createTestProviderContainer(
               overrides: [
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),
@@ -2835,7 +2833,7 @@ void main() {
           final metadataStore = FakeSessionMetadataStore(
             metadata: const SessionMetadata.cleanupFailed(),
           );
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -2880,7 +2878,7 @@ void main() {
         () async {
           final storage = FakeAuthTokenStorage();
           final metadataStore = FakeSessionMetadataStore();
-          final container = ProviderContainer(
+          final container = createTestProviderContainer(
             overrides: [
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
@@ -3025,7 +3023,7 @@ void main() {
             final repository = CompleterAuthRepository(
               loginResult: testCase.result,
             );
-            final container = ProviderContainer(
+            final container = createTestProviderContainer(
               overrides: [
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),

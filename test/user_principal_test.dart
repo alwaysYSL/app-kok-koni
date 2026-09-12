@@ -208,23 +208,20 @@ void main() {
       },
     );
 
-    test(
-      'principal fields expose canonical names and scope directly',
-      () {
-        final principal = UserPrincipal(
-          id: 'usr_01',
-          skNumber: 'SK-01',
-          fullName: 'Nama Lengkap',
-          roleTitle: 'Ketua Umum',
-          scope: defaultScope,
-        );
+    test('principal fields expose canonical names and scope directly', () {
+      final principal = UserPrincipal(
+        id: 'usr_01',
+        skNumber: 'SK-01',
+        fullName: 'Nama Lengkap',
+        roleTitle: 'Ketua Umum',
+        scope: defaultScope,
+      );
 
-        expect(principal.fullName, equals('Nama Lengkap'));
-        expect(principal.roleTitle, equals('Ketua Umum'));
-        expect(principal.scope.id, equals('garut_kota'));
-        expect(principal.scope.name, equals('Kecamatan Garut Kota'));
-      },
-    );
+      expect(principal.fullName, equals('Nama Lengkap'));
+      expect(principal.roleTitle, equals('Ketua Umum'));
+      expect(principal.scope.id, equals('garut_kota'));
+      expect(principal.scope.name, equals('Kecamatan Garut Kota'));
+    });
 
     test('hasPermission mengembalikan boolean status secara akurat', () {
       final principal = UserPrincipal(

@@ -56,67 +56,73 @@ void main() {
     },
   );
 
-  test('DataRequestContext mengisolasi snapshot data antar akun kecamatan', () async {
-    final tokenStorage = InMemoryAuthTokenStorage();
-    SharedPreferences.setMockInitialValues({});
-    final prefs = await SharedPreferences.getInstance();
-    final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
-    final authRepo = DemoAuthRepository(simulateLatency: false);
-    final composition = AppComposition.fromProfile(
-      const DeploymentProfile(
-        environment: AppEnv.demo,
-        authMode: AuthMode.demo,
-        dataMode: DataMode.demo,
-      ),
-      preferences: prefs,
-      secureStore: FakeSecureKeyValStore(),
-    );
+  test(
+    'DataRequestContext mengisolasi snapshot data antar akun kecamatan',
+    () async {
+      final tokenStorage = InMemoryAuthTokenStorage();
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final skStore = RememberedSkStore(
+        prefs: prefs,
+        key: 'test_remembered_sk',
+      );
+      final authRepo = DemoAuthRepository(simulateLatency: false);
+      final composition = AppComposition.fromProfile(
+        const DeploymentProfile(
+          environment: AppEnv.demo,
+          authMode: AuthMode.demo,
+          dataMode: DataMode.demo,
+        ),
+        preferences: prefs,
+        secureStore: FakeSecureKeyValStore(),
+      );
 
-    final container = ProviderContainer(
-      overrides: [
-        appCompositionProvider.overrideWithValue(composition),
-        authTokenStorageProvider.overrideWithValue(tokenStorage),
-        authRepositoryProvider.overrideWithValue(authRepo),
-        rememberedSkStoreProvider.overrideWithValue(skStore),
-      ],
-    );
-    addTearDown(container.dispose);
+      final container = ProviderContainer(
+        overrides: [
+          appCompositionProvider.overrideWithValue(composition),
+          authTokenStorageProvider.overrideWithValue(tokenStorage),
+          authRepositoryProvider.overrideWithValue(authRepo),
+          rememberedSkStoreProvider.overrideWithValue(skStore),
+        ],
+      );
+      addTearDown(container.dispose);
 
-    final controller = container.read(authControllerProvider.notifier);
-    await controller.bootstrap();
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
 
-    // Login Pak Asep (Garut Kota)
-    await controller.login(
-      skNumber: 'DEMO-001',
-      password: 'kokgarut123',
-      staySignedIn: false,
-      rememberSk: false,
-    );
+      // Login Pak Asep (Garut Kota)
+      await controller.login(
+        skNumber: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: false,
+        rememberSk: false,
+      );
 
-    final scopeAsep = container.read(dataRequestContextProvider);
-    expect(scopeAsep?.scope.id, 'garut_kota');
-    final snapshotAsep = await container.read(snapshotProvider.future);
-    expect(snapshotAsep.scope.name, 'Kecamatan Garut Kota');
-    expect(snapshotAsep.clubs.length, 5);
+      final scopeAsep = container.read(dataRequestContextProvider);
+      expect(scopeAsep?.scope.id, 'garut_kota');
+      final snapshotAsep = await container.read(snapshotProvider.future);
+      expect(snapshotAsep.scope.name, 'Kecamatan Garut Kota');
+      expect(snapshotAsep.clubs.length, 5);
 
-    // Logout
-    await controller.logout();
-    expect(container.read(dataRequestContextProvider), isNull);
+      // Logout
+      await controller.logout();
+      expect(container.read(dataRequestContextProvider), isNull);
 
-    // Login Pak Cecep (Tarogong Kidul)
-    await controller.login(
-      skNumber: 'DEMO-002',
-      password: 'koktarogong123',
-      staySignedIn: false,
-      rememberSk: false,
-    );
+      // Login Pak Cecep (Tarogong Kidul)
+      await controller.login(
+        skNumber: 'DEMO-002',
+        password: 'koktarogong123',
+        staySignedIn: false,
+        rememberSk: false,
+      );
 
-    final scopeCecep = container.read(dataRequestContextProvider);
-    expect(scopeCecep?.scope.id, 'tarogong_kidul');
-    final snapshotCecep = await container.read(snapshotProvider.future);
-    expect(snapshotCecep.scope.name, 'Kecamatan Tarogong Kidul');
-    expect(snapshotCecep.clubs.length, 4);
-  });
+      final scopeCecep = container.read(dataRequestContextProvider);
+      expect(scopeCecep?.scope.id, 'tarogong_kidul');
+      final snapshotCecep = await container.read(snapshotProvider.future);
+      expect(snapshotCecep.scope.name, 'Kecamatan Tarogong Kidul');
+      expect(snapshotCecep.clubs.length, 4);
+    },
+  );
 
   test(
     'snapshotProvider melempar SessionRequiredException saat sessionScope bernilai null',
@@ -266,7 +272,10 @@ void main() {
 
         final context = container.read(dataRequestContextProvider);
         expect(context, isNotNull);
-        expect(context?.environment, DeploymentProfile.fromEnvironment().environment);
+        expect(
+          context?.environment,
+          DeploymentProfile.fromEnvironment().environment,
+        );
         expect(context?.userId, 'usr_garut_kota');
         expect(context?.scope.id, 'garut_kota');
         expect(context?.generation, greaterThanOrEqualTo(1));
@@ -467,8 +476,8 @@ void main() {
         );
 
         final container = ProviderContainer(
-        overrides: [
-          appCompositionProvider.overrideWithValue(composition),
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
             rememberedSkStoreProvider.overrideWithValue(skStore),

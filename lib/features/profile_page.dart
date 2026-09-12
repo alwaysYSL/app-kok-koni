@@ -261,9 +261,7 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                     }
 
                     try {
-                      await Clipboard.setData(
-                        ClipboardData(text: summaryText),
-                      );
+                      await Clipboard.setData(ClipboardData(text: summaryText));
                     } catch (_) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

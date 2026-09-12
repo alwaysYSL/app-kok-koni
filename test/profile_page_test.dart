@@ -135,8 +135,7 @@ Widget buildTestableProfileWidget({
   AuthController? authController,
 }) {
   final currentUser = user ?? testUser;
-  final controller =
-      authController ?? _FakeProfileAuthController(currentUser);
+  final controller = authController ?? _FakeProfileAuthController(currentUser);
   final snap =
       snapshot ??
       KokSnapshot(
@@ -192,9 +191,7 @@ Widget buildTestableProfileWidget({
 
   return ProviderScope(
     overrides: [
-      authControllerProvider.overrideWith(
-        () => controller,
-      ),
+      authControllerProvider.overrideWith(() => controller),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
         preferencesProvider.overrideWithValue(preferences),

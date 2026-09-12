@@ -24,6 +24,7 @@ import 'package:kok_app/data/kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/features/login_page.dart';
+import 'test_composition.dart';
 
 // Test doubles for auth hardening scenarios
 
@@ -248,7 +249,7 @@ void main() {
           key: 'test_remembered_sk',
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -317,7 +318,7 @@ void main() {
           key: 'test_remembered_sk',
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -359,7 +360,7 @@ void main() {
       '3. Skenario A-03: snapshotProvider melempar SessionRequiredException saat sessionScope null tanpa memanggil fetchScope',
       () async {
         final countingRepo = _CountingKokRepository();
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [repositoryProvider.overrideWithValue(countingRepo)],
         );
         addTearDown(container.dispose);
@@ -399,7 +400,7 @@ void main() {
           key: 'test_remembered_sk',
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -460,7 +461,7 @@ void main() {
         );
         final repo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -586,7 +587,7 @@ void main() {
           simulateLatency: false,
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -788,7 +789,7 @@ void main() {
 
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -830,7 +831,7 @@ void main() {
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -878,7 +879,7 @@ void main() {
 
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        container = ProviderContainer(
+        container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -928,7 +929,7 @@ void main() {
 
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -976,7 +977,7 @@ void main() {
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -1036,7 +1037,7 @@ void main() {
             ),
         );
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -1067,7 +1068,7 @@ void main() {
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -1109,7 +1110,7 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore();
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
@@ -1151,7 +1152,7 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore();
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
-        final container = ProviderContainer(
+        final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),

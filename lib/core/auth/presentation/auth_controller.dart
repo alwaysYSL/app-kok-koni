@@ -754,7 +754,9 @@ class AuthController extends Notifier<AuthState> {
   Future<LogoutResult> _runLogout({
     Duration revocationTimeout = const Duration(seconds: 5),
   }) async {
-    final compositionTimeout = ref.read(appCompositionProvider).revocationTimeout;
+    final compositionTimeout = ref
+        .read(appCompositionProvider)
+        .revocationTimeout;
     final effectiveTimeout = (revocationTimeout != const Duration(seconds: 5))
         ? revocationTimeout
         : compositionTimeout;

@@ -110,8 +110,7 @@ class HomePage extends ConsumerWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   user?.scope.name ??
-                                      (data.scope.name ==
-                                              'Kecamatan Garut Kota'
+                                      (data.scope.name == 'Kecamatan Garut Kota'
                                           ? 'Kec. Garut Kota'
                                           : data.scope.name),
                                   style: const TextStyle(
