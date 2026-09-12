@@ -91,6 +91,41 @@ void main() {
       );
     },
   );
+
+  test('AuthSignedIn equality and hashCode include accessToken', () {
+    final user = UserPrincipal(
+      id: 'usr-1',
+      skNumber: 'DEMO-001',
+      fullName: 'Nama User',
+      roleTitle: 'Koordinator Kecamatan',
+      scope: AccessScope(
+        type: AccessScopeType.district,
+        id: 'garut_kota',
+        name: 'Kecamatan Garut Kota',
+      ),
+    );
+
+    final state1 = AuthSignedIn(
+      user: user,
+      generation: 1,
+      accessToken: 'token-a',
+    );
+    final state2 = AuthSignedIn(
+      user: user,
+      generation: 1,
+      accessToken: 'token-b',
+    );
+    final state3 = AuthSignedIn(
+      user: user,
+      generation: 1,
+      accessToken: 'token-a',
+    );
+
+    expect(state1, isNot(equals(state2)));
+    expect(state1.hashCode, isNot(equals(state2.hashCode)));
+    expect(state1, equals(state3));
+    expect(state1.hashCode, equals(state3.hashCode));
+  });
 }
 
 final class _TokenAuthRepository implements AuthRepository {

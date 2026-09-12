@@ -52,10 +52,11 @@ final class AuthSignedIn extends AuthState {
       identical(this, other) ||
       other is AuthSignedIn &&
           user == other.user &&
-          generation == other.generation;
+          generation == other.generation &&
+          accessToken == other.accessToken;
 
   @override
-  int get hashCode => Object.hash(user, generation);
+  int get hashCode => Object.hash(user, generation, accessToken);
 }
 
 class AuthTemporarilyUnavailable extends AuthState {
