@@ -47,7 +47,9 @@ class DemoKokRepository implements KokRepository {
     await _maybeDelay();
     cancellation?.throwIfCancelled();
 
-    final normalizedSport = sport == null ? null : _normalized(sport);
+    final normalizedSport = sport == null || _normalized(sport).isEmpty
+        ? null
+        : _normalized(sport);
     final normalizedQuery = query == null ? null : _normalized(query);
     final clubs = _snapshotForScope(scope).clubs.where((club) {
       final sportMatches =

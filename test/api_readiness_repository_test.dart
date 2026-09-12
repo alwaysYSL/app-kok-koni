@@ -25,6 +25,23 @@ void main() {
       expect(clubs.single.phone, isNotNull);
     });
 
+    test(
+      'fetchClubs memperlakukan sport yang hanya berisi spasi sebagai tanpa filter',
+      () async {
+        final clubs = await DemoKokRepository(
+          simulateLatency: false,
+        ).fetchClubs(garutKotaScope, sport: '   ');
+
+        expect(clubs.map((club) => club.id), [
+          'garuda',
+          'pb',
+          'silat',
+          'voli',
+          'tirta',
+        ]);
+      },
+    );
+
     test('fetchClubs mengembalikan defensive copy', () async {
       final repo = DemoKokRepository(simulateLatency: false);
 
@@ -47,6 +64,22 @@ void main() {
           () => repo.fetchPersonDetail('missing-person'),
           throwsA(isA<KokResourceNotFoundException>()),
         );
+      },
+    );
+
+    test(
+      'detail query mengembalikan field kontak dan dokumen fixture',
+      () async {
+        final repo = DemoKokRepository(simulateLatency: false);
+        final club = await repo.fetchClubDetail('garuda');
+        final person = await repo.fetchPersonDetail('garuda-atlet-0');
+
+        expect(club.email, 'garuda@example.test');
+        expect(club.address, isNotNull);
+        expect(club.documents, hasLength(2));
+        expect(person.nik, isNotNull);
+        expect(person.completedDocuments, contains('KTP'));
+        expect(person.milestones.single.year, '2025');
       },
     );
 
@@ -76,12 +109,31 @@ void main() {
       final repo = DemoKokRepository(simulateLatency: false);
 
       final committee = await repo.fetchCommittee(garutKotaScope);
+      final countyCommittee = await repo.fetchCommittee(
+        const AccessScope(
+          type: AccessScopeType.county,
+          id: 'koni_kab',
+          name: 'KONI Kabupaten Garut',
+        ),
+      );
       final helpdesk = await repo.fetchHelpdesk();
 
       expect(committee, isNotEmpty);
+      expect(countyCommittee.length, greaterThan(committee.length));
       expect(committee.first.phone, isNotNull);
       expect(helpdesk, isNotNull);
       expect(helpdesk?.whatsapp, isNotNull);
+
+      expect(
+        () => repo.fetchCommittee(
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'unknown',
+            name: 'Unknown',
+          ),
+        ),
+        throwsA(isA<UnsupportedScopeException>()),
+      );
     });
 
     test('query granular menghormati cancellation sebelum request', () async {
@@ -93,6 +145,16 @@ void main() {
         ).fetchClubs(garutKotaScope, cancellation: controller.token),
         throwsA(isA<RequestCancelledException>()),
       );
+    });
+
+    test('query granular menghormati cancellation setelah latency', () async {
+      final controller = RequestCancellationController();
+      final future = DemoKokRepository(
+        simulateLatency: true,
+      ).fetchClubs(garutKotaScope, cancellation: controller.token);
+      controller.cancel('dibatalkan saat request berjalan');
+
+      expect(future, throwsA(isA<RequestCancelledException>()));
     });
   });
 }
