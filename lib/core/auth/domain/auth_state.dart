@@ -39,8 +39,13 @@ class AuthSigningIn extends AuthState {
 final class AuthSignedIn extends AuthState {
   final UserPrincipal user;
   final int generation;
+  final String? accessToken;
 
-  const AuthSignedIn({required this.user, required this.generation});
+  const AuthSignedIn({
+    required this.user,
+    required this.generation,
+    this.accessToken,
+  });
 
   @override
   bool operator ==(Object other) =>

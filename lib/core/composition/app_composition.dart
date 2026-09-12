@@ -8,11 +8,12 @@ import '../auth/data/remembered_sk_store.dart';
 import '../auth/data/session_metadata_store.dart';
 import '../auth/domain/credential_id_generator.dart';
 import '../config/deployment_profile.dart';
+import '../network/auth_session_tokens.dart';
 import '../../data/demo_kok_repository.dart';
 import '../../data/kok_repository.dart';
 
 final class AppComposition {
-  const AppComposition({
+  AppComposition({
     required this.profile,
     required this.authTokenStorage,
     required this.sessionMetadataStore,
@@ -20,8 +21,9 @@ final class AppComposition {
     required this.authRepository,
     required this.kokRepository,
     required this.credentialIdGenerator,
+    AuthSessionTokens? sessionTokens,
     this.revocationTimeout = const Duration(seconds: 5),
-  });
+  }) : sessionTokens = sessionTokens ?? AuthSessionTokens();
 
   final DeploymentProfile profile;
   final AuthTokenStorage authTokenStorage;
@@ -30,6 +32,7 @@ final class AppComposition {
   final AuthRepository authRepository;
   final KokRepository kokRepository;
   final CredentialIdGenerator credentialIdGenerator;
+  final AuthSessionTokens sessionTokens;
   final Duration revocationTimeout;
 
   factory AppComposition.fromProfile(

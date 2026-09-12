@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../composition/app_composition.dart';
+import '../../network/auth_session_tokens.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
 import '../data/remembered_sk_store.dart';
@@ -31,6 +32,11 @@ final rememberedSkStoreProvider = Provider<RememberedSkStore>((ref) {
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final composition = ref.watch(appCompositionProvider);
   return composition.authRepository;
+});
+
+final sessionTokensProvider = Provider<AuthSessionTokens>((ref) {
+  final composition = ref.watch(appCompositionProvider);
+  return composition.sessionTokens;
 });
 
 final credentialIdGeneratorProvider = Provider<CredentialIdGenerator>((ref) {
@@ -195,6 +201,7 @@ class AuthController extends Notifier<AuthState> {
     _operationEpoch++;
     final currentEpoch = _operationEpoch;
     state = const AuthBootstrapping();
+    ref.read(sessionTokensProvider).clear();
 
     final repo = ref.read(authRepositoryProvider);
     final tokenStorage = ref.read(authTokenStorageProvider);
@@ -336,8 +343,18 @@ class AuthController extends Notifier<AuthState> {
       // Row 9a: restore success -> signed-in
       _activeRemoteHandle = result.remoteHandle ?? result.sessionHandle;
       _activeCredentialId = credential.credentialId;
+      ref
+          .read(sessionTokensProvider)
+          .replace(
+            accessToken: result.accessToken,
+            refreshToken: result.refreshToken,
+          );
       _sessionGeneration++;
-      state = AuthSignedIn(user: result.user!, generation: _sessionGeneration);
+      state = AuthSignedIn(
+        user: result.user!,
+        generation: _sessionGeneration,
+        accessToken: result.accessToken,
+      );
       return;
     }
 
@@ -518,10 +535,17 @@ class AuthController extends Notifier<AuthState> {
           }
           _activeRemoteHandle = result.remoteHandle ?? result.sessionHandle;
           _activeCredentialId = null;
+          ref
+              .read(sessionTokensProvider)
+              .replace(
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken,
+              );
           _sessionGeneration++;
           state = AuthSignedIn(
             user: result.user!,
             generation: _sessionGeneration,
+            accessToken: result.accessToken,
           );
 
           try {
@@ -636,10 +660,17 @@ class AuthController extends Notifier<AuthState> {
 
         _activeRemoteHandle = result.remoteHandle ?? result.sessionHandle;
         _activeCredentialId = credId;
+        ref
+            .read(sessionTokensProvider)
+            .replace(
+              accessToken: result.accessToken,
+              refreshToken: result.refreshToken,
+            );
         _sessionGeneration++;
         state = AuthSignedIn(
           user: result.user!,
           generation: _sessionGeneration,
+          accessToken: result.accessToken,
         );
 
         try {
@@ -767,6 +798,7 @@ class AuthController extends Notifier<AuthState> {
     _operationEpoch++;
     final currentEpoch = _operationEpoch;
     _sessionGeneration++;
+    ref.read(sessionTokensProvider).clear();
 
     _activeRemoteHandle = null;
     _activeCredentialId = null;
