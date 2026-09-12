@@ -169,47 +169,56 @@ void main() {
         sport: 'Bulu Tangkis',
         village: 'Paminggir',
       );
-      for (final registration in [null, '', '   ', '  SK/123/2026  ']) {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: ClubDocumentTab(
-                club: club.copyWith(registrationNumber: registration),
-              ),
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ClubDocumentTab(club: club)),
+        ),
+      );
+      expect(find.text('Data dokumen klub belum tersedia.'), findsOneWidget);
+      expect(find.text('SK Klub'), findsNothing);
+      expect(find.text('Kepengurusan'), findsNothing);
+      expect(
+        find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is InkWell && widget.onTap != null,
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+
+      final populatedClub = club.copyWith(
+        registrationNumber: 'SK/123/2026',
+        documents: const [
+          ClubDocument(
+            id: 'doc-sk',
+            name: 'Surat Keputusan',
+            status: 'verified',
           ),
-        );
-        final available = registration == '  SK/123/2026  ';
-        expect(find.text('SK Klub'), findsOneWidget);
-        expect(find.text('Kepengurusan'), findsOneWidget);
-        expect(
-          find.text('Tersedia'),
-          available ? findsOneWidget : findsNothing,
-        );
-        expect(find.text('Belum tersedia'), findsNWidgets(available ? 1 : 2));
-        if (available) {
-          expect(find.text('  SK/123/2026  '), findsOneWidget);
-          expect(
-            tester.widget<Text>(find.text('Tersedia')).style!.color,
-            const Color(0xFF176B38),
-          );
-        }
-        expect(
-          tester.widget<Text>(find.text('Belum tersedia').first).style!.color,
-          const Color(0xFF4B5563),
-        );
-        expect(
-          find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
-          findsOneWidget,
-        );
-        expect(
-          find.byWidgetPredicate(
-            (widget) => widget is InkWell && widget.onTap != null,
-          ),
-          findsNothing,
-        );
-        expect(tester.takeException(), isNull);
-      }
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ClubDocumentTab(club: populatedClub)),
+        ),
+      );
+      expect(find.text('Surat Keputusan'), findsOneWidget);
+      expect(find.text('verified'), findsOneWidget);
+      expect(find.text('SK Klub'), findsNothing);
+      expect(find.text('Kepengurusan'), findsNothing);
+      expect(
+        find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is InkWell && widget.onTap != null,
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
     },
   );
 

@@ -357,30 +357,30 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                   iconBg: const Color(0xFFD1FAE5),
                   iconColor: const Color(0xFF059669),
                   title: 'WhatsApp Helpdesk',
-                  subtitle: _displayValue(helpdesk?.whatsapp),
+                  subtitle: _displayValue(helpdesk.whatsapp),
                 ),
                 _ContactItem(
                   icon: Icons.phone_outlined,
                   iconBg: const Color(0xFFE8F0FE),
                   iconColor: const Color(0xFF1B4F9E),
                   title: 'Telepon Kantor',
-                  subtitle: _displayValue(helpdesk?.phone),
+                  subtitle: _displayValue(helpdesk.phone),
                 ),
                 _ContactItem(
                   icon: Icons.email_outlined,
                   iconBg: const Color(0xFFEDE9FE),
                   iconColor: const Color(0xFF6D28D9),
                   title: 'Email Resmi',
-                  subtitle: _displayValue(helpdesk?.email),
+                  subtitle: _displayValue(helpdesk.email),
                 ),
                 _ContactItem(
                   icon: Icons.location_on_outlined,
                   iconBg: const Color(0xFFFFEDD5),
                   iconColor: const Color(0xFFEA580C),
                   title: 'Alamat Sekretariat',
-                  subtitle: _displayValue(helpdesk?.address),
+                  subtitle: _displayValue(helpdesk.address),
                 ),
-                if (_hasValue(helpdesk?.operationalHours)) ...[
+                if (_hasValue(helpdesk.operationalHours)) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -391,7 +391,7 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                       border: Border.all(color: const Color(0xFFE5E7EB)),
                     ),
                     child: Text(
-                      'Jam Layanan Operasional: ${helpdesk!.operationalHours}',
+                      'Jam Layanan Operasional: ${helpdesk.operationalHours}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 12,
@@ -982,7 +982,6 @@ class _ContactItem extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
-    this.note,
   });
 
   final IconData icon;
@@ -990,7 +989,6 @@ class _ContactItem extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String subtitle;
-  final String? note;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -1026,17 +1024,6 @@ class _ContactItem extends StatelessWidget {
                   color: Color(0xFF1E293B),
                 ),
               ),
-              if (note != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  note!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF9CA3AF),
-                    height: 1.3,
-                  ),
-                ),
-              ],
             ],
           ),
         ),

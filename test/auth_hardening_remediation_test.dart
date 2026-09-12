@@ -17,6 +17,8 @@ import 'package:kok_app/data/kok_repository.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
+import 'package:kok_app/data/remote_kok_repository.dart';
+import 'package:kok_app/core/auth/data/remote_auth_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'test_composition.dart';
 
@@ -579,10 +581,10 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // Flow 5: Production profile in Phase A fails closed with StateError.
+    // Flow 5: Production profile builds fail-closed remote adapters.
     // -------------------------------------------------------------------------
     test(
-      'Flow 5: Production profile in Phase A fails closed with StateError',
+      'Flow 5: Production profile builds fail-closed remote adapters',
       () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
@@ -593,26 +595,19 @@ void main() {
           environment: AppEnv.production,
           authMode: AuthMode.remote,
           dataMode: DataMode.remote,
+          apiBaseUrl: 'https://api.example.test',
         );
 
         // Profile itself is structurally valid
         expect(() => prodProfile.validate(), returnsNormally);
 
-        // AppComposition.fromProfile must fail closed because remote adapters are not yet implemented in Phase A
-        expect(
-          () => AppComposition.fromProfile(
-            prodProfile,
-            preferences: prefs,
-            secureStore: secureStore,
-          ),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              contains('fail-closed'),
-            ),
-          ),
+        final composition = AppComposition.fromProfile(
+          prodProfile,
+          preferences: prefs,
+          secureStore: secureStore,
         );
+        expect(composition.authRepository, isA<RemoteAuthRepository>());
+        expect(composition.kokRepository, isA<RemoteKokRepository>());
 
         // Illegal combinations must fail closed via validate()
         const illegalAuthProfile = DeploymentProfile(

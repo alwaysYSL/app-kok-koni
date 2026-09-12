@@ -567,6 +567,7 @@ void main() {
             environment: AppEnv.production,
             authMode: AuthMode.remote,
             dataMode: DataMode.remote,
+            apiBaseUrl: 'https://api.example.test',
           ).validate(),
           returnsNormally,
         );

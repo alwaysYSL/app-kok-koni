@@ -55,7 +55,7 @@ void main() {
     addTearDown(container.dispose);
     final subscription = container.listen(
       clubDetailProvider('garuda'),
-      (_, __) {},
+      (_, _) {},
     );
     addTearDown(subscription.close);
 

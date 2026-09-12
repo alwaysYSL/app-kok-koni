@@ -11,12 +11,10 @@ typedef RefreshSession = Future<AuthResult> Function(String refreshToken);
 final class ApiClient {
   ApiClient({
     required DeploymentProfile profile,
-    required AuthSessionTokens tokens,
-    required RefreshSession refreshSession,
+    required this._tokens,
+    required this._refreshSession,
     Dio? dio,
-  }) : _tokens = tokens,
-       _refreshSession = refreshSession,
-       _dio = dio ?? Dio(_optionsFor(profile)) {
+  }) : _dio = dio ?? Dio(_optionsFor(profile)) {
     profile.validate();
   }
 
@@ -137,8 +135,9 @@ final class ApiClient {
   ApiException _mapException(DioException error) {
     final status = error.response?.statusCode;
     final message = error.message;
-    if (status == 401)
+    if (status == 401) {
       return UnauthorizedException(message ?? 'Sesi tidak sah');
+    }
     if (status == 403) return ForbiddenException(message ?? 'Akses ditolak');
     if (status == 404) {
       return NotFoundException(message ?? 'Data tidak ditemukan');

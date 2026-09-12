@@ -1,6 +1,6 @@
 # KOK - KONI Garut
 
-Frontend Flutter proyek kerja praktik. Versi 0.1.0 adalah prototipe interaktif dengan data demo lokal, bukan aplikasi yang sudah terhubung SICABOR.
+Frontend Flutter proyek kerja praktik. Versi 0.1.0 tetap menyediakan mode demo lokal, sekaligus sudah memiliki boundary integrasi API yang dapat diaktifkan setelah kontrak endpoint SICABOR tersedia.
 
 ## Menjalankan
 
@@ -45,8 +45,9 @@ Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas se
 
 ### Label Demo Jujur dan UI Affordance Guard
 
-- **Label Demo Jujur:** Antarmuka secara eksplisit menampilkan label jujur `"Data demo lokal—belum terhubung dengan SICABOR"` pada status data keolahragaan dan footer profil. Kontak helpdesk ditandai sebagai `"(Kontak Demo - Belum Diverifikasi)"` dengan penegasan bahwa kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.
+- **Label Demo Jujur:** Antarmuka secara eksplisit menampilkan label jujur `"Data demo lokal—belum terhubung dengan SICABOR"` pada status data keolahragaan dan footer profil. Kontak helpdesk pada mode demo tetap berasal dari `KokSnapshot.helpdesk`; jika data kosong, UI menampilkan empty state dan tidak membuat kontak demo baru.
 - **UI Affordance Guard vs Otorisasi Backend:** Pemeriksaan izin di aplikasi Flutter (seperti pengecekan `user.hasPermission('reports:export')` untuk menonaktifkan menu ekspor rekap bagi akun yang tidak berhak) berfungsi murni sebagai *UI affordance guard* guna menyelaraskan keterjangkauan tombol antarmuka dengan peran pengguna, **BUKAN batas otorisasi keamanan backend**. Otorisasi dan validasi hak akses riil wajib ditegakkan secara mutlak oleh backend server SICABOR di masa mendatang.
+- **Scope kecamatan:** Tab Cabor, Klub, dan Anggota tetap tersedia untuk setiap sesi terautentikasi. Dataset yang ditampilkan mengikuti `UserPrincipal.scope`; pembatasan lintas kecamatan wajib tetap ditegakkan backend.
 
 ## Struktur
 
@@ -55,7 +56,10 @@ Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas se
 - `lib/data/models.dart`: model immutable Freezed + JSON.
 - `lib/core/composition/app_composition.dart`: composition root wajib untuk storage, auth, dan repository.
 - `lib/data/providers/snapshot_provider.dart`: provider data berscope dan stale-response guard.
-- `lib/data/kok_repository.dart` dan `lib/data/demo_kok_repository.dart`: kontrak repository serta fixture demo.
+- `lib/data/kok_repository.dart`, `lib/data/demo_kok_repository.dart`, dan `lib/data/remote_kok_repository.dart`: kontrak granular, fixture demo, dan boundary adapter remote.
+- `lib/data/providers/club_providers.dart`: provider detail granular dengan cancellation, session-scope, dan stale-response guard.
+- `lib/core/network/api_client.dart`: Dio client, Bearer token in-memory, single-flight refresh 401, dan pemetaan exception.
+- `lib/core/auth/data/remote_auth_repository.dart`: boundary auth remote fail-closed sampai endpoint SICABOR didokumentasikan.
 - `lib/data/club_filters.dart`: helper filter/sort klub.
 - `lib/features`: halaman per fitur.
 - `lib/shared`: komponen bersama dan state loading/error.
@@ -64,16 +68,18 @@ Nama Kecamatan Garut Kota, klub, orang, periode pengurus, serta status berkas se
 
 ## Integrasi SICABOR berikutnya
 
-Implementasikan `KokRepository.fetchScope()` untuk backend kemudian override `repositoryProvider` melalui `AppComposition`. Belum ada endpoint, bentuk response, mekanisme autentikasi, atau token SICABOR yang ditebak.
+Mode remote sudah dapat dibangun melalui `DeploymentProfile` dan `AppComposition`; `RemoteAuthRepository` serta `RemoteKokRepository` sengaja fail-closed dengan `UnimplementedError` karena tim belum memberikan dokumentasi endpoint SICABOR sama sekali. Tidak ada URL, method HTTP, envelope response, pagination, nama field, atau mekanisme auth yang ditebak.
+
+Setelah kontrak resmi tersedia, implementasikan DTO/mapping dan method repository berdasarkan dokumen tersebut, lalu hubungkan adapter remote ke endpoint yang tervalidasi. `API_BASE_URL` wajib berupa URL absolut `http`/`https`; timeout dapat diatur melalui `API_CONNECT_TIMEOUT_MS` dan `API_RECEIVE_TIMEOUT_MS`.
 
 Data model saat ini adalah kontrak internal UI. Buat DTO/mapping terpisah bila response API berbeda. Setelah backend tersedia, ganti session demo dengan login API serta penyimpanan token yang sesuai platform. Scope kecamatan dan hak akses harus ditegakkan oleh server.
 
-Masih membutuhkan kontrak login/refresh/logout, daftar cabor/klub/orang/pengurus, pagination/filter, timestamp sinkronisasi, aturan akses dokumen, dan kontak admin resmi. Unduh/bagikan laporan dan kontak eksternal belum diimplementasikan karena format data/tujuan belum tersedia. Drift/Hive belum ditambahkan karena belum ada kebutuhan offline-first yang disepakati; SharedPreferences dipakai untuk pengaturan sederhana.
+Masih membutuhkan kontrak login/refresh/logout, daftar cabor/klub/orang/pengurus, pagination/filter, timestamp sinkronisasi, aturan akses dokumen, dan kontak admin resmi. Unduh/bagikan laporan dan kontak eksternal belum diimplementasikan karena format data/tujuan belum tersedia. Offline-first belum didiskusikan kembali oleh tim, sehingga Drift/Hive/SQLite belum ditambahkan; SharedPreferences hanya dipakai untuk pengaturan sederhana.
 
 ## Validasi dan regenerasi
 
 ```powershell
-flutter pub run build_runner build
+flutter pub run build_runner build --delete-conflicting-outputs
 dart format lib test
 flutter analyze
 flutter test
@@ -81,6 +87,18 @@ flutter build web
 ```
 
 Source hasil Freezed/JSON sudah disertakan. Regenerasikan setelah model berubah.
+
+Mode konfigurasi remote contoh (belum dapat mengambil data sebelum endpoint tersedia):
+
+```powershell
+flutter run -d chrome `
+  --dart-define=APP_ENV=staging `
+  --dart-define=AUTH_MODE=remote `
+  --dart-define=DATA_MODE=remote `
+  --dart-define=API_BASE_URL=https://api.example.test
+```
+
+Pada konfigurasi remote, selector akun demo tidak ditampilkan. Tab Cabor, Klub, dan Anggota tidak disembunyikan; server tetap menjadi sumber otorisasi dan scope.
 
 Pengujian meliputi login invalid/valid, penyimpanan hanya SK, logout/route guard, lima tab, alur cabor-klub-atlet, filter/sort/empty state, JSON round-trip, referensi data, dan pemeriksaan layar pada lebar 320px. Preview bisa diperbarui dengan:
 
