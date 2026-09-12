@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/auth/domain/auth_state.dart';
 import '../core/auth/presentation/auth_controller.dart';
+import '../core/composition/app_composition.dart';
+import '../core/config/deployment_profile.dart';
 import '../core/theme.dart';
 import 'login_decorations.dart';
 
@@ -284,6 +286,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final isDemoAuth = _isDemoAuthMode(ref);
     final isCleanupFailed =
         authState is AuthSignedOut &&
         authState.cleanupStatus == LocalCleanupStatus.failed;
@@ -811,46 +814,54 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  height: 46,
-                                  child: OutlinedButton.icon(
-                                    onPressed: isFormDisabled
-                                        ? null
-                                        : () => _showDemoAccountsSheet(context),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF0C2464),
-                                      side: const BorderSide(
-                                        color: Color(0xFFD4D8E0),
+                                if (isDemoAuth)
+                                  SizedBox(
+                                    height: 46,
+                                    child: OutlinedButton.icon(
+                                      onPressed: isFormDisabled
+                                          ? null
+                                          : () =>
+                                                _showDemoAccountsSheet(context),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: const Color(
+                                          0xFF0C2464,
+                                        ),
+                                        side: const BorderSide(
+                                          color: Color(0xFFD4D8E0),
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
+                                      icon: const Icon(
+                                        Icons.account_circle_outlined,
+                                        size: 20,
+                                      ),
+                                      label: const Text(
+                                        'Pilih Akun Demo',
+                                        style: TextStyle(
+                                          fontFamily: 'KokSans',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                    icon: const Icon(
-                                      Icons.account_circle_outlined,
-                                      size: 20,
-                                    ),
-                                    label: const Text(
-                                      'Pilih Akun Demo',
+                                  ),
+                                if (isDemoAuth) ...[
+                                  const SizedBox(height: 20),
+                                  const Center(
+                                    child: SelectableText(
+                                      'Mode demo: DEMO-001 · kokgarut123',
                                       style: TextStyle(
-                                        fontFamily: 'KokSans',
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF9E9E9E),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w400,
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 20),
-                                const Center(
-                                  child: SelectableText(
-                                    'Mode demo: DEMO-001 · kokgarut123',
-                                    style: TextStyle(
-                                      color: Color(0xFF9E9E9E),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w400,
-                                    ),
-                                  ),
-                                ),
+                                ],
                               ],
                             ),
                           ),
@@ -865,5 +876,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
       ),
     );
+  }
+
+  bool _isDemoAuthMode(WidgetRef ref) {
+    return ref.watch(appCompositionProvider).profile.authMode == AuthMode.demo;
   }
 }

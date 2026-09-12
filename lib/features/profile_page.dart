@@ -85,7 +85,7 @@ class ProfilePage extends ConsumerWidget {
                   iconColor: const Color(0xFF059669),
                   title: 'Helpdesk KONI Kabupaten',
                   subtitle: 'Kontak koordinasi data dan administrasi KOK',
-                  onTap: () => _showHelpdeskSheet(context),
+                  onTap: () => _showHelpdeskSheet(context, data.helpdesk),
                 ),
               ],
             ),
@@ -303,7 +303,17 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
     );
   }
 
-  void _showHelpdeskSheet(BuildContext context) {
+  void _showHelpdeskSheet(BuildContext context, HelpdeskContact? helpdesk) {
+    final hasHelpdeskData =
+        helpdesk != null &&
+        [
+          helpdesk.whatsapp,
+          helpdesk.phone,
+          helpdesk.email,
+          helpdesk.address,
+          helpdesk.operationalHours,
+        ].any((value) => value != null && value.trim().isNotEmpty);
+
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -333,52 +343,64 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                 style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 18),
-              _ContactItem(
-                icon: Icons.chat_bubble_outline_rounded,
-                iconBg: const Color(0xFFD1FAE5),
-                iconColor: const Color(0xFF059669),
-                title: 'WhatsApp Helpdesk (Kontak Demo - Belum Diverifikasi)',
-                subtitle: '0812-2180-1936',
-                note:
-                    'Kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.',
-              ),
-              _ContactItem(
-                icon: Icons.phone_outlined,
-                iconBg: const Color(0xFFE8F0FE),
-                iconColor: const Color(0xFF1B4F9E),
-                title: 'Telepon Kantor',
-                subtitle: '(0262) 233-546',
-              ),
-              _ContactItem(
-                icon: Icons.email_outlined,
-                iconBg: const Color(0xFFEDE9FE),
-                iconColor: const Color(0xFF6D28D9),
-                title: 'Email Resmi',
-                subtitle: 'sekretariat@konigarut.or.id',
-              ),
-              _ContactItem(
-                icon: Icons.location_on_outlined,
-                iconBg: const Color(0xFFFFEDD5),
-                iconColor: const Color(0xFFEA580C),
-                title: 'Alamat Sekretariat',
-                subtitle:
-                    'Kompleks Sarana Olahraga Ciateul, Kec. Tarogong Kidul, Kab. Garut, Jawa Barat',
-              ),
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF9FAFB),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
+              if (!hasHelpdeskData)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 18),
+                  child: Text(
+                    'Data helpdesk belum tersedia.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                  ),
+                )
+              else ...[
+                _ContactItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  iconBg: const Color(0xFFD1FAE5),
+                  iconColor: const Color(0xFF059669),
+                  title: 'WhatsApp Helpdesk',
+                  subtitle: _displayValue(helpdesk?.whatsapp),
                 ),
-                child: const Text(
-                  'Jam Layanan Operasional: Senin – Jumat (08:00 – 16:00 WIB)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                _ContactItem(
+                  icon: Icons.phone_outlined,
+                  iconBg: const Color(0xFFE8F0FE),
+                  iconColor: const Color(0xFF1B4F9E),
+                  title: 'Telepon Kantor',
+                  subtitle: _displayValue(helpdesk?.phone),
                 ),
-              ),
+                _ContactItem(
+                  icon: Icons.email_outlined,
+                  iconBg: const Color(0xFFEDE9FE),
+                  iconColor: const Color(0xFF6D28D9),
+                  title: 'Email Resmi',
+                  subtitle: _displayValue(helpdesk?.email),
+                ),
+                _ContactItem(
+                  icon: Icons.location_on_outlined,
+                  iconBg: const Color(0xFFFFEDD5),
+                  iconColor: const Color(0xFFEA580C),
+                  title: 'Alamat Sekretariat',
+                  subtitle: _displayValue(helpdesk?.address),
+                ),
+                if (_hasValue(helpdesk?.operationalHours)) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Text(
+                      'Jam Layanan Operasional: ${helpdesk!.operationalHours}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
               const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
@@ -393,6 +415,11 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
       ),
     );
   }
+
+  static bool _hasValue(String? value) =>
+      value != null && value.trim().isNotEmpty;
+
+  static String _displayValue(String? value) => _hasValue(value) ? value! : '-';
 
   void _showAboutSheet(BuildContext context) {
     showModalBottomSheet<void>(

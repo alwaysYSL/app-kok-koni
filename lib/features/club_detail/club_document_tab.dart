@@ -11,47 +11,71 @@ class ClubDocumentTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final registration = club.registrationNumber;
-    final available = registration != null && registration.trim().isNotEmpty;
+    final documents = club.documents;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
-        for (final title in ['SK Klub', 'Kepengurusan'])
+        if (documents.isEmpty)
           Surface(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
+                const Icon(
+                  Icons.folder_off_outlined,
+                  color: KokColors.muted,
+                  size: 28,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Data dokumen klub belum tersedia.',
+                  style: TextStyle(
                     color: KokColors.cardTitle,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  title == 'SK Klub' && available
-                      ? 'Tersedia'
-                      : 'Belum tersedia',
-                  style: TextStyle(
-                    color: title == 'SK Klub' && available
-                        ? const Color(0xFF176B38)
-                        : const Color(0xFF4B5563),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Dokumen akan tampil setelah tersedia dari sumber data resmi.',
+                  style: TextStyle(color: KokColors.muted, fontSize: 13),
                 ),
-                if (title == 'SK Klub' && available) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    registration,
-                    style: const TextStyle(color: KokColors.muted),
-                  ),
-                ],
               ],
             ),
-          ),
+          )
+        else
+          for (final document in documents)
+            Surface(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    document.name,
+                    style: const TextStyle(
+                      color: KokColors.cardTitle,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    document.status,
+                    style: const TextStyle(
+                      color: Color(0xFF176B38),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (document.fileUrl != null &&
+                      document.fileUrl!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Berkas tersedia',
+                      style: TextStyle(color: KokColors.muted, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
         const Padding(
           padding: EdgeInsets.only(top: 10),
           child: Text(

@@ -180,6 +180,13 @@ Widget buildTestableProfileWidget({
         ],
         committee: const [],
         loadedAt: DateTime(2026, 9, 7, 14, 30),
+        helpdesk: const HelpdeskContact(
+          whatsapp: '080011112222',
+          phone: '(0262) 000-111',
+          email: 'helpdesk@example.test',
+          address: 'Sekretariat KONI Kabupaten Garut',
+          operationalHours: 'Senin–Jumat 08:00–16:00 WIB',
+        ),
       );
 
   final appRouter =
@@ -461,7 +468,7 @@ void main() {
     );
 
     testWidgets(
-      'tapping Helpdesk KONI Kabupaten opens bottom sheet with contacts and unverified demo note',
+      'tapping Helpdesk KONI Kabupaten opens bottom sheet with model contacts',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         await pumpProfilePage(tester, preferences: prefs);
@@ -475,24 +482,17 @@ void main() {
         await tester.tap(find.text('Helpdesk KONI Kabupaten'));
         await tester.pumpAndSettle();
 
-        // Check contacts in bottom sheet
+        // Check contacts supplied by KokSnapshot.helpdesk.
         expect(find.text('Helpdesk & Sekretariat KONI'), findsOneWidget);
+        expect(find.text('WhatsApp Helpdesk'), findsOneWidget);
+        expect(find.text('080011112222'), findsOneWidget);
+        expect(find.text('(0262) 000-111'), findsOneWidget);
+        expect(find.text('helpdesk@example.test'), findsOneWidget);
+        expect(find.text('Sekretariat KONI Kabupaten Garut'), findsOneWidget);
         expect(
-          find.text('WhatsApp Helpdesk (Kontak Demo - Belum Diverifikasi)'),
+          find.textContaining('Senin–Jumat 08:00–16:00 WIB'),
           findsOneWidget,
         );
-        expect(
-          find.text(
-            'Kontak demo tidak digunakan untuk verifikasi atau pemulihan akun.',
-          ),
-          findsOneWidget,
-        );
-        expect(find.textContaining('0812'), findsOneWidget);
-        expect(
-          find.textContaining('sekretariat@konigarut.or.id'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('Ciateul'), findsOneWidget);
 
         // Close sheet
         expect(find.text('Tutup'), findsOneWidget);
@@ -502,6 +502,27 @@ void main() {
         expect(find.text('Helpdesk & Sekretariat KONI'), findsNothing);
       },
     );
+
+    testWidgets('helpdesk empty state does not invent contact values', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final snapshot = KokSnapshot(
+        scope: testUser.scope,
+        clubs: const [],
+        people: const [],
+        committee: const [],
+        loadedAt: DateTime(2026, 9, 12),
+      );
+
+      await pumpProfilePage(tester, preferences: prefs, snapshot: snapshot);
+      await tester.tap(find.text('Helpdesk KONI Kabupaten'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data helpdesk belum tersedia.'), findsOneWidget);
+      expect(find.textContaining('0812'), findsNothing);
+      expect(find.textContaining('@konigarut.or.id'), findsNothing);
+    });
 
     testWidgets(
       'renders Pengaturan & Aplikasi section and handles settings & about sheets',

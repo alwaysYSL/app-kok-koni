@@ -28,8 +28,8 @@ class AthleteDetailPage extends StatelessWidget {
           orElse: () => Club(
             id: person.clubId,
             name: 'Klub ${person.clubId}',
-            sport: 'Olahraga',
-            village: 'Garut Kota',
+            sport: '-',
+            village: '-',
           ),
         );
 
@@ -57,11 +57,7 @@ class AthleteDetailPage extends StatelessWidget {
                 const SizedBox(height: 16),
                 _DocumentChecklistSection(person: person, palette: palette),
                 const SizedBox(height: 16),
-                _HistoryTimelineSection(
-                  person: person,
-                  club: club,
-                  palette: palette,
-                ),
+                _HistoryTimelineSection(person: person, palette: palette),
                 const SizedBox(height: 24),
               ],
             ),
@@ -226,7 +222,7 @@ class _ProfileCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'ID DEMO · ATL-${person.id}',
+                'ID · ATL-${person.id}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Color(0xFF6B7280),
@@ -261,13 +257,13 @@ class _ProfileCard extends StatelessWidget {
               _buildDetailRow(
                 icon: Icons.cake_outlined,
                 label: 'Lahir / Usia',
-                value: person.age != null ? '${person.age} tahun' : '-',
+                value: _birthLabel(person),
                 palette: palette,
               ),
               _buildDetailRow(
                 icon: Icons.place_outlined,
                 label: 'Alamat',
-                value: '${club.village}, Kec. Garut Kota',
+                value: person.address ?? club.address ?? '-',
                 palette: palette,
               ),
               _buildDetailRow(
@@ -285,6 +281,31 @@ class _ProfileCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _birthLabel(SportPerson person) {
+    final birthDate = person.birthDate;
+    if (birthDate != null) {
+      final months = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
+      ];
+      final date =
+          '${birthDate.day} ${months[birthDate.month - 1]} ${birthDate.year}';
+      final place = person.birthPlace;
+      return place == null || place.trim().isEmpty ? date : '$place · $date';
+    }
+    return person.age == null ? '-' : '${person.age} tahun';
   }
 
   Widget _buildStatusBadge(SportPerson person) {
@@ -632,23 +653,14 @@ class _DocumentChecklistSection extends StatelessWidget {
 }
 
 class _HistoryTimelineSection extends StatelessWidget {
-  const _HistoryTimelineSection({
-    required this.person,
-    required this.club,
-    required this.palette,
-  });
+  const _HistoryTimelineSection({required this.person, required this.palette});
 
   final SportPerson person;
-  final Club club;
   final ClubBrandPalette palette;
 
   @override
   Widget build(BuildContext context) {
-    final milestones = [
-      ('2026', 'Porkot Garut, ${person.group}'),
-      ('2025', 'Kejuaraan Antar Klub'),
-      ('2024', 'Masuk ${club.name}'),
-    ];
+    final milestones = person.milestones;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -681,63 +693,75 @@ class _HistoryTimelineSection extends StatelessWidget {
               ],
               border: Border.all(color: const Color(0xFFF1F5F9)),
             ),
-            child: Column(
-              children: [
-                for (var i = 0; i < milestones.length; i++) ...[
-                  if (i > 0)
-                    const Divider(
-                      height: 18,
-                      thickness: 0.8,
-                      color: Color(0xFFF1F5F9),
-                    ),
-                  Row(
+            child: milestones.isEmpty
+                ? const Text(
+                    'Riwayat prestasi belum tersedia.',
+                    style: TextStyle(color: KokColors.muted, fontSize: 13),
+                  )
+                : Column(
                     children: [
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: palette.softAccent,
-                          border: Border.all(
-                            color: palette.headerStart.withValues(alpha: 0.3),
-                            width: 1,
+                      for (var i = 0; i < milestones.length; i++) ...[
+                        if (i > 0)
+                          const Divider(
+                            height: 18,
+                            thickness: 0.8,
+                            color: Color(0xFFF1F5F9),
                           ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: palette.softAccent,
+                                border: Border.all(
+                                  color: palette.headerStart.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  width: 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: palette.headerStart,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              milestones[i].year,
+                              style: const TextStyle(
+                                color: KokColors.cardTitle,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                milestones[i].description == null ||
+                                        milestones[i].description!
+                                            .trim()
+                                            .isEmpty
+                                    ? milestones[i].title
+                                    : '${milestones[i].title} · ${milestones[i].description}',
+                                style: const TextStyle(
+                                  color: Color(0xFF374151),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        alignment: Alignment.center,
-                        child: Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: palette.headerStart,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        milestones[i].$1,
-                        style: const TextStyle(
-                          color: KokColors.cardTitle,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          milestones[i].$2,
-                          style: const TextStyle(
-                            color: Color(0xFF374151),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                      ],
                     ],
                   ),
-                ],
-              ],
-            ),
           ),
         ],
       ),
@@ -858,7 +882,7 @@ class _StickyBottomBar extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '${club.village}, Kec. Garut Kota',
+                              _displayValue(club.address),
                               style: const TextStyle(
                                 fontSize: 13.5,
                                 color: Color(0xFF1F2937),
@@ -868,20 +892,40 @@ class _StickyBottomBar extends StatelessWidget {
                         ],
                       ),
                       const Divider(height: 16, color: Color(0xFFE5E7EB)),
-                      const Row(
+                      Row(
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.phone_outlined,
                             size: 20,
                             color: Color(0xFF6B7280),
                           ),
-                          SizedBox(width: 10),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              '0812-3456-7890',
-                              style: TextStyle(
+                              _displayValue(club.phone),
+                              style: const TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16, color: Color(0xFFE5E7EB)),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.email_outlined,
+                            size: 20,
+                            color: Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _displayValue(club.email),
+                              style: const TextStyle(
+                                fontSize: 13.5,
                                 color: Color(0xFF1F2937),
                               ),
                             ),
@@ -917,5 +961,10 @@ class _StickyBottomBar extends StatelessWidget {
         );
       },
     );
+  }
+
+  static String _displayValue(String? value) {
+    if (value == null || value.trim().isEmpty) return '-';
+    return value;
   }
 }

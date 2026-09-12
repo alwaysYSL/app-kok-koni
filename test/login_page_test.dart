@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/secure_key_val_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/features/login_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +27,32 @@ class _MockLoginStateAuthController extends AuthController {
   }
 }
 
+final class _LoginSecureStore implements SecureKeyValStore {
+  @override
+  Future<String?> read({required String key}) async => null;
+
+  @override
+  Future<void> write({required String key, required String value}) async {}
+
+  @override
+  Future<void> delete({required String key}) async {}
+
+  @override
+  Future<bool> containsKey({required String key}) async => false;
+}
+
+AppComposition _demoComposition(SharedPreferences preferences) {
+  return AppComposition.fromProfile(
+    const DeploymentProfile(
+      environment: AppEnv.demo,
+      authMode: AuthMode.demo,
+      dataMode: DataMode.demo,
+    ),
+    preferences: preferences,
+    secureStore: _LoginSecureStore(),
+  );
+}
+
 void main() {
   testWidgets('LoginPage merender form, checkbox, dan opsi akun demo', (
     tester,
@@ -37,10 +66,12 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
     final repo = DemoAuthRepository(simulateLatency: false);
+    final composition = _demoComposition(prefs);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          appCompositionProvider.overrideWithValue(composition),
           authRepositoryProvider.overrideWithValue(repo),
           rememberedSkStoreProvider.overrideWithValue(skStore),
         ],
@@ -60,6 +91,40 @@ void main() {
     expect(find.text('Pak Cecep · Kec. Tarogong Kidul'), findsOneWidget);
   });
 
+  testWidgets('mode remote tidak menampilkan selector akun demo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final composition = AppComposition.fromProfile(
+      const DeploymentProfile(
+        environment: AppEnv.staging,
+        authMode: AuthMode.remote,
+        dataMode: DataMode.demo,
+        apiBaseUrl: 'https://api.example.test',
+      ),
+      preferences: prefs,
+      secureStore: _LoginSecureStore(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCompositionProvider.overrideWithValue(composition)],
+        child: const MaterialApp(home: LoginPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pilih Akun Demo'), findsNothing);
+    expect(find.textContaining('Mode demo:'), findsNothing);
+    expect(find.text('Masuk Akun'), findsOneWidget);
+  });
+
   testWidgets('DEMO-003 menampilkan label kanonis Tim Verifikator', (
     tester,
   ) async {
@@ -72,10 +137,12 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
     final repo = DemoAuthRepository(simulateLatency: false);
+    final composition = _demoComposition(prefs);
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          appCompositionProvider.overrideWithValue(composition),
           authRepositoryProvider.overrideWithValue(repo),
           rememberedSkStoreProvider.overrideWithValue(skStore),
         ],
@@ -104,6 +171,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
+      final composition = _demoComposition(prefs);
 
       final controller = _MockLoginStateAuthController(
         const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed),
@@ -112,6 +180,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            appCompositionProvider.overrideWithValue(composition),
             authControllerProvider.overrideWith(() => controller),
             rememberedSkStoreProvider.overrideWithValue(skStore),
           ],

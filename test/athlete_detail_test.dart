@@ -117,7 +117,7 @@ void main() {
           find.text('Atlet 1 · Voli Bina Muda'),
         );
         expect(nameText.style?.color, KokColors.cardTitle);
-        expect(find.text('ID DEMO · ATL-voli-atlet-0'), findsOneWidget);
+        expect(find.text('ID · ATL-voli-atlet-0'), findsOneWidget);
         expect(find.textContaining('SICABOR'), findsNothing);
 
         // 3. Status Badge: verified (soft green) independent of club brand color
@@ -145,7 +145,7 @@ void main() {
         expect(find.text('Lahir / Usia'), findsOneWidget);
         expect(find.text('15 tahun'), findsOneWidget);
         expect(find.text('Alamat'), findsOneWidget);
-        expect(find.text('Pakuwon, Kec. Garut Kota'), findsOneWidget);
+        expect(find.text('-'), findsWidgets);
         expect(find.text('Pelatih'), findsOneWidget);
 
         // Check icon container has palette.softAccent
@@ -200,13 +200,10 @@ void main() {
           tester.widget<Text>(find.text('RIWAYAT')).style?.color,
           KokColors.cardTitle,
         );
-        expect(find.text('2026'), findsOneWidget);
-        expect(
-          tester.widget<Text>(find.text('2026')).style?.color,
-          KokColors.cardTitle,
-        );
-        expect(find.text('2025'), findsOneWidget);
-        expect(find.text('2024'), findsOneWidget);
+        expect(find.text('Riwayat prestasi belum tersedia.'), findsOneWidget);
+        expect(find.text('2026'), findsNothing);
+        expect(find.text('2025'), findsNothing);
+        expect(find.text('2024'), findsNothing);
 
         // 7. Action button with club color
         expect(find.text('Hubungi pengurus klub'), findsOneWidget);
@@ -328,8 +325,8 @@ void main() {
         // Modal should appear
         expect(find.text('Sekretariat Klub'), findsOneWidget);
         expect(find.text('Voli Bina Muda'), findsWidgets);
-        expect(find.text('Pakuwon, Kec. Garut Kota'), findsWidgets);
-        expect(find.text('0812-3456-7890'), findsOneWidget);
+        expect(find.text('-'), findsWidgets);
+        expect(find.text('081211223344'), findsOneWidget);
         expect(find.text('Tutup'), findsOneWidget);
 
         // Close modal
@@ -338,6 +335,64 @@ void main() {
         expect(find.text('Sekretariat Klub'), findsNothing);
       },
     );
+
+    testWidgets('renders athlete and club fields supplied by the API model', (
+      tester,
+    ) async {
+      const club = Club(
+        id: 'api-club',
+        name: 'Klub API Garut',
+        sport: 'Karate',
+        village: 'Sukajaya',
+        phone: '0800000000',
+        email: 'klub-api@example.test',
+        address: 'Jl. Data Resmi No. 1',
+      );
+      final snapshot = KokSnapshot(
+        scope: garutScope,
+        clubs: const [club],
+        people: [
+          SportPerson(
+            id: 'api-athlete',
+            name: 'Atlet API',
+            clubId: 'api-club',
+            role: 'Atlet',
+            group: 'Senior',
+            birthPlace: 'Garut',
+            birthDate: DateTime(2008, 5, 1),
+            address: 'Jl. Atlet No. 2',
+            milestones: const [
+              Milestone(
+                year: '2024',
+                title: 'Kejuaraan API',
+                description: 'Juara satu.',
+              ),
+            ],
+          ),
+        ],
+        committee: const [],
+        loadedAt: DateTime(2026, 9, 12),
+      );
+
+      await tester.pumpWidget(
+        createTestApp(
+          snapshot: snapshot,
+          initialLocation: '/person/api-athlete',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Garut · 1 Mei 2008'), findsOneWidget);
+      expect(find.text('Jl. Atlet No. 2'), findsOneWidget);
+      expect(find.text('2024'), findsOneWidget);
+      expect(find.textContaining('Kejuaraan API'), findsOneWidget);
+
+      await tester.tap(find.text('Hubungi pengurus klub'));
+      await tester.pumpAndSettle();
+      expect(find.text('Jl. Data Resmi No. 1'), findsOneWidget);
+      expect(find.text('0800000000'), findsOneWidget);
+      expect(find.text('klub-api@example.test'), findsOneWidget);
+    });
 
     testWidgets('displays MissingPage when athlete id is not found', (
       tester,

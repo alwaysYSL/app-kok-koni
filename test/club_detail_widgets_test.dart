@@ -647,7 +647,36 @@ void main() {
         ),
         findsOneWidget,
       );
+      expect(find.text('Data dokumen klub belum tersedia.'), findsOneWidget);
+      expect(find.text('SK Klub'), findsNothing);
+      expect(find.text('Kepengurusan'), findsNothing);
       expect(find.textContaining('Data milik SICABOR'), findsNothing);
     },
   );
+
+  testWidgets('ClubDocumentTab renders documents from the club model', (
+    tester,
+  ) async {
+    final club = testClub.copyWith(
+      documents: const [
+        ClubDocument(
+          id: 'doc-1',
+          name: 'Akta Pendirian',
+          status: 'verified',
+          fileUrl: 'https://files.example.test/akta.pdf',
+        ),
+        ClubDocument(id: 'doc-2', name: 'Surat Domisili', status: 'pending'),
+      ],
+    );
+
+    await tester.pumpWidget(app(ClubDocumentTab(club: club)));
+
+    expect(find.text('Akta Pendirian'), findsOneWidget);
+    expect(find.text('verified'), findsOneWidget);
+    expect(find.text('Berkas tersedia'), findsOneWidget);
+    expect(find.text('Surat Domisili'), findsOneWidget);
+    expect(find.text('pending'), findsOneWidget);
+    expect(find.text('SK Klub'), findsNothing);
+    expect(find.text('Kepengurusan'), findsNothing);
+  });
 }
