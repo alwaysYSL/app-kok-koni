@@ -121,6 +121,9 @@ final class _DelayedSwitchKokRepository implements KokRepository {
 
     return completer.future;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 // ---------------------------------------------------------------------------

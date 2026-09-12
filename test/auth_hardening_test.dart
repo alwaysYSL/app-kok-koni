@@ -210,6 +210,9 @@ class _CountingKokRepository implements KokRepository {
     fetchScopeCount++;
     return _inner.fetchScope(scope, cancellation: cancellation);
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _MutableAuthController extends AuthController {

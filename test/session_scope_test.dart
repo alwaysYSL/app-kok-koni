@@ -531,6 +531,9 @@ class _MismatchedScopeRepository implements KokRepository {
       loadedAt: DateTime.now(),
     );
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _CancellableTestRepository implements KokRepository {
@@ -545,6 +548,9 @@ class _CancellableTestRepository implements KokRepository {
     capturedCancellation = cancellation;
     return completer.future;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _SlowIgnoringCancellationRepository implements KokRepository {
@@ -561,4 +567,7 @@ class _SlowIgnoringCancellationRepository implements KokRepository {
     completers[scope.id] = completer;
     return completer.future;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
