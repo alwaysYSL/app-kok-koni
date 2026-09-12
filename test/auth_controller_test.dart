@@ -2735,7 +2735,7 @@ void main() {
             String name,
             AuthResult result,
             CredentialIdGenerator generator,
-            AuthCommandFailure expectedFailure,
+            String expectedFailure,
           })
         >[
           (
@@ -2745,7 +2745,7 @@ void main() {
               refreshToken: null,
             ),
             generator: const FixedCredentialIdGenerator('credential-null'),
-            expectedFailure: AuthCommandFailure.invalidPersistentCredential,
+            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
           ),
           (
             name: 'empty refresh token',
@@ -2754,7 +2754,7 @@ void main() {
               refreshToken: '',
             ),
             generator: const FixedCredentialIdGenerator('credential-empty'),
-            expectedFailure: AuthCommandFailure.invalidPersistentCredential,
+            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
           ),
           (
             name: 'generator exception',
@@ -2763,8 +2763,7 @@ void main() {
               refreshToken: 'valid-refresh-token',
             ),
             generator: const ThrowingCredentialIdGenerator(),
-            expectedFailure:
-                AuthCommandFailure.credentialIdGenerationFailed,
+            expectedFailure: 'AuthCommandFailure.credentialIdGenerationFailed',
           ),
           (
             name: 'blank credential ID',
@@ -2773,7 +2772,7 @@ void main() {
               refreshToken: 'valid-refresh-token',
             ),
             generator: const FixedCredentialIdGenerator('   '),
-            expectedFailure: AuthCommandFailure.invalidPersistentCredential,
+            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
           ),
           (
             name: 'overlong credential ID',
@@ -2782,7 +2781,7 @@ void main() {
               refreshToken: 'valid-refresh-token',
             ),
             generator: FixedCredentialIdGenerator('x' * 129),
-            expectedFailure: AuthCommandFailure.invalidPersistentCredential,
+            expectedFailure: 'AuthCommandFailure.invalidPersistentCredential',
           ),
         ];
 
@@ -2823,7 +2822,12 @@ void main() {
           );
           expect(metadataStore.writeCallCount, 0, reason: testCase.name);
           expect(storage.writeCallCount, 0, reason: testCase.name);
-          expect(result.internalFailure, testCase.expectedFailure);
+          final dynamic typedResult = result;
+          expect(
+            typedResult.internalFailure.toString(),
+            equals(testCase.expectedFailure),
+            reason: testCase.name,
+          );
         }
       });
     },
