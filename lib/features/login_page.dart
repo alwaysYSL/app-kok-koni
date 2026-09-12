@@ -223,7 +223,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
                 subtitle: const Text(
-                  'DEMO-003 · konigarut123 · Admin KONI Kab. Garut',
+                  'DEMO-003 · konigarut123 · Tim Verifikator KONI Kab. Garut',
                   style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 ),
                 onTap: () {

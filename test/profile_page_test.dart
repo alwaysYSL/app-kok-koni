@@ -35,6 +35,21 @@ class _FakeProfileAuthController extends AuthController {
   }
 }
 
+class _SwitchableProfileAuthController extends AuthController {
+  final UserPrincipal initialUser;
+
+  _SwitchableProfileAuthController(this.initialUser);
+
+  @override
+  AuthState build() => AuthSignedIn(user: initialUser, generation: 1);
+
+  void setUser(UserPrincipal? user) {
+    state = user == null
+        ? const AuthSignedOut()
+        : AuthSignedIn(user: user, generation: 2);
+  }
+}
+
 class _CompleterAuthController extends AuthController {
   final UserPrincipal user;
   final Completer<LogoutResult> completer;
@@ -117,8 +132,11 @@ Widget buildTestableProfileWidget({
   SharedPreferences? preferences,
   GoRouter? router,
   UserPrincipal? user,
+  AuthController? authController,
 }) {
   final currentUser = user ?? testUser;
+  final controller =
+      authController ?? _FakeProfileAuthController(currentUser);
   final snap =
       snapshot ??
       KokSnapshot(
@@ -175,7 +193,7 @@ Widget buildTestableProfileWidget({
   return ProviderScope(
     overrides: [
       authControllerProvider.overrideWith(
-        () => _FakeProfileAuthController(currentUser),
+        () => controller,
       ),
       snapshotProvider.overrideWith((_) async => snap),
       if (preferences != null)
@@ -192,6 +210,7 @@ Future<void> pumpProfilePage(
   SharedPreferences? preferences,
   GoRouter? router,
   UserPrincipal? user,
+  AuthController? authController,
 }) async {
   tester.view.physicalSize = const Size(390, 1200);
   tester.view.devicePixelRatio = 1;
@@ -215,6 +234,7 @@ Future<void> pumpProfilePage(
       preferences: preferences,
       router: appRouter,
       user: user,
+      authController: authController,
     ),
   );
   await tester.pumpAndSettle();
@@ -321,6 +341,16 @@ void main() {
       'renders Seksi Status Data Keolahragaan with honest demo label and dynamic time/count',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async => null,
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
         await pumpProfilePage(tester, preferences: prefs);
 
         expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
@@ -342,6 +372,16 @@ void main() {
       'tapping sync button triggers invalidation and shows snackbar',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async => null,
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
         await pumpProfilePage(tester, preferences: prefs);
 
         final syncButton = find.byIcon(Icons.sync_rounded);
@@ -359,6 +399,16 @@ void main() {
       'renders Utilitas Koordinator section and opens Rekap Data Kecamatan modal for user with reports:export',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async => null,
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
         await pumpProfilePage(tester, preferences: prefs);
 
         expect(find.text('UTILITAS KOORDINATOR'), findsOneWidget);
@@ -727,7 +777,7 @@ void main() {
     });
 
     testWidgets(
-      'Rekapitulasi menampilkan nama wilayah Tarogong Kidul secara dinamis saat akun Tarogong Kidul aktif',
+      'Rekapitulasi menampilkan nama wilayah Tarogong Kidul dan menunggu clipboard sebelum konfirmasi',
       (tester) async {
         final data = await tester.runAsync(
           () => DemoKokRepository().fetchScope(
@@ -741,12 +791,14 @@ void main() {
         final prefs = await SharedPreferences.getInstance();
 
         String? copiedText;
+        final clipboardWrite = Completer<void>();
         tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
           SystemChannels.platform,
           (call) async {
             if (call.method == 'Clipboard.setData') {
               copiedText =
                   (call.arguments as Map<Object?, Object?>)['text'] as String?;
+              await clipboardWrite.future;
             }
             return null;
           },
@@ -782,7 +834,21 @@ void main() {
 
         expect(find.text('Salin Teks Rekapitulasi'), findsOneWidget);
         await tester.tap(find.text('Salin Teks Rekapitulasi'));
+        await tester.pump();
+
+        expect(
+          find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsNothing,
+        );
+        expect(copiedText, isNotNull);
+
+        clipboardWrite.complete();
         await tester.pumpAndSettle();
+
+        expect(
+          find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsOneWidget,
+        );
 
         expect(
           copiedText,
@@ -793,6 +859,87 @@ void main() {
           contains(
             'Status: Terdaftar pada Sistem KOK Kecamatan Tarogong Kidul',
           ),
+        );
+      },
+    );
+
+    testWidgets(
+      'clipboard failure shows an error without claiming successful copy',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              throw PlatformException(code: 'clipboard-unavailable');
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+
+        await pumpProfilePage(tester, preferences: prefs);
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Salin Teks Rekapitulasi'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsNothing,
+        );
+        expect(
+          find.text('Teks rekapitulasi gagal disalin ke clipboard'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'copy re-checks active permission after the account changes while the sheet is open',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        var clipboardCalled = false;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              clipboardCalled = true;
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+
+        final authController = _SwitchableProfileAuthController(testUser);
+        await pumpProfilePage(
+          tester,
+          preferences: prefs,
+          authController: authController,
+        );
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+
+        authController.setUser(cecepUser);
+        await tester.pump();
+
+        await tester.tap(find.text('Salin Teks Rekapitulasi'));
+        await tester.pumpAndSettle();
+
+        expect(clipboardCalled, isFalse);
+        expect(
+          find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsNothing,
         );
       },
     );

@@ -77,7 +77,7 @@ class ProfilePage extends ConsumerWidget {
                   title: 'Rekap Data Kecamatan',
                   subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
                   enabled: user?.hasPermission('reports:export') ?? false,
-                  onTap: () => _showRekapSheet(context, data, user),
+                  onTap: () => _showRekapSheet(context, data, user, ref),
                 ),
                 _MenuTile(
                   icon: Icons.support_agent_rounded,
@@ -151,6 +151,7 @@ class ProfilePage extends ConsumerWidget {
     BuildContext context,
     KokSnapshot data,
     UserPrincipal? user,
+    WidgetRef ref,
   ) {
     if (!(user?.hasPermission('reports:export') ?? false)) return;
     final caborCount = data.clubs.map((c) => c.sport).toSet().length;
@@ -253,6 +254,31 @@ Total Atlet: $atletCount
 Total Pelatih: $pelatihCount
 Total Berkas Belum Lengkap: $missingCount
 Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
+                    final currentUser = ref.read(currentUserProvider);
+                    if (!(currentUser?.hasPermission('reports:export') ??
+                        false)) {
+                      return;
+                    }
+
+                    try {
+                      await Clipboard.setData(
+                        ClipboardData(text: summaryText),
+                      );
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Teks rekapitulasi gagal disalin ke clipboard',
+                            ),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                      return;
+                    }
+
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -264,7 +290,6 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
                         ),
                       );
                     }
-                    await Clipboard.setData(ClipboardData(text: summaryText));
                     if (sheetContext.mounted) {
                       Navigator.pop(sheetContext);
                     }

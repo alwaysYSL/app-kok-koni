@@ -192,6 +192,11 @@ void main() {
         expect(shareBtn.tooltip, 'Akses ekspor laporan tidak diizinkan');
         final icon = tester.widget<Icon>(find.byIcon(Icons.share_outlined));
         expect(icon.color, Colors.white38);
+
+        final bottomCopyButton = tester.widget<ButtonStyleButton>(
+          find.widgetWithText(FilledButton, 'Salin Rekapitulasi Cabor'),
+        );
+        expect(bottomCopyButton.onPressed, isNull);
       },
     );
 

@@ -60,7 +60,9 @@ void main() {
     expect(find.text('Pak Cecep · Kec. Tarogong Kidul'), findsOneWidget);
   });
 
-  testWidgets('DEMO-003 tercantum di bottom sheet akun demo', (tester) async {
+  testWidgets('DEMO-003 menampilkan label kanonis Tim Verifikator', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -84,8 +86,11 @@ void main() {
     await tester.tap(find.text('Pilih Akun Demo'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('DEMO-003'), findsOneWidget);
-    expect(find.textContaining('Ibu Rina'), findsOneWidget);
+    expect(
+      find.text('DEMO-003 · konigarut123 · Tim Verifikator KONI Kab. Garut'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Admin KONI Kab. Garut'), findsNothing);
   });
 
   testWidgets(
@@ -96,13 +101,20 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
+
       final controller = _MockLoginStateAuthController(
         const AuthSignedOut(cleanupStatus: LocalCleanupStatus.failed),
       );
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [authControllerProvider.overrideWith(() => controller)],
+          overrides: [
+            authControllerProvider.overrideWith(() => controller),
+            rememberedSkStoreProvider.overrideWithValue(skStore),
+          ],
           child: const MaterialApp(home: LoginPage()),
         ),
       );
