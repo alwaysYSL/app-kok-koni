@@ -58,6 +58,7 @@ void main() {
         environment: AppEnv.staging,
         authMode: AuthMode.remote,
         dataMode: DataMode.demo,
+        apiBaseUrl: 'https://api.example.test',
       );
       expect(() => stagingRemoteDemo.validate(), returnsNormally);
 
@@ -66,6 +67,7 @@ void main() {
         environment: AppEnv.staging,
         authMode: AuthMode.remote,
         dataMode: DataMode.remote,
+        apiBaseUrl: 'https://api.example.test',
       );
       expect(() => stagingRemoteRemote.validate(), returnsNormally);
 
@@ -74,6 +76,7 @@ void main() {
         environment: AppEnv.production,
         authMode: AuthMode.remote,
         dataMode: DataMode.remote,
+        apiBaseUrl: 'https://api.example.test',
       );
       expect(() => prodRemoteRemote.validate(), returnsNormally);
     });
@@ -291,6 +294,7 @@ void main() {
         environment: AppEnv.staging,
         authMode: AuthMode.remote,
         dataMode: DataMode.demo,
+        apiBaseUrl: 'https://api.example.test',
       );
 
       expect(
@@ -314,6 +318,7 @@ void main() {
         environment: AppEnv.production,
         authMode: AuthMode.remote,
         dataMode: DataMode.remote,
+        apiBaseUrl: 'https://api.example.test',
       );
 
       expect(

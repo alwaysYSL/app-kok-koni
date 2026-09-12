@@ -9,16 +9,25 @@ final class DeploymentProfile {
     required this.environment,
     required this.authMode,
     required this.dataMode,
+    this.apiBaseUrl = '',
+    this.connectTimeout = const Duration(seconds: 10),
+    this.receiveTimeout = const Duration(seconds: 30),
   });
 
   final AppEnv environment;
   final AuthMode authMode;
   final DataMode dataMode;
+  final String apiBaseUrl;
+  final Duration connectTimeout;
+  final Duration receiveTimeout;
 
   static DeploymentProfile fromEnvironment() {
     const envStr = String.fromEnvironment('APP_ENV', defaultValue: 'demo');
     const authStr = String.fromEnvironment('AUTH_MODE', defaultValue: 'demo');
     const dataStr = String.fromEnvironment('DATA_MODE', defaultValue: 'demo');
+    const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+    const connectTimeoutMs = String.fromEnvironment('API_CONNECT_TIMEOUT_MS');
+    const receiveTimeoutMs = String.fromEnvironment('API_RECEIVE_TIMEOUT_MS');
 
     final env = switch (envStr) {
       'production' => AppEnv.production,
@@ -37,16 +46,42 @@ final class DeploymentProfile {
       _ => throw StateError('DATA_MODE tidak dikenal: $dataStr'),
     };
 
+    Duration parseTimeout(String name, String raw, Duration fallback) {
+      if (raw.isEmpty) return fallback;
+      final milliseconds = int.tryParse(raw);
+      if (milliseconds == null || milliseconds <= 0) {
+        throw StateError(
+          '$name harus berupa bilangan positif dalam milidetik.',
+        );
+      }
+      return Duration(milliseconds: milliseconds);
+    }
+
     final profile = DeploymentProfile(
       environment: env,
       authMode: auth,
       dataMode: data,
+      apiBaseUrl: apiBaseUrl,
+      connectTimeout: parseTimeout(
+        'API_CONNECT_TIMEOUT_MS',
+        connectTimeoutMs,
+        const Duration(seconds: 10),
+      ),
+      receiveTimeout: parseTimeout(
+        'API_RECEIVE_TIMEOUT_MS',
+        receiveTimeoutMs,
+        const Duration(seconds: 30),
+      ),
     );
     profile.validate();
     return profile;
   }
 
   void validate() {
+    if (connectTimeout <= Duration.zero || receiveTimeout <= Duration.zero) {
+      throw StateError('Timeout API harus lebih besar dari nol.');
+    }
+
     if (environment == AppEnv.demo) {
       if (authMode != AuthMode.demo || dataMode != DataMode.demo) {
         throw StateError(
@@ -66,6 +101,17 @@ final class DeploymentProfile {
         );
       }
     }
+
+    if (authMode == AuthMode.remote || dataMode == DataMode.remote) {
+      final uri = Uri.tryParse(apiBaseUrl);
+      if (uri == null ||
+          uri.host.isEmpty ||
+          (uri.scheme != 'http' && uri.scheme != 'https')) {
+        throw StateError(
+          'API_BASE_URL wajib berupa URL absolut http/https untuk mode remote.',
+        );
+      }
+    }
   }
 
   @override
@@ -75,12 +121,22 @@ final class DeploymentProfile {
           runtimeType == other.runtimeType &&
           environment == other.environment &&
           authMode == other.authMode &&
-          dataMode == other.dataMode;
+          dataMode == other.dataMode &&
+          apiBaseUrl == other.apiBaseUrl &&
+          connectTimeout == other.connectTimeout &&
+          receiveTimeout == other.receiveTimeout;
 
   @override
-  int get hashCode => Object.hash(environment, authMode, dataMode);
+  int get hashCode => Object.hash(
+    environment,
+    authMode,
+    dataMode,
+    apiBaseUrl,
+    connectTimeout,
+    receiveTimeout,
+  );
 
   @override
   String toString() =>
-      'DeploymentProfile(environment: $environment, authMode: $authMode, dataMode: $dataMode)';
+      'DeploymentProfile(environment: $environment, authMode: $authMode, dataMode: $dataMode, apiBaseUrl: $apiBaseUrl, connectTimeout: $connectTimeout, receiveTimeout: $receiveTimeout)';
 }
