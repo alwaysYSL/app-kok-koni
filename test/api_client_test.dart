@@ -182,6 +182,108 @@ void main() {
       );
     }
   });
+
+  test('ApiClient memetakan 400 dan 422 ke BadRequestException', () async {
+    for (final statusCode in [400, 422]) {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter(
+          (_) async => ResponseBody.fromString('', statusCode),
+        );
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
+        dio: dio,
+      );
+
+      expect(
+        () => client.request<void>('/status', method: 'GET'),
+        throwsA(
+          isA<BadRequestException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            statusCode,
+          ),
+        ),
+      );
+    }
+  });
+
+  test('ApiClient memetakan timeout ke ApiTimeoutException', () async {
+    for (final timeoutType in [
+      DioExceptionType.connectionTimeout,
+      DioExceptionType.sendTimeout,
+      DioExceptionType.receiveTimeout,
+    ]) {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          throw DioException(
+            requestOptions: options,
+            type: timeoutType,
+            message: 'Timeout occurred',
+          );
+        });
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
+        dio: dio,
+      );
+
+      expect(
+        () => client.request<void>('/timeout', method: 'GET'),
+        throwsA(isA<ApiTimeoutException>()),
+      );
+    }
+  });
+
+  test(
+    'Request cancellation saat in-flight membatalkan request Dio di wire dan melempar RequestCancelledException',
+    () async {
+      final controller = RequestCancellationController();
+      var wireCancelTriggered = false;
+      final fetchStartedCompleter = Completer<void>();
+      final fetchResponseBodyCompleter = Completer<ResponseBody>();
+
+      final dio = Dio()
+        ..httpClientAdapter = _CancellableFakeAdapter((options, cancelFuture) {
+          fetchStartedCompleter.complete();
+          cancelFuture?.whenComplete(() {
+            wireCancelTriggered = true;
+          });
+          return fetchResponseBodyCompleter.future;
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
+        dio: dio,
+      );
+
+      final future = client.request<void>(
+        '/long-running',
+        method: 'GET',
+        cancellation: controller.token,
+      );
+
+      await fetchStartedCompleter.future;
+      controller.cancel('user abort');
+
+      await expectLater(
+        future.timeout(const Duration(milliseconds: 200)),
+        throwsA(
+          isA<RequestCancelledException>().having(
+            (e) => e.reason,
+            'reason',
+            'user abort',
+          ),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(wireCancelTriggered, isTrue);
+    },
+  );
 }
 
 const _remoteProfile = DeploymentProfile(
@@ -224,3 +326,23 @@ final class _FakeAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 }
+
+final class _CancellableFakeAdapter implements HttpClientAdapter {
+  _CancellableFakeAdapter(this.handler);
+
+  final Future<ResponseBody> Function(
+    RequestOptions options,
+    Future<void>? cancelFuture,
+  ) handler;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) => handler(options, cancelFuture);
+
+  @override
+  void close({bool force = false}) {}
+}
+

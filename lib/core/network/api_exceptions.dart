@@ -23,6 +23,10 @@ final class NotFoundException extends ApiException {
     : super(statusCode: 404);
 }
 
+final class BadRequestException extends ApiException {
+  const BadRequestException(super.message, {super.statusCode});
+}
+
 final class NetworkOfflineException extends ApiException {
   const NetworkOfflineException([super.message = 'Tidak ada koneksi']);
 }
@@ -31,6 +35,7 @@ final class ServerErrorException extends ApiException {
   const ServerErrorException(super.message, {super.statusCode});
 }
 
-final class TimeoutException extends ApiException {
-  const TimeoutException([super.message = 'Request timeout']);
+final class ApiTimeoutException extends ApiException {
+  const ApiTimeoutException([super.message = 'Request timeout']);
 }
+

@@ -45,16 +45,36 @@ final class ApiClient {
     cancellation?.throwIfCancelled();
     final requestAccessToken = _tokens.accessToken;
 
+    CancelToken? cancelToken;
+    if (cancellation != null) {
+      final token = CancelToken();
+      cancelToken = token;
+      if (cancellation.isCancelled) {
+        token.cancel(cancellation.reason);
+      } else {
+        cancellation.whenCancelled.then((reason) {
+          if (!token.isCancelled) {
+            token.cancel(reason);
+          }
+        });
+      }
+    }
+
     try {
       final response = await _dio.request<T>(
         path,
         data: data,
         queryParameters: queryParameters,
         options: _optionsWithAuth(options, method: method, skipAuth: skipAuth),
+        cancelToken: cancelToken,
       );
       cancellation?.throwIfCancelled();
       return response;
     } on DioException catch (error) {
+      if ((cancellation?.isCancelled ?? false) ||
+          (error.type == DioExceptionType.cancel && cancellation != null)) {
+        throw RequestCancelledException(cancellation?.reason);
+      }
       cancellation?.throwIfCancelled();
       if (error.response?.statusCode == 401 && !skipAuth && !retryAttempt) {
         if (_tokens.accessToken != null &&
@@ -142,6 +162,12 @@ final class ApiClient {
     if (status == 404) {
       return NotFoundException(message ?? 'Data tidak ditemukan');
     }
+    if (status != null && status >= 400 && status < 500) {
+      return BadRequestException(
+        message ?? 'Permintaan tidak valid',
+        statusCode: status,
+      );
+    }
     if (status != null && status >= 500) {
       return ServerErrorException(
         message ?? 'Server gagal memproses request',
@@ -151,7 +177,7 @@ final class ApiClient {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return TimeoutException(message ?? 'Request timeout');
+      return ApiTimeoutException(message ?? 'Request timeout');
     }
     if (error.type == DioExceptionType.cancel) {
       return NetworkOfflineException(message ?? 'Request dibatalkan');
