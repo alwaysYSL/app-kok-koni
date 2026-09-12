@@ -236,5 +236,109 @@ void main() {
       expect(principal.hasPermission('sports:read'), isTrue);
       expect(principal.hasPermission('sports:write'), isFalse);
     });
+
+    test('toJson dan fromJson round-trip dengan permissions deterministik', () {
+      final principal = UserPrincipal(
+        id: 'usr_01',
+        skNumber: 'SK-01',
+        fullName: 'Nama User',
+        roleTitle: 'Koordinator',
+        scope: defaultScope,
+        profileImageUrl: 'https://example.test/profile.jpg',
+        permissions: {'z:write', 'a:read'},
+      );
+
+      final json = principal.toJson();
+
+      expect(json, {
+        'id': 'usr_01',
+        'skNumber': 'SK-01',
+        'fullName': 'Nama User',
+        'roleTitle': 'Koordinator',
+        'scope': {
+          'type': 'district',
+          'id': 'garut_kota',
+          'name': 'Kecamatan Garut Kota',
+        },
+        'profileImageUrl': 'https://example.test/profile.jpg',
+        'permissions': ['a:read', 'z:write'],
+      });
+      expect(UserPrincipal.fromJson(json), equals(principal));
+    });
+
+    test('fromJson menerima permissions kosong saat field tidak tersedia', () {
+      final principal = UserPrincipal.fromJson({
+        'id': 'usr_01',
+        'skNumber': 'SK-01',
+        'fullName': 'Nama User',
+        'roleTitle': 'Koordinator',
+        'scope': defaultScope.toJson(),
+      });
+
+      expect(principal.permissions, isEmpty);
+    });
+
+    test('fromJson menolak payload yang bukan object JSON', () {
+      expect(() => UserPrincipal.fromJson(null), throwsFormatException);
+      expect(
+        () => UserPrincipal.fromJson('invalid-string'),
+        throwsFormatException,
+      );
+      expect(() => UserPrincipal.fromJson([1, 2, 3]), throwsFormatException);
+    });
+
+    test('fromJson menolak string wajib kosong atau bukan string', () {
+      final valid = {
+        'id': 'usr_01',
+        'skNumber': 'SK-01',
+        'fullName': 'Nama User',
+        'roleTitle': 'Koordinator',
+        'scope': defaultScope.toJson(),
+        'permissions': <String>[],
+      };
+
+      for (final key in ['id', 'skNumber', 'fullName', 'roleTitle']) {
+        final empty = Map<String, dynamic>.from(valid)..[key] = '   ';
+        expect(() => UserPrincipal.fromJson(empty), throwsFormatException);
+
+        final nonString = Map<String, dynamic>.from(valid)..[key] = 123;
+        expect(
+          () => UserPrincipal.fromJson(nonString),
+          throwsFormatException,
+        );
+      }
+    });
+
+    test('fromJson menolak scope atau permissions yang corrupt', () {
+      final valid = {
+        'id': 'usr_01',
+        'skNumber': 'SK-01',
+        'fullName': 'Nama User',
+        'roleTitle': 'Koordinator',
+        'scope': defaultScope.toJson(),
+        'permissions': <String>[],
+      };
+
+      final invalidScope = Map<String, dynamic>.from(valid)
+        ..['scope'] = {'type': 'province', 'id': 'x', 'name': 'X'};
+      expect(
+        () => UserPrincipal.fromJson(invalidScope),
+        throwsFormatException,
+      );
+
+      final invalidPermissions = Map<String, dynamic>.from(valid)
+        ..['permissions'] = ['valid', 123];
+      expect(
+        () => UserPrincipal.fromJson(invalidPermissions),
+        throwsFormatException,
+      );
+
+      final invalidPermissionsType = Map<String, dynamic>.from(valid)
+        ..['permissions'] = 'read:all';
+      expect(
+        () => UserPrincipal.fromJson(invalidPermissionsType),
+        throwsFormatException,
+      );
+    });
   });
 }

@@ -63,6 +63,59 @@ final class UserPrincipal {
 
   bool hasPermission(String permission) => permissions.contains(permission);
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'skNumber': skNumber,
+    'fullName': fullName,
+    'roleTitle': roleTitle,
+    'scope': scope.toJson(),
+    'profileImageUrl': profileImageUrl,
+    'permissions': permissions.toList()..sort(),
+  };
+
+  factory UserPrincipal.fromJson(dynamic value) {
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('UserPrincipal harus berupa JSON object');
+    }
+
+    String requiredString(String key) {
+      final rawValue = value[key];
+      if (rawValue is! String || rawValue.trim().isEmpty) {
+        throw FormatException('UserPrincipal.$key tidak valid');
+      }
+      return rawValue;
+    }
+
+    final rawProfileImageUrl = value['profileImageUrl'];
+    if (rawProfileImageUrl != null && rawProfileImageUrl is! String) {
+      throw const FormatException('UserPrincipal.profileImageUrl tidak valid');
+    }
+
+    final rawPermissions = value['permissions'];
+    final permissions = <String>{};
+    if (value.containsKey('permissions')) {
+      if (rawPermissions is! List) {
+        throw const FormatException('UserPrincipal.permissions tidak valid');
+      }
+      for (final permission in rawPermissions) {
+        if (permission is! String) {
+          throw const FormatException('UserPrincipal.permissions tidak valid');
+        }
+        permissions.add(permission);
+      }
+    }
+
+    return UserPrincipal(
+      id: requiredString('id'),
+      skNumber: requiredString('skNumber'),
+      fullName: requiredString('fullName'),
+      roleTitle: requiredString('roleTitle'),
+      scope: AccessScope.fromJson(value['scope']),
+      profileImageUrl: rawProfileImageUrl as String?,
+      permissions: permissions,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
