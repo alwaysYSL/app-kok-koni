@@ -38,4 +38,3 @@ final class ServerErrorException extends ApiException {
 final class ApiTimeoutException extends ApiException {
   const ApiTimeoutException([super.message = 'Request timeout']);
 }
-

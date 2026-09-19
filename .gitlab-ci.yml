@@ -1,0 +1,43 @@
+stages:
+  - verify
+
+variables:
+  PUB_CACHE: "$CI_PROJECT_DIR/.pub-cache"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle-ci"
+  FLUTTER_SUPPRESS_ANALYTICS: "true"
+  CI: "true"
+
+verify_android:
+  stage: verify
+  image: ubuntu:24.04
+  cache:
+    key: "flutter-3.44.4-android"
+    paths:
+      - .ci-sdk/
+      - .pub-cache/
+      - .gradle-ci/caches/
+      - .gradle-ci/wrapper/
+  before_script:
+    - apt-get update
+    - DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl git unzip xz-utils libglu1-mesa openjdk-17-jdk-headless
+    - bash scripts/ci/bootstrap.sh
+    - export PATH="$CI_PROJECT_DIR/.ci-sdk/flutter/bin:$CI_PROJECT_DIR/.ci-sdk/android/cmdline-tools/latest/bin:$CI_PROJECT_DIR/.ci-sdk/android/platform-tools:$PATH"
+    - export ANDROID_HOME="$CI_PROJECT_DIR/.ci-sdk/android"
+    - export ANDROID_SDK_ROOT="$ANDROID_HOME"
+    - flutter --version
+    - dart --version
+    - flutter pub get
+  script:
+    - dart format --output=none --set-exit-if-changed lib test
+    - flutter analyze --no-pub
+    - flutter test --no-pub
+    - flutter build apk --debug --no-pub
+  artifacts:
+    name: "kok-app-debug-$CI_COMMIT_SHORT_SHA"
+    expire_in: 7 days
+    paths:
+      - build/app/outputs/flutter-apk/app-debug.apk
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "web"'

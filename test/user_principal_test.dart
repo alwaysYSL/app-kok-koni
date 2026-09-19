@@ -302,10 +302,7 @@ void main() {
         expect(() => UserPrincipal.fromJson(empty), throwsFormatException);
 
         final nonString = Map<String, dynamic>.from(valid)..[key] = 123;
-        expect(
-          () => UserPrincipal.fromJson(nonString),
-          throwsFormatException,
-        );
+        expect(() => UserPrincipal.fromJson(nonString), throwsFormatException);
       }
     });
 
@@ -321,10 +318,7 @@ void main() {
 
       final invalidScope = Map<String, dynamic>.from(valid)
         ..['scope'] = {'type': 'province', 'id': 'x', 'name': 'X'};
-      expect(
-        () => UserPrincipal.fromJson(invalidScope),
-        throwsFormatException,
-      );
+      expect(() => UserPrincipal.fromJson(invalidScope), throwsFormatException);
 
       final invalidPermissions = Map<String, dynamic>.from(valid)
         ..['permissions'] = ['valid', 123];

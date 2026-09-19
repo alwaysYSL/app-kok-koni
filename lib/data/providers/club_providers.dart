@@ -12,7 +12,8 @@ Future<T> runGranularRequest<T>(
   Future<T> Function(
     RequestCancellation cancellation,
     DataRequestContext context,
-  ) request,
+  )
+  request,
 ) async {
   final context = ref.watch(dataRequestContextProvider);
   if (context == null) {
@@ -97,4 +98,3 @@ final helpdeskProvider = FutureProvider<HelpdeskContact?>((ref) {
         ref.read(repositoryProvider).fetchHelpdesk(cancellation: cancellation),
   );
 }, retry: granularRetry);
-

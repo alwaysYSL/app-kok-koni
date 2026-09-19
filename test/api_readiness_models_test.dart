@@ -40,79 +40,82 @@ void main() {
     expect(person.toJson()['requiredDocuments'], isEmpty);
   });
 
-  test('nested API-ready models mempertahankan field detail saat round-trip', () {
-    final club = Club(
-      id: 'garuda',
-      name: 'Klub Garuda Muda',
-      sport: 'Sepak Bola',
-      village: 'Pakuwon',
-      phone: '081234567890',
-      email: 'garuda@example.test',
-      address: 'Jl. Pakuwon',
-      documents: [
-        ClubDocument(
-          id: 'doc-1',
-          name: 'SK Klub',
-          status: 'pending-review',
-          fileUrl: 'https://example.test/doc-1.pdf',
-          uploadedAt: DateTime.parse('2026-01-10T08:00:00.000Z'),
-          verifiedAt: null,
+  test(
+    'nested API-ready models mempertahankan field detail saat round-trip',
+    () {
+      final club = Club(
+        id: 'garuda',
+        name: 'Klub Garuda Muda',
+        sport: 'Sepak Bola',
+        village: 'Pakuwon',
+        phone: '081234567890',
+        email: 'garuda@example.test',
+        address: 'Jl. Pakuwon',
+        documents: [
+          ClubDocument(
+            id: 'doc-1',
+            name: 'SK Klub',
+            status: 'pending-review',
+            fileUrl: 'https://example.test/doc-1.pdf',
+            uploadedAt: DateTime.parse('2026-01-10T08:00:00.000Z'),
+            verifiedAt: null,
+          ),
+        ],
+      );
+      final person = SportPerson(
+        id: 'p-1',
+        name: 'Nama Atlet',
+        clubId: 'garuda',
+        role: 'Atlet',
+        group: 'U-18',
+        nik: '3205010101010001',
+        birthPlace: 'Garut',
+        birthDate: DateTime.parse('2008-05-01T00:00:00.000Z'),
+        address: 'Jl. Cikuray',
+        milestones: const [
+          Milestone(
+            year: '2025',
+            title: 'Kejuaraan Antar Klub',
+            description: 'Meraih juara dua tingkat kabupaten.',
+          ),
+        ],
+        requiredDocuments: const ['KTP', 'Kartu Keluarga'],
+        completedDocuments: const ['KTP'],
+      );
+      final committee = CommitteeMember(
+        id: 'member-1',
+        name: 'Nama Pengurus',
+        position: 'Ketua',
+        division: 'Organisasi',
+        phone: '081200000001',
+        email: 'pengurus@example.test',
+        photoUrl: 'https://example.test/member-1.jpg',
+      );
+      final snapshot = KokSnapshot(
+        scope: const AccessScope(
+          type: AccessScopeType.district,
+          id: 'garut_kota',
+          name: 'Kecamatan Garut Kota',
         ),
-      ],
-    );
-    final person = SportPerson(
-      id: 'p-1',
-      name: 'Nama Atlet',
-      clubId: 'garuda',
-      role: 'Atlet',
-      group: 'U-18',
-      nik: '3205010101010001',
-      birthPlace: 'Garut',
-      birthDate: DateTime.parse('2008-05-01T00:00:00.000Z'),
-      address: 'Jl. Cikuray',
-      milestones: const [
-        Milestone(
-          year: '2025',
-          title: 'Kejuaraan Antar Klub',
-          description: 'Meraih juara dua tingkat kabupaten.',
+        clubs: [club],
+        people: [person],
+        committee: [committee],
+        loadedAt: DateTime.parse('2026-01-12T08:00:00.000Z'),
+        helpdesk: const HelpdeskContact(
+          whatsapp: '081299999999',
+          phone: '0262234567',
+          email: 'helpdesk@example.test',
+          address: 'Kantor KONI Garut',
+          operationalHours: 'Senin–Jumat, 08.00–16.00',
         ),
-      ],
-      requiredDocuments: const ['KTP', 'Kartu Keluarga'],
-      completedDocuments: const ['KTP'],
-    );
-    final committee = CommitteeMember(
-      id: 'member-1',
-      name: 'Nama Pengurus',
-      position: 'Ketua',
-      division: 'Organisasi',
-      phone: '081200000001',
-      email: 'pengurus@example.test',
-      photoUrl: 'https://example.test/member-1.jpg',
-    );
-    final snapshot = KokSnapshot(
-      scope: const AccessScope(
-        type: AccessScopeType.district,
-        id: 'garut_kota',
-        name: 'Kecamatan Garut Kota',
-      ),
-      clubs: [club],
-      people: [person],
-      committee: [committee],
-      loadedAt: DateTime.parse('2026-01-12T08:00:00.000Z'),
-      helpdesk: const HelpdeskContact(
-        whatsapp: '081299999999',
-        phone: '0262234567',
-        email: 'helpdesk@example.test',
-        address: 'Kantor KONI Garut',
-        operationalHours: 'Senin–Jumat, 08.00–16.00',
-      ),
-    );
+      );
 
-    expect(Club.fromJson(club.toJson()), club);
-    expect(SportPerson.fromJson(person.toJson()), person);
-    expect(CommitteeMember.fromJson(committee.toJson()), committee);
-    expect(KokSnapshot.fromJson(snapshot.toJson()), snapshot);
-  });
+      expect(Club.fromJson(club.toJson()), club);
+      expect(SportPerson.fromJson(person.toJson()), person);
+      expect(CommitteeMember.fromJson(committee.toJson()), committee);
+      expect(KokSnapshot.fromJson(snapshot.toJson()), snapshot);
+    },
+  );
 
   test('optional nested timestamps dapat bernilai null', () {
     final document = ClubDocument.fromJson({

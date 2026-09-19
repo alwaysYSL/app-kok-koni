@@ -309,40 +309,41 @@ void main() {
     expect(find.text('Hendra (contoh)'), findsOneWidget);
   });
 
-  testWidgets('Renders custom territory scope name in header and member detail', (
-    tester,
-  ) async {
-    const customScope = AccessScope(
-      type: AccessScopeType.district,
-      id: 'tarogong_kidul',
-      name: 'Kecamatan Tarogong Kidul',
-    );
-    final snapshot = KokSnapshot(
-      scope: customScope,
-      clubs: const [],
-      people: const [],
-      committee: const [
-        CommitteeMember(
-          id: 'ketua',
-          name: 'Cecep (contoh)',
-          position: 'Ketua KOK',
-          division: 'Pengurus inti',
-        ),
-      ],
-      loadedAt: DateTime(2026, 9, 12),
-    );
+  testWidgets(
+    'Renders custom territory scope name in header and member detail',
+    (tester) async {
+      const customScope = AccessScope(
+        type: AccessScopeType.district,
+        id: 'tarogong_kidul',
+        name: 'Kecamatan Tarogong Kidul',
+      );
+      final snapshot = KokSnapshot(
+        scope: customScope,
+        clubs: const [],
+        people: const [],
+        committee: const [
+          CommitteeMember(
+            id: 'ketua',
+            name: 'Cecep (contoh)',
+            position: 'Ketua KOK',
+            division: 'Pengurus inti',
+          ),
+        ],
+        loadedAt: DateTime(2026, 9, 12),
+      );
 
-    await pumpCommitteePage(tester, snapshot: snapshot);
+      await pumpCommitteePage(tester, snapshot: snapshot);
 
-    // Header has custom scope name
-    expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
-    expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      // Header has custom scope name
+      expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
+      expect(find.text('Kecamatan Garut Kota'), findsNothing);
 
-    // Open detail modal
-    await tester.tap(find.text('Cecep (contoh)'));
-    await tester.pumpAndSettle();
+      // Open detail modal
+      await tester.tap(find.text('Cecep (contoh)'));
+      await tester.pumpAndSettle();
 
-    // Modal detail row contains custom scope name
-    expect(find.text('Kecamatan Tarogong Kidul'), findsWidgets);
-  });
+      // Modal detail row contains custom scope name
+      expect(find.text('Kecamatan Tarogong Kidul'), findsWidgets);
+    },
+  );
 }

@@ -333,7 +333,8 @@ final class _CancellableFakeAdapter implements HttpClientAdapter {
   final Future<ResponseBody> Function(
     RequestOptions options,
     Future<void>? cancelFuture,
-  ) handler;
+  )
+  handler;
 
   @override
   Future<ResponseBody> fetch(
@@ -345,4 +346,3 @@ final class _CancellableFakeAdapter implements HttpClientAdapter {
   @override
   void close({bool force = false}) {}
 }
-

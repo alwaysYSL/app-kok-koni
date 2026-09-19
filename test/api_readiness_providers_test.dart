@@ -70,25 +70,28 @@ void main() {
     );
   });
 
-  test('granular provider membatalkan token saat provider di-dispose', () async {
-    final testRepo = _CancellableTestRepository();
-    final container = ProviderContainer(
-      overrides: [
-        dataRequestContextProvider.overrideWithValue(context),
-        repositoryProvider.overrideWithValue(testRepo),
-      ],
-    );
+  test(
+    'granular provider membatalkan token saat provider di-dispose',
+    () async {
+      final testRepo = _CancellableTestRepository();
+      final container = ProviderContainer(
+        overrides: [
+          dataRequestContextProvider.overrideWithValue(context),
+          repositoryProvider.overrideWithValue(testRepo),
+        ],
+      );
 
-    container.listen(clubDetailProvider('garuda'), (previous, next) {});
+      container.listen(clubDetailProvider('garuda'), (previous, next) {});
 
-    expect(testRepo.capturedCancellation, isNotNull);
-    expect(testRepo.capturedCancellation!.isCancelled, isFalse);
+      expect(testRepo.capturedCancellation, isNotNull);
+      expect(testRepo.capturedCancellation!.isCancelled, isFalse);
 
-    container.dispose();
+      container.dispose();
 
-    expect(testRepo.capturedCancellation!.isCancelled, isTrue);
-    expect(testRepo.capturedCancellation!.reason, 'Provider disposed');
-  });
+      expect(testRepo.capturedCancellation!.isCancelled, isTrue);
+      expect(testRepo.capturedCancellation!.reason, 'Provider disposed');
+    },
+  );
 
   test('granular provider retry policy mengabaikan lifecycle exceptions', () {
     final retryPolicy = clubDetailProvider('garuda').retry;
@@ -218,6 +221,3 @@ class _CancellableTestRepository implements KokRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
-
-
-

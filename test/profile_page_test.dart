@@ -1067,7 +1067,9 @@ void main() {
           findsOneWidget,
         );
         expect(
-          find.textContaining('Data demo lokal—belum terhubung dengan SICABOR.'),
+          find.textContaining(
+            'Data demo lokal—belum terhubung dengan SICABOR.',
+          ),
           findsNothing,
         );
       },
