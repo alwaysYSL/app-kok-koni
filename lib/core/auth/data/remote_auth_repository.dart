@@ -1,32 +1,253 @@
-import '../../network/api_client.dart';
+import 'package:dio/dio.dart';
+
+import '../../config/deployment_profile.dart';
+import '../domain/auth_failure.dart';
 import 'auth_repository.dart';
+import 'dto/sicabor_login_response.dart';
+import 'dto/sicabor_profile_response.dart';
+import 'mapper/sicabor_auth_mapper.dart';
 
 final class RemoteAuthRepository implements AuthRepository {
-  RemoteAuthRepository(this._client);
+  RemoteAuthRepository({
+    required this.dio,
+    required this.profile,
+  });
 
-  final ApiClient _client;
-  ApiClient get client => _client;
+  final Dio dio;
+  final DeploymentProfile profile;
 
-  static UnimplementedError _notConfigured() => UnimplementedError(
-    'Endpoint SICABOR belum dikonfigurasi; dokumentasi endpoint belum tersedia.',
-  );
+  String get _authUrl {
+    final baseUri = Uri.parse(profile.apiBaseUrl);
+    return baseUri.replace(path: '/api/auth').toString();
+  }
+
+  String get _profileUrl {
+    final base = profile.apiBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$base/profile';
+  }
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
-  }) => Future<AuthResult>.error(_notConfigured());
+  }) async {
+    final Response<dynamic> loginResponse;
+    try {
+      loginResponse = await dio.post<dynamic>(
+        _authUrl,
+        data: {'username': username, 'password': password},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          responseType: ResponseType.json,
+        ),
+      );
+    } on DioException catch (e) {
+      return _handleLoginDioException(e);
+    } catch (_) {
+      return const AuthResult.failed(InvalidCredentialsFailure());
+    }
+
+    final loginData = loginResponse.data;
+    if (loginData is! Map<String, dynamic>) {
+      return const AuthResult.failed(
+        InvalidCredentialsFailure('Format respons login tidak valid.'),
+      );
+    }
+
+    final loginRes = SicaborLoginResponse.fromJson(loginData);
+    final token = loginRes.token;
+    if (!loginRes.status || token == null || token.trim().isEmpty) {
+      final msg = loginRes.message.isNotEmpty
+          ? loginRes.message
+          : 'Username atau kata sandi tidak sesuai.';
+      return AuthResult.failed(InvalidCredentialsFailure(msg));
+    }
+
+    if (loginRes.data?.type != 'admin_kok') {
+      return const AuthResult.failed(AccountNotKokFailure());
+    }
+
+    final Response<dynamic> profileResponse;
+    try {
+      profileResponse = await dio.get<dynamic>(
+        _profileUrl,
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+          responseType: ResponseType.json,
+        ),
+      );
+    } on DioException catch (e) {
+      return _handleProfileDioException(e, isLoginPhase: true);
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
+    final profileData = profileResponse.data;
+    if (profileData is! Map<String, dynamic>) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
+    final profileRes = SicaborProfileResponse.fromJson(profileData);
+    if (!profileRes.success) {
+      return AuthResult.failed(
+        ProfileFetchFailedFailure(
+          profileRes.message.isNotEmpty
+              ? profileRes.message
+              : 'Gagal memuat data profil akun dari server.',
+        ),
+      );
+    }
+
+    final principal = SicaborAuthMapper.mapProfileToUserPrincipal(
+      loginData: loginRes.data!,
+      profileResponse: profileRes,
+    );
+
+    return AuthResult.success(
+      user: principal,
+      accessToken: token,
+      sessionToken: staySignedIn ? token : null,
+    );
+  }
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) =>
-      Future<AuthResult>.error(_notConfigured());
+  Future<AuthResult> restoreSession(String sessionToken) async {
+    if (sessionToken.trim().isEmpty) {
+      return const AuthResult.failed(SessionExpiredFailure());
+    }
+
+    final Response<dynamic> profileResponse;
+    try {
+      profileResponse = await dio.get<dynamic>(
+        _profileUrl,
+        options: Options(
+          headers: {'Authorization': 'Bearer $sessionToken'},
+          responseType: ResponseType.json,
+        ),
+      );
+    } on DioException catch (e) {
+      return _handleProfileDioException(e, isLoginPhase: false);
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
+    final profileData = profileResponse.data;
+    if (profileData is! Map<String, dynamic>) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
+    final profileRes = SicaborProfileResponse.fromJson(profileData);
+    if (!profileRes.success) {
+      return AuthResult.failed(
+        ProfileFetchFailedFailure(
+          profileRes.message.isNotEmpty
+              ? profileRes.message
+              : 'Gagal memuat data profil akun dari server.',
+        ),
+      );
+    }
+
+    final principal = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
+      profileResponse: profileRes,
+    );
+
+    return AuthResult.success(
+      user: principal,
+      accessToken: sessionToken,
+      sessionToken: sessionToken,
+    );
+  }
 
   @override
-  Future<AuthResult> refreshToken(String refreshToken) =>
-      Future<AuthResult>.error(_notConfigured());
+  Future<RemoteRevocationResult> revokeSession(
+    RemoteSessionHandle session,
+  ) async {
+    return const RemoteRevocationResult(RemoteRevocationStatus.notApplicable);
+  }
 
-  @override
-  Future<RemoteRevocationResult> revokeSession(RemoteSessionHandle session) =>
-      Future<RemoteRevocationResult>.error(_notConfigured());
+  AuthResult _handleLoginDioException(DioException e) {
+    if (_isNetworkOrTimeout(e)) {
+      return const AuthResult.failed(NetworkTimeoutFailure());
+    }
+
+    final statusCode = e.response?.statusCode;
+    final data = e.response?.data;
+    final Map<String, dynamic>? errorJson =
+        data is Map<String, dynamic> ? data : null;
+
+    final message = errorJson?['message']?.toString();
+    final errorCode = errorJson?['error_code']?.toString();
+
+    if (statusCode == 401) {
+      return AuthResult.failed(
+        message != null && message.isNotEmpty
+            ? InvalidCredentialsFailure(message)
+            : const InvalidCredentialsFailure(),
+      );
+    }
+
+    if (statusCode == 403) {
+      return AuthResult.failed(
+        SicaborAuthMapper.mapErrorCodeToFailure(
+          errorCode: errorCode,
+          message: message,
+        ),
+      );
+    }
+
+    return AuthResult.failed(
+      message != null && message.isNotEmpty
+          ? InvalidCredentialsFailure(message)
+          : const InvalidCredentialsFailure(),
+    );
+  }
+
+  AuthResult _handleProfileDioException(
+    DioException e, {
+    required bool isLoginPhase,
+  }) {
+    if (_isNetworkOrTimeout(e)) {
+      return const AuthResult.failed(NetworkTimeoutFailure());
+    }
+
+    final statusCode = e.response?.statusCode;
+    final data = e.response?.data;
+    final Map<String, dynamic>? errorJson =
+        data is Map<String, dynamic> ? data : null;
+
+    final message = errorJson?['message']?.toString();
+    final errorCode = errorJson?['error_code']?.toString();
+
+    if (statusCode == 401) {
+      if (isLoginPhase) {
+        return const AuthResult.failed(ProfileFetchFailedFailure());
+      } else {
+        return const AuthResult.failed(SessionExpiredFailure());
+      }
+    }
+
+    if (statusCode == 403) {
+      return AuthResult.failed(
+        SicaborAuthMapper.mapErrorCodeToFailure(
+          errorCode: errorCode,
+          message: message,
+        ),
+      );
+    }
+
+    return AuthResult.failed(
+      message != null && message.isNotEmpty
+          ? ProfileFetchFailedFailure(message)
+          : const ProfileFetchFailedFailure(),
+    );
+  }
+
+  bool _isNetworkOrTimeout(DioException e) {
+    return e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown;
+  }
 }
