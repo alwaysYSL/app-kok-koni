@@ -237,7 +237,10 @@ void main() {
         final tokenStorage = InMemoryAuthTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final usernameStore = RememberedUsernameStore(prefs: prefs, key: 'test_username');
+        final usernameStore = RememberedUsernameStore(
+          prefs: prefs,
+          key: 'test_username',
+        );
         final authRepo = DemoAuthRepository(simulateLatency: false);
         final composition = AppComposition.fromProfile(
           const DeploymentProfile(
@@ -327,7 +330,10 @@ void main() {
         final tokenStorage = InMemoryAuthTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final usernameStore = RememberedUsernameStore(prefs: prefs, key: 'test_username');
+        final usernameStore = RememberedUsernameStore(
+          prefs: prefs,
+          key: 'test_username',
+        );
         final authRepo = DemoAuthRepository(simulateLatency: false);
         final slowRepo = _SlowIgnoringCancellationRepository();
         final composition = AppComposition.fromProfile(

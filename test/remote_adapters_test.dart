@@ -26,7 +26,9 @@ void main() {
       profile: _remoteProfile,
     );
 
-    final result = await repository.revokeSession(RemoteSessionHandle('session'));
+    final result = await repository.revokeSession(
+      RemoteSessionHandle('session'),
+    );
     expect(result.status, RemoteRevocationStatus.notApplicable);
   });
 

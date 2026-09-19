@@ -8,10 +8,7 @@ import 'dto/sicabor_profile_response.dart';
 import 'mapper/sicabor_auth_mapper.dart';
 
 final class RemoteAuthRepository implements AuthRepository {
-  RemoteAuthRepository({
-    required this.dio,
-    required this.profile,
-  });
+  RemoteAuthRepository({required this.dio, required this.profile});
 
   final Dio dio;
   final DeploymentProfile profile;
@@ -173,8 +170,9 @@ final class RemoteAuthRepository implements AuthRepository {
 
     final statusCode = e.response?.statusCode;
     final data = e.response?.data;
-    final Map<String, dynamic>? errorJson =
-        data is Map<String, dynamic> ? data : null;
+    final Map<String, dynamic>? errorJson = data is Map<String, dynamic>
+        ? data
+        : null;
 
     final message = errorJson?['message']?.toString();
     final errorCode = errorJson?['error_code']?.toString();
@@ -213,8 +211,9 @@ final class RemoteAuthRepository implements AuthRepository {
 
     final statusCode = e.response?.statusCode;
     final data = e.response?.data;
-    final Map<String, dynamic>? errorJson =
-        data is Map<String, dynamic> ? data : null;
+    final Map<String, dynamic>? errorJson = data is Map<String, dynamic>
+        ? data
+        : null;
 
     final message = errorJson?['message']?.toString();
     final errorCode = errorJson?['error_code']?.toString();

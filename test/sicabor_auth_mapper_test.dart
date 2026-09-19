@@ -39,21 +39,24 @@ void main() {
       ),
     );
 
-    test('maps profile response to UserPrincipal with subdistrict as district scope', () {
-      final user = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
-        profileResponse: sampleProfileResponse,
-      );
+    test(
+      'maps profile response to UserPrincipal with subdistrict as district scope',
+      () {
+        final user = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
+          profileResponse: sampleProfileResponse,
+        );
 
-      expect(user.id, equals('578'));
-      expect(user.username, equals('kt.garutkota'));
-      expect(user.fullName, equals('ADMIN KONTINGEN GARUT KOTA'));
-      expect(user.roleTitle, equals('Koordinator Kecamatan'));
-      expect(user.scope.type, equals(AccessScopeType.district));
-      expect(user.scope.id, equals('1728'));
-      expect(user.scope.name, equals('Garut Kota'));
-      expect(user.permissions, isEmpty);
-      expect(user.profileImageUrl, isNull);
-    });
+        expect(user.id, equals('578'));
+        expect(user.username, equals('kt.garutkota'));
+        expect(user.fullName, equals('ADMIN KONTINGEN GARUT KOTA'));
+        expect(user.roleTitle, equals('Koordinator Kecamatan'));
+        expect(user.scope.type, equals(AccessScopeType.district));
+        expect(user.scope.id, equals('1728'));
+        expect(user.scope.name, equals('Garut Kota'));
+        expect(user.permissions, isEmpty);
+        expect(user.profileImageUrl, isNull);
+      },
+    );
 
     test('maps profile and login data to UserPrincipal', () {
       const loginData = SicaborLoginData(
@@ -80,53 +83,81 @@ void main() {
     });
 
     group('mapErrorCodeToFailure', () {
-      test('maps known error codes to appropriate AuthFailure types with custom messages', () {
-        final notKok = SicaborAuthMapper.mapErrorCodeToFailure(
-          errorCode: 'NOT_KOK',
-          message: 'Bukan akun KOK',
-        );
-        expect(notKok, isA<AccountNotKokFailure>());
-        expect(notKok.message, equals('Bukan akun KOK'));
+      test(
+        'maps known error codes to appropriate AuthFailure types with custom messages',
+        () {
+          final notKok = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'NOT_KOK',
+            message: 'Bukan akun KOK',
+          );
+          expect(notKok, isA<AccountNotKokFailure>());
+          expect(notKok.message, equals('Bukan akun KOK'));
 
-        final inactive = SicaborAuthMapper.mapErrorCodeToFailure(
-          errorCode: 'MEMBER_INACTIVE',
-          message: 'Akun non-aktif',
-        );
-        expect(inactive, isA<AccountInactiveFailure>());
-        expect(inactive.message, equals('Akun non-aktif'));
+          final inactive = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'MEMBER_INACTIVE',
+            message: 'Akun non-aktif',
+          );
+          expect(inactive, isA<AccountInactiveFailure>());
+          expect(inactive.message, equals('Akun non-aktif'));
 
-        final noSubdistrict = SicaborAuthMapper.mapErrorCodeToFailure(
-          errorCode: 'NO_SUBDISTRICT',
-          message: 'Tidak ada kecamatan',
-        );
-        expect(noSubdistrict, isA<NoSubdistrictFailure>());
-        expect(noSubdistrict.message, equals('Tidak ada kecamatan'));
+          final noSubdistrict = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'NO_SUBDISTRICT',
+            message: 'Tidak ada kecamatan',
+          );
+          expect(noSubdistrict, isA<NoSubdistrictFailure>());
+          expect(noSubdistrict.message, equals('Tidak ada kecamatan'));
 
-        final notFound = SicaborAuthMapper.mapErrorCodeToFailure(
-          errorCode: 'MEMBER_NOT_FOUND',
-          message: 'Member tidak ditemukan',
-        );
-        expect(notFound, isA<MemberNotFoundFailure>());
-        expect(notFound.message, equals('Member tidak ditemukan'));
-      });
+          final notFound = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'MEMBER_NOT_FOUND',
+            message: 'Member tidak ditemukan',
+          );
+          expect(notFound, isA<MemberNotFoundFailure>());
+          expect(notFound.message, equals('Member tidak ditemukan'));
+        },
+      );
 
-      test('maps known error codes with null message to default AuthFailure messages', () {
-        final notKok = SicaborAuthMapper.mapErrorCodeToFailure(errorCode: 'NOT_KOK');
-        expect(notKok, isA<AccountNotKokFailure>());
-        expect(notKok.message, equals('Akun ini bukan akun KOK dan tidak memiliki akses.'));
+      test(
+        'maps known error codes with null message to default AuthFailure messages',
+        () {
+          final notKok = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'NOT_KOK',
+          );
+          expect(notKok, isA<AccountNotKokFailure>());
+          expect(
+            notKok.message,
+            equals('Akun ini bukan akun KOK dan tidak memiliki akses.'),
+          );
 
-        final inactive = SicaborAuthMapper.mapErrorCodeToFailure(errorCode: 'MEMBER_INACTIVE');
-        expect(inactive, isA<AccountInactiveFailure>());
-        expect(inactive.message, equals('Akun Anda berstatus non-aktif. Hubungi admin SICABOR.'));
+          final inactive = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'MEMBER_INACTIVE',
+          );
+          expect(inactive, isA<AccountInactiveFailure>());
+          expect(
+            inactive.message,
+            equals('Akun Anda berstatus non-aktif. Hubungi admin SICABOR.'),
+          );
 
-        final noSubdistrict = SicaborAuthMapper.mapErrorCodeToFailure(errorCode: 'NO_SUBDISTRICT');
-        expect(noSubdistrict, isA<NoSubdistrictFailure>());
-        expect(noSubdistrict.message, equals('Akun belum memiliki kecamatan yang terdaftar. Hubungi admin.'));
+          final noSubdistrict = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'NO_SUBDISTRICT',
+          );
+          expect(noSubdistrict, isA<NoSubdistrictFailure>());
+          expect(
+            noSubdistrict.message,
+            equals(
+              'Akun belum memiliki kecamatan yang terdaftar. Hubungi admin.',
+            ),
+          );
 
-        final notFound = SicaborAuthMapper.mapErrorCodeToFailure(errorCode: 'MEMBER_NOT_FOUND');
-        expect(notFound, isA<MemberNotFoundFailure>());
-        expect(notFound.message, equals('Data akun anggota tidak ditemukan pada sistem SICABOR.'));
-      });
+          final notFound = SicaborAuthMapper.mapErrorCodeToFailure(
+            errorCode: 'MEMBER_NOT_FOUND',
+          );
+          expect(notFound, isA<MemberNotFoundFailure>());
+          expect(
+            notFound.message,
+            equals('Data akun anggota tidak ditemukan pada sistem SICABOR.'),
+          );
+        },
+      );
 
       test('maps unknown or null error codes to InvalidCredentialsFailure', () {
         final unknown = SicaborAuthMapper.mapErrorCodeToFailure(
@@ -140,7 +171,10 @@ void main() {
           errorCode: null,
         );
         expect(nullCode, isA<InvalidCredentialsFailure>());
-        expect(nullCode.message, equals('Username atau kata sandi tidak sesuai.'));
+        expect(
+          nullCode.message,
+          equals('Username atau kata sandi tidak sesuai.'),
+        );
       });
     });
   });

@@ -12,8 +12,8 @@ final class ApiClient {
     required DeploymentProfile profile,
     required AuthSessionTokens tokens,
     Dio? dio,
-  })  : _tokens = tokens, // ignore: prefer_initializing_formals
-        _dio = dio ?? Dio(_optionsFor(profile)) {
+  }) : _tokens = tokens, // ignore: prefer_initializing_formals
+       _dio = dio ?? Dio(_optionsFor(profile)) {
     profile.validate();
   }
 
@@ -109,15 +109,18 @@ final class ApiClient {
       return ForbiddenException(message, errorCode, serverMessage);
     }
     if (status == 404) {
-      final message = serverMessage ?? fallbackMessage ?? 'Data tidak ditemukan';
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Data tidak ditemukan';
       return NotFoundException(message);
     }
     if (status != null && status >= 400 && status < 500) {
-      final message = serverMessage ?? fallbackMessage ?? 'Permintaan tidak valid';
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Permintaan tidak valid';
       return BadRequestException(message, statusCode: status);
     }
     if (status != null && status >= 500) {
-      final message = serverMessage ?? fallbackMessage ?? 'Server gagal memproses request';
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Server gagal memproses request';
       return ServerErrorException(message, statusCode: status);
     }
     if (error.type == DioExceptionType.connectionTimeout ||

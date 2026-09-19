@@ -125,11 +125,7 @@ final class SicaborKontingen {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'code': code,
-    'name': name,
-  };
+  Map<String, dynamic> toJson() => {'id': id, 'code': code, 'name': name};
 
   @override
   bool operator ==(Object other) =>
@@ -196,13 +192,13 @@ final class SicaborSummary {
 
   @override
   int get hashCode => Object.hash(
-        totalCabor,
-        totalCaborFromClub,
-        totalCaborFromAthlete,
-        totalClub,
-        totalAthlete,
-        totalAthleteWithoutClub,
-      );
+    totalCabor,
+    totalCaborFromClub,
+    totalCaborFromAthlete,
+    totalClub,
+    totalAthlete,
+    totalAthleteWithoutClub,
+  );
 }
 
 @immutable

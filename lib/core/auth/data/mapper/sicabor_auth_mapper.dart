@@ -34,8 +34,9 @@ abstract final class SicaborAuthMapper {
     final scope = profileResponse.scope;
 
     final id = member.id != 0 ? member.id.toString() : loginData.id;
-    final username =
-        member.username.isNotEmpty ? member.username : loginData.username;
+    final username = member.username.isNotEmpty
+        ? member.username
+        : loginData.username;
     final fullName = member.name.isNotEmpty ? member.name : loginData.name;
 
     return UserPrincipal(

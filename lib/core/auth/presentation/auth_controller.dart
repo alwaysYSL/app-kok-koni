@@ -24,7 +24,9 @@ final sessionMetadataStoreProvider = Provider<SessionMetadataStore>((ref) {
   return composition.sessionMetadataStore;
 });
 
-final rememberedUsernameStoreProvider = Provider<RememberedUsernameStore>((ref) {
+final rememberedUsernameStoreProvider = Provider<RememberedUsernameStore>((
+  ref,
+) {
   final composition = ref.watch(appCompositionProvider);
   return composition.rememberedUsernameStore;
 });

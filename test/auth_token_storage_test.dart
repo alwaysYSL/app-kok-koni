@@ -529,24 +529,27 @@ void main() {
       },
     );
 
-    test('migrateLegacyStorage deletes all default legacy keys when configured', () async {
-      final multiStore = FakeSecureKeyValStore();
-      multiStore.data['v1_kok_refresh_token'] = 'v1_token';
-      multiStore.data['kok.auth.v2.credential'] = 'v2_token';
-      multiStore.data['kok.auth.v2.development.credential'] = 'v2_dev_token';
+    test(
+      'migrateLegacyStorage deletes all default legacy keys when configured',
+      () async {
+        final multiStore = FakeSecureKeyValStore();
+        multiStore.data['v1_kok_refresh_token'] = 'v1_token';
+        multiStore.data['kok.auth.v2.credential'] = 'v2_token';
+        multiStore.data['kok.auth.v2.development.credential'] = 'v2_dev_token';
 
-      final defaultStorage = SecureAuthTokenStorage(
-        store: multiStore,
-        key: 'kok.auth.v3.credential',
-      );
+        final defaultStorage = SecureAuthTokenStorage(
+          store: multiStore,
+          key: 'kok.auth.v3.credential',
+        );
 
-      await defaultStorage.migrateLegacyStorage();
+        await defaultStorage.migrateLegacyStorage();
 
-      expect(multiStore.data['v1_kok_refresh_token'], isNull);
-      expect(multiStore.data['kok.auth.v2.credential'], isNull);
-      expect(multiStore.data['kok.auth.v2.development.credential'], isNull);
-      expect(multiStore.data['kok.auth.v3.credential'], isNull);
-    });
+        expect(multiStore.data['v1_kok_refresh_token'], isNull);
+        expect(multiStore.data['kok.auth.v2.credential'], isNull);
+        expect(multiStore.data['kok.auth.v2.development.credential'], isNull);
+        expect(multiStore.data['kok.auth.v3.credential'], isNull);
+      },
+    );
 
     test('migrateLegacyStorage does nothing if legacy key absent', () async {
       await storage.migrateLegacyStorage();

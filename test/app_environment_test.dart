@@ -466,10 +466,10 @@ void main() {
         expect(demoMeta?.expectedCredentialId, 'demo_cid');
         expect(stagingMeta?.expectedCredentialId, 'staging_cid');
 
-        final demoUsername =
-            await demoComposition.rememberedUsernameStore.readUsername();
-        final stagingUsername =
-            await stagingComposition.rememberedUsernameStore.readUsername();
+        final demoUsername = await demoComposition.rememberedUsernameStore
+            .readUsername();
+        final stagingUsername = await stagingComposition.rememberedUsernameStore
+            .readUsername();
         expect(demoUsername, 'DEMO-001');
         expect(stagingUsername, 'SK-STAGING-002');
       },

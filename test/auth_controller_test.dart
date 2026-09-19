@@ -1384,7 +1384,9 @@ void main() {
           overrides: [
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(fakeStorage),
-            rememberedUsernameStoreProvider.overrideWithValue(fakeUsernameStore),
+            rememberedUsernameStoreProvider.overrideWithValue(
+              fakeUsernameStore,
+            ),
           ],
         );
         addTearDown(container.dispose);
@@ -2745,7 +2747,9 @@ void main() {
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),
                 sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-                rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+                rememberedUsernameStoreProvider.overrideWithValue(
+                  usernameStore,
+                ),
               ],
             );
             addTearDown(container.dispose);
@@ -3020,7 +3024,9 @@ void main() {
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),
                 sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-                rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+                rememberedUsernameStoreProvider.overrideWithValue(
+                  usernameStore,
+                ),
                 credentialIdGeneratorProvider.overrideWithValue(
                   testCase.generator,
                 ),
@@ -3134,26 +3140,29 @@ void main() {
       expect(container.read(authControllerProvider), isA<AuthSignedOut>());
     });
 
-    test('returns null and does not execute logout when not AuthSignedIn', () async {
-      final storage = FakeAuthTokenStorage();
-      final metadataStore = FakeSessionMetadataStore();
-      final container = createTestProviderContainer(
-        overrides: [
-          authTokenStorageProvider.overrideWithValue(storage),
-          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-          authRepositoryProvider.overrideWithValue(authRepository),
-          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
-        ],
-      );
-      addTearDown(container.dispose);
+    test(
+      'returns null and does not execute logout when not AuthSignedIn',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
 
-      final controller = container.read(authControllerProvider.notifier);
-      await controller.bootstrap();
-      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
-      final result = await controller.handleUnauthorizedSession();
-      expect(result, isNull);
-      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
-    });
+        final result = await controller.handleUnauthorizedSession();
+        expect(result, isNull);
+        expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      },
+    );
   });
 }

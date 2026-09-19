@@ -24,41 +24,38 @@ void main() {
     },
   );
 
-  test(
-    'login mengekspos access token dan session token di bridge',
-    () async {
-      final storage = _MemoryTokenStorage();
-      final container = createTestProviderContainer(
-        overrides: [
-          authRepositoryProvider.overrideWithValue(_TokenAuthRepository()),
-          authTokenStorageProvider.overrideWithValue(storage),
-        ],
-      );
-      addTearDown(container.dispose);
+  test('login mengekspos access token dan session token di bridge', () async {
+    final storage = _MemoryTokenStorage();
+    final container = createTestProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(_TokenAuthRepository()),
+        authTokenStorageProvider.overrideWithValue(storage),
+      ],
+    );
+    addTearDown(container.dispose);
 
-      final controller = container.read(authControllerProvider.notifier);
-      await controller.bootstrap();
-      final result = await controller.login(
-        username: 'DEMO-001',
-        password: 'password',
-        staySignedIn: true,
-        rememberUsername: false,
-      );
+    final controller = container.read(authControllerProvider.notifier);
+    await controller.bootstrap();
+    final result = await controller.login(
+      username: 'DEMO-001',
+      password: 'password',
+      staySignedIn: true,
+      rememberUsername: false,
+    );
 
-      expect(result.isSuccess, isTrue);
-      final state = container.read(authControllerProvider);
-      expect(state, isA<AuthSignedIn>());
-      expect((state as AuthSignedIn).accessToken, 'access-1');
-      final tokens = container.read(sessionTokensProvider);
-      expect(tokens.accessToken, 'access-1');
-      expect(tokens.sessionToken, 'refresh-1');
-      expect((await storage.read())?.sessionToken, 'refresh-1');
+    expect(result.isSuccess, isTrue);
+    final state = container.read(authControllerProvider);
+    expect(state, isA<AuthSignedIn>());
+    expect((state as AuthSignedIn).accessToken, 'access-1');
+    final tokens = container.read(sessionTokensProvider);
+    expect(tokens.accessToken, 'access-1');
+    expect(tokens.sessionToken, 'refresh-1');
+    expect((await storage.read())?.sessionToken, 'refresh-1');
 
-      await controller.logout();
-      expect(tokens.accessToken, isNull);
-      expect(tokens.sessionToken, isNull);
-    },
-  );
+    await controller.logout();
+    expect(tokens.accessToken, isNull);
+    expect(tokens.sessionToken, isNull);
+  });
 
   test(
     'restore mengisi access token state dan token bridge dari session token aktif',

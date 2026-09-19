@@ -30,8 +30,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _loadRememberedUsername() async {
-    final username =
-        await ref.read(rememberedUsernameStoreProvider).readUsername();
+    final username = await ref
+        .read(rememberedUsernameStoreProvider)
+        .readUsername();
     if (mounted && username != null && username.isNotEmpty) {
       setState(() {
         _username.text = username;

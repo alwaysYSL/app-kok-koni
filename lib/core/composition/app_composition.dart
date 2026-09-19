@@ -76,10 +76,7 @@ final class AppComposition {
       apiClient = null;
       authRepo = DemoAuthRepository(simulateLatency: false);
     } else {
-      final client = ApiClient(
-        profile: profile,
-        tokens: bridge,
-      );
+      final client = ApiClient(profile: profile, tokens: bridge);
       final remoteAuthRepository = RemoteAuthRepository(
         dio: Dio(),
         profile: profile,

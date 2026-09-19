@@ -8,14 +8,17 @@ void main() {
   const testKey = 'test_remembered_username_key';
 
   group('RememberedUsernameStore Tests', () {
-    test('readUsername mengembalikan null jika belum ada username tersimpan', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final store = RememberedUsernameStore(prefs: prefs, key: testKey);
+    test(
+      'readUsername mengembalikan null jika belum ada username tersimpan',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final store = RememberedUsernameStore(prefs: prefs, key: testKey);
 
-      final username = await store.readUsername();
-      expect(username, isNull);
-    });
+        final username = await store.readUsername();
+        expect(username, isNull);
+      },
+    );
 
     test('readUsername mengembalikan username yang telah tersimpan', () async {
       SharedPreferences.setMockInitialValues({testKey: 'admin_kok'});
