@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
@@ -18,7 +18,7 @@ import 'test_composition.dart';
 
 final fakeGarutKotaUser = UserPrincipal(
   id: 'usr_garut_kota',
-  skNumber: 'DEMO-001',
+  username: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
   scope: const AccessScope(
@@ -29,20 +29,20 @@ final fakeGarutKotaUser = UserPrincipal(
   permissions: {'sports:read', 'clubs:read', 'members:read', 'reports:export'},
 );
 
-class InMemoryRememberedSkStore implements RememberedSkStore {
-  String? _sk;
+class InMemoryRememberedUsernameStore implements RememberedUsernameStore {
+  String? _username;
   bool shouldThrowOnSave = false;
   bool shouldThrowOnClear = false;
 
   @override
-  Future<String?> readSk() async => _sk;
+  Future<String?> readUsername() async => _username;
 
   @override
-  Future<void> saveSk(String sk) async {
+  Future<void> saveUsername(String username) async {
     if (shouldThrowOnSave) {
-      throw const MetadataStorageException('Simulated saveSk failure');
+      throw const MetadataStorageException('Simulated saveUsername failure');
     }
-    _sk = sk;
+    _username = username;
   }
 
   @override
@@ -50,7 +50,7 @@ class InMemoryRememberedSkStore implements RememberedSkStore {
     if (shouldThrowOnClear) {
       throw const MetadataStorageException('Simulated clear failure');
     }
-    _sk = null;
+    _username = null;
   }
 }
 
@@ -60,7 +60,7 @@ class CompleterAuthRepository implements AuthRepository {
   AuthResult? loginResult;
   int restoreCallCount = 0;
   int loginCallCount = 0;
-  String? lastRestoreRefreshToken;
+  String? lastRestoreSessionToken;
 
   CompleterAuthRepository({
     this.loginCompleter,
@@ -70,7 +70,7 @@ class CompleterAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async {
@@ -81,11 +81,11 @@ class CompleterAuthRepository implements AuthRepository {
     if (loginResult != null) {
       return loginResult!;
     }
-    if (skNumber == 'DEMO-001' && password == 'kokgarut123') {
+    if (username == 'DEMO-001' && password == 'kokgarut123') {
       return AuthResult.success(
         user: UserPrincipal(
           id: 'usr-1',
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           fullName: 'Test User',
           roleTitle: 'Tester',
           scope: const AccessScope(
@@ -96,7 +96,7 @@ class CompleterAuthRepository implements AuthRepository {
           permissions: const {},
         ),
         accessToken: 'access_1',
-        refreshToken: staySignedIn ? 'refresh_1' : null,
+        sessionToken: staySignedIn ? 'refresh_1' : null,
         sessionHandle: RemoteSessionHandle('remote_handle_1'),
       );
     }
@@ -104,18 +104,13 @@ class CompleterAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async {
+  Future<AuthResult> restoreSession(String sessionToken) async {
     restoreCallCount++;
-    lastRestoreRefreshToken = refreshToken;
+    lastRestoreSessionToken = sessionToken;
     if (restoreCompleter != null) {
       return restoreCompleter!.future;
     }
     return const AuthResult.failed(SessionExpiredFailure('None'));
-  }
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession(refreshToken);
   }
 
   Duration? revokeDelay;
@@ -276,14 +271,14 @@ class ControlledAuthRepo implements AuthRepository {
   AuthResult? restoreResult;
   Exception? restoreException;
   int restoreCallCount = 0;
-  String? lastRestoreRefreshToken;
+  String? lastRestoreSessionToken;
 
   ControlledAuthRepo({this.restoreResult, this.restoreException});
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async {
+  Future<AuthResult> restoreSession(String sessionToken) async {
     restoreCallCount++;
-    lastRestoreRefreshToken = refreshToken;
+    lastRestoreSessionToken = sessionToken;
     if (restoreException != null) {
       throw restoreException!;
     }
@@ -292,16 +287,12 @@ class ControlledAuthRepo implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async {
     return const AuthResult.failed(InvalidCredentialsFailure());
   }
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) =>
-      restoreSession(refreshToken);
 
   @override
   Future<RemoteRevocationResult> revokeSession(
@@ -328,18 +319,14 @@ class SequencedLogoutAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async => loginResults[_loginIndex++];
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async =>
+  Future<AuthResult> restoreSession(String sessionToken) async =>
       const AuthResult.failed(SessionExpiredFailure());
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) =>
-      restoreSession(refreshToken);
 
   @override
   Future<RemoteRevocationResult> revokeSession(
@@ -376,14 +363,17 @@ class ThrowingCredentialIdGenerator implements CredentialIdGenerator {
 void main() {
   late SharedPreferences prefs;
   late InMemoryAuthTokenStorage tokenStorage;
-  late RememberedSkStore skStore;
+  late RememberedUsernameStore usernameStore;
   late DemoAuthRepository authRepository;
 
   setUp(() async {
     tokenStorage = InMemoryAuthTokenStorage();
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
+    usernameStore = RememberedUsernameStore(
+      prefs: prefs,
+      key: 'test_remembered_username',
+    );
     authRepository = DemoAuthRepository(simulateLatency: false);
   });
 
@@ -395,7 +385,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -424,7 +414,7 @@ void main() {
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
@@ -460,7 +450,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-single-flight',
-            refreshToken: 'token-single-flight',
+            sessionToken: 'token-single-flight',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -472,8 +462,8 @@ void main() {
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(
-              InMemoryRememberedSkStore(),
+            rememberedUsernameStoreProvider.overrideWithValue(
+              InMemoryRememberedUsernameStore(),
             ),
           ],
         );
@@ -492,7 +482,7 @@ void main() {
           AuthResult.success(
             user: fakeGarutKotaUser,
             accessToken: 'access_demo',
-            refreshToken: 'token-single-flight',
+            sessionToken: 'token-single-flight',
           ),
         );
         await Future.wait([f1, f2]);
@@ -513,7 +503,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -541,7 +531,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -564,7 +554,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'orphan-1',
-            refreshToken: 'tok-orphan',
+            sessionToken: 'tok-orphan',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(metadata: null);
@@ -575,7 +565,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -603,7 +593,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'orphan-1',
-            refreshToken: 'tok-orphan',
+            sessionToken: 'tok-orphan',
           ),
         )..shouldThrowOnForceClear = true;
         final metadataStore = FakeSessionMetadataStore(metadata: null);
@@ -614,7 +604,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -635,7 +625,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'orphan-1',
-            refreshToken: 'tok-orphan',
+            sessionToken: 'tok-orphan',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(metadata: null)
@@ -647,7 +637,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -676,7 +666,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -705,7 +695,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -735,7 +725,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -766,7 +756,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -796,7 +786,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -827,7 +817,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -850,7 +840,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'orphan-row6',
-            refreshToken: 'tok-row6',
+            sessionToken: 'tok-row6',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -863,7 +853,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -890,7 +880,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'orphan-row6',
-            refreshToken: 'tok-row6',
+            sessionToken: 'tok-row6',
           ),
         )..shouldThrowOnForceClear = true;
         final metadataStore = FakeSessionMetadataStore(
@@ -903,7 +893,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -933,7 +923,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -967,7 +957,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -988,7 +978,7 @@ void main() {
       () async {
         final foreignCred = StoredCredential(
           credentialId: 'cred-foreign-999',
-          refreshToken: 'tok-foreign-999',
+          sessionToken: 'tok-foreign-999',
         );
         final storage = FakeAuthTokenStorage(credential: foreignCred);
         final metadataStore = FakeSessionMetadataStore(
@@ -1001,7 +991,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1021,14 +1011,14 @@ void main() {
       },
     );
 
-    // Row 9: restoreAllowed=true, clean, credential ID cocok -> repo.restoreSession(credential.refreshToken)
+    // Row 9: restoreAllowed=true, clean, credential ID cocok -> repo.restoreSession(credential.sessionToken)
     test(
       'Row 9a: restoreAllowed true + credential ID cocok -> restoreSession berhasil -> AuthSignedIn',
       () async {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-asep',
-            refreshToken: 'token_usr_garut_kota',
+            sessionToken: 'token_usr_garut_kota',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1038,7 +1028,7 @@ void main() {
           restoreResult: AuthResult.success(
             user: fakeGarutKotaUser,
             accessToken: 'acc_demo',
-            refreshToken: 'token_usr_garut_kota',
+            sessionToken: 'token_usr_garut_kota',
           ),
         );
 
@@ -1047,7 +1037,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1060,7 +1050,7 @@ void main() {
         expect((state as AuthSignedIn).user.fullName, equals('Pak Asep'));
         expect(state.generation, greaterThan(0));
         expect(repo.restoreCallCount, equals(1));
-        expect(repo.lastRestoreRefreshToken, equals('token_usr_garut_kota'));
+        expect(repo.lastRestoreSessionToken, equals('token_usr_garut_kota'));
       },
     );
 
@@ -1070,7 +1060,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-asep',
-            refreshToken: 'tok-timeout',
+            sessionToken: 'tok-timeout',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1087,7 +1077,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1110,7 +1100,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-asep',
-            refreshToken: 'tok-timeout',
+            sessionToken: 'tok-timeout',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1125,7 +1115,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1145,7 +1135,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-expired',
-            refreshToken: 'tok-expired',
+            sessionToken: 'tok-expired',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1162,7 +1152,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1189,7 +1179,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-expired',
-            refreshToken: 'tok-expired',
+            sessionToken: 'tok-expired',
           ),
         )..clearIfOwnedReturnOverride = false;
         final metadataStore = FakeSessionMetadataStore(
@@ -1206,7 +1196,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1227,7 +1217,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-expired',
-            refreshToken: 'tok-expired',
+            sessionToken: 'tok-expired',
           ),
         )..shouldThrowOnClearIfOwned = true;
         final metadataStore = FakeSessionMetadataStore(
@@ -1244,7 +1234,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1265,7 +1255,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-expired',
-            refreshToken: 'tok-expired',
+            sessionToken: 'tok-expired',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1282,7 +1272,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1306,7 +1296,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             preferencesProvider.overrideWithValue(prefs),
           ],
         );
@@ -1326,7 +1316,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1336,17 +1326,17 @@ void main() {
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: true,
+          rememberUsername: true,
         );
 
         expect(result.isSuccess, isTrue);
         final state = container.read(authControllerProvider);
         expect(state, isA<AuthSignedIn>());
         expect((state as AuthSignedIn).generation, greaterThan(0));
-        expect(await skStore.readSk(), 'DEMO-001');
+        expect(await usernameStore.readUsername(), 'DEMO-001');
       },
     );
 
@@ -1355,7 +1345,7 @@ void main() {
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
@@ -1365,10 +1355,10 @@ void main() {
       expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
       final loginResult = await controller.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'kokgarut123',
         staySignedIn: true,
-        rememberSk: false,
+        rememberUsername: false,
       );
       expect(loginResult.isSuccess, isTrue);
       final gen1 =
@@ -1388,13 +1378,13 @@ void main() {
           loginCompleter: loginCompleter,
         );
         final fakeStorage = InMemoryAuthTokenStorage();
-        final fakeSkStore = InMemoryRememberedSkStore();
+        final fakeUsernameStore = InMemoryRememberedUsernameStore();
 
         final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(fakeStorage),
-            rememberedSkStoreProvider.overrideWithValue(fakeSkStore),
+            rememberedUsernameStoreProvider.overrideWithValue(fakeUsernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1405,10 +1395,10 @@ void main() {
 
         // 1. Mulai login (asinkron tertahan)
         final loginFuture = controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'password',
           staySignedIn: true,
-          rememberSk: true,
+          rememberUsername: true,
         );
         expect(container.read(authControllerProvider), isA<AuthSigningIn>());
 
@@ -1422,7 +1412,7 @@ void main() {
           AuthResult.success(
             user: fakeGarutKotaUser,
             accessToken: 'acc_token',
-            refreshToken: 'token_usr_garut_kota',
+            sessionToken: 'token_usr_garut_kota',
           ),
         );
         final loginResult = await loginFuture;
@@ -1442,7 +1432,7 @@ void main() {
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
@@ -1451,10 +1441,10 @@ void main() {
 
       // 1. Dari AuthBootstrapping (belum bootstrap)
       final res1 = await controller.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'kokgarut123',
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
       expect(res1.status, equals(AuthCommandStatus.rejected));
 
@@ -1463,19 +1453,19 @@ void main() {
 
       // 2. Login pertama sukses -> AuthSignedIn
       final res2 = await controller.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'kokgarut123',
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
       expect(res2.isSuccess, isTrue);
 
       // 3. Panggil login lagi saat sudah signed in -> ditolak
       final res3 = await controller.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'kokgarut123',
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
       expect(res3.status, equals(AuthCommandStatus.rejected));
     });
@@ -1490,7 +1480,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1499,10 +1489,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: true,
+          rememberUsername: true,
         );
 
         expect(result.isSuccess, isTrue);
@@ -1515,7 +1505,7 @@ void main() {
           equals(const SessionMetadata.signedOutClean()),
         );
         expect(controller.signInPhase, equals(SignInPhase.idle));
-        expect(await skStore.readSk(), equals('DEMO-001'));
+        expect(await usernameStore.readUsername(), equals('DEMO-001'));
       },
     );
 
@@ -1529,7 +1519,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1540,10 +1530,10 @@ void main() {
         metadataStore.shouldThrowOnWrite = true;
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -1571,7 +1561,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             credentialIdGeneratorProvider.overrideWithValue(generator),
           ],
         );
@@ -1581,10 +1571,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isTrue);
@@ -1613,7 +1603,7 @@ void main() {
             authRepositoryProvider.overrideWithValue(fakeRepo),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1622,10 +1612,10 @@ void main() {
         await controller.bootstrap();
 
         final loginFuture = controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'password',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(controller.signInPhase, equals(SignInPhase.executing));
@@ -1650,7 +1640,7 @@ void main() {
         overrides: [
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepository),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
@@ -1677,7 +1667,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(fakeRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1687,10 +1677,10 @@ void main() {
 
         // Login persisten sukses
         final loginRes = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginRes.isSuccess, isTrue);
         expect(storage.credential, isNotNull);
@@ -1740,7 +1730,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(fakeRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1749,10 +1739,10 @@ void main() {
         await controller.bootstrap();
 
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // Beri revocationTimeout sangat kecil (1ms) untuk memicu timeout
@@ -1782,7 +1772,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(fakeRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1791,10 +1781,10 @@ void main() {
         await controller.bootstrap();
 
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         final logoutResult = await controller.logout();
@@ -1814,7 +1804,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1822,15 +1812,15 @@ void main() {
         final controller = container.read(authControllerProvider.notifier);
         await controller.bootstrap();
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         final foreignCredential = StoredCredential(
           credentialId: 'foreign-nonpersistent',
-          refreshToken: 'foreign-refresh-token',
+          sessionToken: 'foreign-refresh-token',
         );
         storage.credential = foreignCredential;
 
@@ -1856,7 +1846,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1880,7 +1870,7 @@ void main() {
         final storage = FakeAuthTokenStorage(
           credential: StoredCredential(
             credentialId: 'cred-failed',
-            refreshToken: 'tok-failed',
+            sessionToken: 'tok-failed',
           ),
         );
         final metadataStore = FakeSessionMetadataStore(
@@ -1892,7 +1882,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1934,7 +1924,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1943,10 +1933,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -1971,7 +1961,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -1980,10 +1970,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -2012,7 +2002,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2026,10 +2016,10 @@ void main() {
         };
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         await logoutFuture;
@@ -2053,7 +2043,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2062,10 +2052,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -2085,7 +2075,7 @@ void main() {
       () async {
         final foreignCred = StoredCredential(
           credentialId: 'foreign-123',
-          refreshToken: 'foreign-token',
+          sessionToken: 'foreign-token',
         );
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
@@ -2095,7 +2085,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2104,10 +2094,10 @@ void main() {
         await controller.bootstrap();
 
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // Ganti credential menjadi foreign
@@ -2129,7 +2119,7 @@ void main() {
       () async {
         final foreignCredential = StoredCredential(
           credentialId: 'foreign-after-ft05',
-          refreshToken: 'foreign-token-after-ft05',
+          sessionToken: 'foreign-token-after-ft05',
         );
         final storage = FakeAuthTokenStorage();
         final metadataStore = FakeSessionMetadataStore();
@@ -2138,7 +2128,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2146,10 +2136,10 @@ void main() {
         final controller = container.read(authControllerProvider.notifier);
         await controller.bootstrap();
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         storage.credential = foreignCredential;
 
@@ -2189,7 +2179,7 @@ void main() {
       () async {
         final expiredCred = StoredCredential(
           credentialId: 'cred-ft06',
-          refreshToken: 'tok-ft06',
+          sessionToken: 'tok-ft06',
         );
         final storage = FakeAuthTokenStorage(credential: expiredCred)
           ..clearIfOwnedReturnOverride = false;
@@ -2207,7 +2197,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(repo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2234,7 +2224,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2243,10 +2233,10 @@ void main() {
         await controller.bootstrap();
 
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // Saat logout: write pending (ok), clear cred (ok), write clean (gagal)
@@ -2274,7 +2264,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2313,7 +2303,7 @@ void main() {
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
             authRepositoryProvider.overrideWithValue(authRepository),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -2362,7 +2352,7 @@ void main() {
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
               authRepositoryProvider.overrideWithValue(fakeRepo),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             ],
           );
           addTearDown(container.dispose);
@@ -2371,10 +2361,10 @@ void main() {
           await controller.bootstrap();
 
           final loginRes = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: true,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(loginRes.isSuccess, isTrue);
 
@@ -2406,7 +2396,7 @@ void main() {
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
               authRepositoryProvider.overrideWithValue(authRepository),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             ],
           );
           addTearDown(container.dispose);
@@ -2425,10 +2415,10 @@ void main() {
 
           // Attempt login while cleanup is failed -> cleanupRequired
           final failedResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(failedResult.status, equals(AuthCommandStatus.rejected));
           expect(failedResult.isRejected, isTrue);
@@ -2457,10 +2447,10 @@ void main() {
           );
 
           final pendingResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(pendingResult.status, equals(AuthCommandStatus.rejected));
           expect(pendingResult.isRejected, isTrue);
@@ -2485,18 +2475,18 @@ void main() {
             ),
           );
           final loginOk = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(loginOk.isSuccess, isTrue);
 
           final invalidStateResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(invalidStateResult.status, equals(AuthCommandStatus.rejected));
           expect(invalidStateResult.isRejected, isTrue);
@@ -2523,7 +2513,7 @@ void main() {
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
               authRepositoryProvider.overrideWithValue(authRepository),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
               credentialIdGeneratorProvider.overrideWithValue(generator),
             ],
           );
@@ -2544,10 +2534,10 @@ void main() {
           );
 
           final loginFuture = controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: true,
-            rememberSk: false,
+            rememberUsername: false,
           );
 
           await Future<void>.delayed(Duration.zero);
@@ -2596,7 +2586,7 @@ void main() {
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
               authRepositoryProvider.overrideWithValue(authRepository),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             ],
           );
           addTearDown(container.dispose);
@@ -2605,10 +2595,10 @@ void main() {
           await controller.bootstrap();
 
           final loginFuture = controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: true,
-            rememberSk: false,
+            rememberUsername: false,
           );
 
           await enteredCommit.future;
@@ -2637,11 +2627,11 @@ void main() {
       );
 
       test(
-        'P1-08: login where skStore.saveSk throws MetadataStorageException succeeds with AuthCommandStatus.success and AuthSignedIn state',
+        'P1-08: login where usernameStore.saveUsername throws MetadataStorageException succeeds with AuthCommandStatus.success and AuthSignedIn state',
         () async {
           final storage = FakeAuthTokenStorage();
           final metadataStore = FakeSessionMetadataStore();
-          final failingSkStore = InMemoryRememberedSkStore()
+          final failingUsernameStore = InMemoryRememberedUsernameStore()
             ..shouldThrowOnSave = true;
 
           final container = createTestProviderContainer(
@@ -2649,7 +2639,9 @@ void main() {
               authTokenStorageProvider.overrideWithValue(storage),
               sessionMetadataStoreProvider.overrideWithValue(metadataStore),
               authRepositoryProvider.overrideWithValue(authRepository),
-              rememberedSkStoreProvider.overrideWithValue(failingSkStore),
+              rememberedUsernameStoreProvider.overrideWithValue(
+                failingUsernameStore,
+              ),
             ],
           );
           addTearDown(container.dispose);
@@ -2657,12 +2649,12 @@ void main() {
           final controller = container.read(authControllerProvider.notifier);
           await controller.bootstrap();
 
-          // 1. Persistent login with rememberSk: true
+          // 1. Persistent login with rememberUsername: true
           final persistentResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: true,
-            rememberSk: true,
+            rememberUsername: true,
           );
           expect(persistentResult.isSuccess, isTrue);
           expect(persistentResult.status, equals(AuthCommandStatus.success));
@@ -2672,27 +2664,27 @@ void main() {
           await controller.logout();
           expect(container.read(authControllerProvider), isA<AuthSignedOut>());
 
-          // 2. Non-persistent login with rememberSk: true
+          // 2. Non-persistent login with rememberUsername: true
           final nonPersistentResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: true,
+            rememberUsername: true,
           );
           expect(nonPersistentResult.isSuccess, isTrue);
           expect(nonPersistentResult.status, equals(AuthCommandStatus.success));
           expect(container.read(authControllerProvider), isA<AuthSignedIn>());
 
-          // 3. Non-persistent login with rememberSk: false when clear throws
+          // 3. Non-persistent login with rememberUsername: false when clear throws
           await controller.logout();
-          failingSkStore.shouldThrowOnSave = false;
-          failingSkStore.shouldThrowOnClear = true;
+          failingUsernameStore.shouldThrowOnSave = false;
+          failingUsernameStore.shouldThrowOnClear = true;
 
           final clearFailResult = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'kokgarut123',
             staySignedIn: false,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(clearFailResult.isSuccess, isTrue);
           expect(clearFailResult.status, equals(AuthCommandStatus.success));
@@ -2715,7 +2707,7 @@ void main() {
                 AuthResult.success(
                   user: UserPrincipal(
                     id: 'session-a-user',
-                    skNumber: 'SESSION-A',
+                    username: 'SESSION-A',
                     fullName: 'Session A',
                     roleTitle: 'Tester',
                     scope: const AccessScope(
@@ -2725,13 +2717,13 @@ void main() {
                     ),
                   ),
                   accessToken: 'access-a',
-                  refreshToken: 'refresh-a',
+                  sessionToken: 'refresh-a',
                   sessionHandle: RemoteSessionHandle('remote-handle-a'),
                 ),
                 AuthResult.success(
                   user: UserPrincipal(
                     id: 'session-b-user',
-                    skNumber: 'SESSION-B',
+                    username: 'SESSION-B',
                     fullName: 'Session B',
                     roleTitle: 'Tester',
                     scope: const AccessScope(
@@ -2741,7 +2733,7 @@ void main() {
                     ),
                   ),
                   accessToken: 'access-b',
-                  refreshToken: 'refresh-b',
+                  sessionToken: 'refresh-b',
                   sessionHandle: RemoteSessionHandle('remote-handle-b'),
                 ),
               ],
@@ -2753,7 +2745,7 @@ void main() {
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),
                 sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-                rememberedSkStoreProvider.overrideWithValue(skStore),
+                rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
               ],
             );
             addTearDown(container.dispose);
@@ -2761,10 +2753,10 @@ void main() {
             final controller = container.read(authControllerProvider.notifier);
             await controller.bootstrap();
             await controller.login(
-              skNumber: 'SESSION-A',
+              username: 'SESSION-A',
               password: 'password-a',
               staySignedIn: true,
-              rememberSk: false,
+              rememberUsername: false,
             );
 
             final logoutA = controller.logout();
@@ -2779,15 +2771,15 @@ void main() {
             );
 
             await controller.login(
-              skNumber: 'SESSION-B',
+              username: 'SESSION-B',
               password: 'password-b',
               staySignedIn: true,
-              rememberSk: false,
+              rememberUsername: false,
             );
             final stateB = container.read(authControllerProvider);
             final credentialB = storage.credential;
             expect(stateB, isA<AuthSignedIn>());
-            expect(credentialB?.refreshToken, 'refresh-b');
+            expect(credentialB?.sessionToken, 'refresh-b');
             if (completeAWhileBIsSignedIn) {
               firstRevocation.complete();
               await logoutA;
@@ -2827,7 +2819,7 @@ void main() {
         () async {
           final orphan = StoredCredential(
             credentialId: 'orphan-id',
-            refreshToken: 'orphan-token',
+            sessionToken: 'orphan-token',
           );
           final storage = FakeAuthTokenStorage(credential: orphan);
           final metadataStore = FakeSessionMetadataStore(
@@ -2886,29 +2878,29 @@ void main() {
                 CompleterAuthRepository(
                   loginResult: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 't' * 8192,
+                    sessionToken: 't' * 8192,
                   ),
                 ),
               ),
               credentialIdGeneratorProvider.overrideWithValue(
                 FixedCredentialIdGenerator('i' * 128),
               ),
-              rememberedSkStoreProvider.overrideWithValue(skStore),
+              rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             ],
           );
           addTearDown(container.dispose);
           final controller = container.read(authControllerProvider.notifier);
           await controller.bootstrap();
           final result = await controller.login(
-            skNumber: 'DEMO-001',
+            username: 'DEMO-001',
             password: 'password',
             staySignedIn: true,
-            rememberSk: false,
+            rememberUsername: false,
           );
           expect(result.status, AuthCommandStatus.success);
           expect(result.internalFailure, isNull);
           expect(storage.credential?.credentialId, 'i' * 128);
-          expect(storage.credential?.refreshToken, 't' * 8192);
+          expect(storage.credential?.sessionToken, 't' * 8192);
           expect(
             metadataStore.metadata,
             SessionMetadata.restoreEnabled('i' * 128),
@@ -2932,10 +2924,10 @@ void main() {
                 })
               >[
                 (
-                  name: 'null refresh token',
+                  name: 'null session token',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: null,
+                    sessionToken: null,
                   ),
                   generator: const FixedCredentialIdGenerator(
                     'credential-null',
@@ -2944,10 +2936,10 @@ void main() {
                       AuthCommandFailure.invalidPersistentCredential,
                 ),
                 (
-                  name: 'empty refresh token',
+                  name: 'empty session token',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: '',
+                    sessionToken: '',
                   ),
                   generator: const FixedCredentialIdGenerator(
                     'credential-empty',
@@ -2956,20 +2948,20 @@ void main() {
                       AuthCommandFailure.invalidPersistentCredential,
                 ),
                 (
-                  name: 'whitespace refresh token',
+                  name: 'whitespace session token',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: ' \t\n',
+                    sessionToken: ' \t\n',
                   ),
                   generator: const ThrowingCredentialIdGenerator(),
                   expectedFailure:
                       AuthCommandFailure.invalidPersistentCredential,
                 ),
                 (
-                  name: 'overlong refresh token',
+                  name: 'overlong session token',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 't' * 8193,
+                    sessionToken: 't' * 8193,
                   ),
                   generator: const FixedCredentialIdGenerator('valid-id'),
                   expectedFailure:
@@ -2979,7 +2971,7 @@ void main() {
                   name: 'empty credential ID',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 'valid-refresh-token',
+                    sessionToken: 'valid-session-token',
                   ),
                   generator: const FixedCredentialIdGenerator(''),
                   expectedFailure:
@@ -2989,7 +2981,7 @@ void main() {
                   name: 'generator exception',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 'valid-refresh-token',
+                    sessionToken: 'valid-session-token',
                   ),
                   generator: const ThrowingCredentialIdGenerator(),
                   expectedFailure:
@@ -2999,7 +2991,7 @@ void main() {
                   name: 'blank credential ID',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 'valid-refresh-token',
+                    sessionToken: 'valid-session-token',
                   ),
                   generator: const FixedCredentialIdGenerator('   '),
                   expectedFailure:
@@ -3009,7 +3001,7 @@ void main() {
                   name: 'overlong credential ID',
                   result: AuthResult.success(
                     user: fakeGarutKotaUser,
-                    refreshToken: 'valid-refresh-token',
+                    sessionToken: 'valid-session-token',
                   ),
                   generator: FixedCredentialIdGenerator('x' * 129),
                   expectedFailure:
@@ -3028,7 +3020,7 @@ void main() {
                 authRepositoryProvider.overrideWithValue(repository),
                 authTokenStorageProvider.overrideWithValue(storage),
                 sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-                rememberedSkStoreProvider.overrideWithValue(skStore),
+                rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
                 credentialIdGeneratorProvider.overrideWithValue(
                   testCase.generator,
                 ),
@@ -3040,10 +3032,10 @@ void main() {
             await controller.bootstrap();
 
             final result = await controller.login(
-              skNumber: 'DEMO-001',
+              username: 'DEMO-001',
               password: 'kokgarut123',
               staySignedIn: true,
-              rememberSk: false,
+              rememberUsername: false,
             );
 
             expect(
@@ -3075,4 +3067,93 @@ void main() {
       );
     },
   );
+
+  group('handleUnauthorizedSession (Centralized 401 Handling)', () {
+    test('triggers logout and clears session when AuthSignedIn', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      final loginRes = await controller.login(
+        username: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+      expect(loginRes.isSuccess, isTrue);
+      expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+
+      final logoutResult = await controller.handleUnauthorizedSession();
+
+      expect(logoutResult, isNotNull);
+      expect(logoutResult!.localSessionClosed, isTrue);
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+      expect(storage.credential, isNull);
+    });
+
+    test('is single-flight across concurrent triggers', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      await controller.login(
+        username: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+      expect(container.read(authControllerProvider), isA<AuthSignedIn>());
+
+      final f1 = controller.handleUnauthorizedSession();
+      final f2 = controller.handleUnauthorizedSession();
+      final results = await Future.wait([f1, f2]);
+
+      expect(results[0], isNotNull);
+      expect(results[1], isNotNull);
+      expect(identical(results[0], results[1]), isTrue);
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+    });
+
+    test('returns null and does not execute logout when not AuthSignedIn', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+
+      final result = await controller.handleUnauthorizedSession();
+      expect(result, isNull);
+      expect(container.read(authControllerProvider), isA<AuthSignedOut>());
+    });
+  });
 }

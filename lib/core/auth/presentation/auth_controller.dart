@@ -5,7 +5,7 @@ import '../../composition/app_composition.dart';
 import '../../network/auth_session_tokens.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_token_storage.dart';
-import '../data/remembered_sk_store.dart';
+import '../data/remembered_username_store.dart';
 import '../data/session_metadata_store.dart';
 import '../domain/auth_failure.dart';
 import '../domain/auth_state.dart';
@@ -24,9 +24,9 @@ final sessionMetadataStoreProvider = Provider<SessionMetadataStore>((ref) {
   return composition.sessionMetadataStore;
 });
 
-final rememberedSkStoreProvider = Provider<RememberedSkStore>((ref) {
+final rememberedUsernameStoreProvider = Provider<RememberedUsernameStore>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  return composition.rememberedSkStore;
+  return composition.rememberedUsernameStore;
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -319,10 +319,10 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
 
-    // Credential ID cocok -> panggil repo.restoreSession(credential.refreshToken)
+    // Credential ID cocok -> panggil repo.restoreSession(credential.sessionToken)
     final AuthResult result;
     try {
-      result = await repo.restoreSession(credential.refreshToken);
+      result = await repo.restoreSession(credential.sessionToken);
     } on TimeoutException {
       if (currentEpoch != _operationEpoch) return;
       state = const AuthTemporarilyUnavailable(
@@ -347,7 +347,7 @@ class AuthController extends Notifier<AuthState> {
           .read(sessionTokensProvider)
           .replace(
             accessToken: result.accessToken,
-            refreshToken: result.refreshToken,
+            sessionToken: result.sessionToken,
           );
       _sessionGeneration++;
       state = AuthSignedIn(
@@ -405,10 +405,10 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<AuthCommandResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
-    required bool rememberSk,
+    required bool rememberUsername,
   }) async {
     // 1. Reserve:
     // Validasi state: hanya boleh login dari AuthSignedOut dengan cleanupStatus == LocalCleanupStatus.clean.
@@ -441,14 +441,14 @@ class AuthController extends Notifier<AuthState> {
     final tokenStorage = ref.read(authTokenStorageProvider);
     final metadataStore = ref.read(sessionMetadataStoreProvider);
     final credentialIdGenerator = ref.read(credentialIdGeneratorProvider);
-    final skStore = ref.read(rememberedSkStoreProvider);
+    final usernameStore = ref.read(rememberedUsernameStoreProvider);
 
     // 2. Execute di luar queue:
     final AuthResult result;
     try {
       result = await Future.any<AuthResult>([
         repo.login(
-          skNumber: skNumber,
+          username: username,
           password: password,
           staySignedIn: staySignedIn,
         ),
@@ -491,7 +491,7 @@ class AuthController extends Notifier<AuthState> {
     if (!result.isSuccess || result.user == null) {
       _signInPhase = SignInPhase.idle;
       final errorMsg =
-          result.failure?.message ?? 'Nomor SK atau kata sandi tidak sesuai.';
+          result.failure?.message ?? 'Username atau kata sandi tidak sesuai.';
       if (result.failure is NetworkTimeoutFailure) {
         state = AuthTemporarilyUnavailable(reason: errorMsg);
       } else {
@@ -539,7 +539,7 @@ class AuthController extends Notifier<AuthState> {
               .read(sessionTokensProvider)
               .replace(
                 accessToken: result.accessToken,
-                refreshToken: result.refreshToken,
+                sessionToken: result.sessionToken,
               );
           _sessionGeneration++;
           state = AuthSignedIn(
@@ -549,10 +549,10 @@ class AuthController extends Notifier<AuthState> {
           );
 
           try {
-            if (rememberSk) {
-              await skStore.saveSk(skNumber);
+            if (rememberUsername) {
+              await usernameStore.saveUsername(username);
             } else {
-              await skStore.clear();
+              await usernameStore.clear();
             }
           } catch (_) {
             // Kegagalan preferensi non-kritis tidak membatalkan atau merusak sesi yang sudah sah
@@ -563,10 +563,10 @@ class AuthController extends Notifier<AuthState> {
 
         // Persisten:
         // Validate all persistent material before the first local mutation.
-        final refreshToken = result.refreshToken;
-        if (refreshToken == null ||
-            refreshToken.trim().isEmpty ||
-            refreshToken.length > 8192) {
+        final sessionToken = result.sessionToken;
+        if (sessionToken == null ||
+            sessionToken.trim().isEmpty ||
+            sessionToken.length > 8192) {
           return _failPersistentCredential(
             AuthCommandFailure.invalidPersistentCredential,
           );
@@ -585,7 +585,7 @@ class AuthController extends Notifier<AuthState> {
         try {
           credential = StoredCredential(
             credentialId: credId,
-            refreshToken: refreshToken,
+            sessionToken: sessionToken,
           );
         } on CorruptCredentialException {
           return _failPersistentCredential(
@@ -664,7 +664,7 @@ class AuthController extends Notifier<AuthState> {
             .read(sessionTokensProvider)
             .replace(
               accessToken: result.accessToken,
-              refreshToken: result.refreshToken,
+              sessionToken: result.sessionToken,
             );
         _sessionGeneration++;
         state = AuthSignedIn(
@@ -674,10 +674,10 @@ class AuthController extends Notifier<AuthState> {
         );
 
         try {
-          if (rememberSk) {
-            await skStore.saveSk(skNumber);
+          if (rememberUsername) {
+            await usernameStore.saveUsername(username);
           } else {
-            await skStore.clear();
+            await usernameStore.clear();
           }
         } catch (_) {
           // Kegagalan preferensi non-kritis tidak membatalkan atau merusak sesi yang sudah sah
@@ -730,6 +730,16 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> retrySession() async {
     await bootstrap();
+  }
+
+  Future<LogoutResult?> handleUnauthorizedSession({
+    Duration revocationTimeout = const Duration(seconds: 5),
+  }) async {
+    if (state is AuthSignedIn ||
+        (state is AuthSigningOut && _activeLogoutFlight != null)) {
+      return logout(revocationTimeout: revocationTimeout);
+    }
+    return null;
   }
 
   Future<LogoutResult> logout({

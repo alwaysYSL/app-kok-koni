@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
@@ -37,12 +37,12 @@ final class _TestSessionMetadataStore implements SessionMetadataStore {
   Future<void> clear() async {}
 }
 
-final class _TestRememberedSkStore implements RememberedSkStore {
+final class _TestRememberedUsernameStore implements RememberedUsernameStore {
   @override
-  Future<String?> readSk() async => null;
+  Future<String?> readUsername() async => null;
 
   @override
-  Future<void> saveSk(String sk) async {}
+  Future<void> saveUsername(String username) async {}
 
   @override
   Future<void> clear() async {}
@@ -62,7 +62,7 @@ AppComposition buildTestAppComposition() {
     ),
     authTokenStorage: _TestAuthTokenStorage(),
     sessionMetadataStore: _TestSessionMetadataStore(),
-    rememberedSkStore: _TestRememberedSkStore(),
+    rememberedUsernameStore: _TestRememberedUsernameStore(),
     authRepository: DemoAuthRepository(simulateLatency: false),
     kokRepository: DemoKokRepository(simulateLatency: false),
     credentialIdGenerator: _TestCredentialIdGenerator(),

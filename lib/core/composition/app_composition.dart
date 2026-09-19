@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -5,7 +6,7 @@ import '../auth/data/auth_repository.dart';
 import '../auth/data/auth_token_storage.dart';
 import '../auth/data/demo_auth_repository.dart';
 import '../auth/data/remote_auth_repository.dart';
-import '../auth/data/remembered_sk_store.dart';
+import '../auth/data/remembered_username_store.dart';
 import '../auth/data/session_metadata_store.dart';
 import '../auth/domain/credential_id_generator.dart';
 import '../config/deployment_profile.dart';
@@ -20,7 +21,7 @@ final class AppComposition {
     required this.profile,
     required this.authTokenStorage,
     required this.sessionMetadataStore,
-    required this.rememberedSkStore,
+    required this.rememberedUsernameStore,
     required this.authRepository,
     required this.kokRepository,
     required this.credentialIdGenerator,
@@ -32,7 +33,7 @@ final class AppComposition {
   final DeploymentProfile profile;
   final AuthTokenStorage authTokenStorage;
   final SessionMetadataStore sessionMetadataStore;
-  final RememberedSkStore rememberedSkStore;
+  final RememberedUsernameStore rememberedUsernameStore;
   final AuthRepository authRepository;
   final KokRepository kokRepository;
   final CredentialIdGenerator credentialIdGenerator;
@@ -64,9 +65,9 @@ final class AppComposition {
       key: 'kok.auth.v2.$envName.metadata',
     );
 
-    final skStore = RememberedSkStore(
+    final usernameStore = RememberedUsernameStore(
       prefs: preferences,
-      key: 'kok.auth.v2.$envName.remembered_sk',
+      key: 'kok.auth.v2.$envName.remembered_username',
     );
 
     final ApiClient? apiClient;
@@ -75,14 +76,14 @@ final class AppComposition {
       apiClient = null;
       authRepo = DemoAuthRepository(simulateLatency: false);
     } else {
-      late final RemoteAuthRepository remoteAuthRepository;
       final client = ApiClient(
         profile: profile,
         tokens: bridge,
-        refreshSession: (refreshToken) =>
-            remoteAuthRepository.refreshToken(refreshToken),
       );
-      remoteAuthRepository = RemoteAuthRepository(client);
+      final remoteAuthRepository = RemoteAuthRepository(
+        dio: Dio(),
+        profile: profile,
+      );
       apiClient = client;
       authRepo = remoteAuthRepository;
     }
@@ -98,7 +99,7 @@ final class AppComposition {
       profile: profile,
       authTokenStorage: tokenStorage,
       sessionMetadataStore: metadataStore,
-      rememberedSkStore: skStore,
+      rememberedUsernameStore: usernameStore,
       authRepository: authRepo,
       kokRepository: kokRepo,
       credentialIdGenerator: idGen,

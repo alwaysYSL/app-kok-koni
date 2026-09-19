@@ -30,7 +30,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _loadRememberedSk() async {
-    final sk = await ref.read(rememberedSkStoreProvider).readSk();
+    final sk = await ref.read(rememberedUsernameStoreProvider).readUsername();
     if (mounted && sk != null && sk.isNotEmpty) {
       setState(() {
         _sk.text = sk;
@@ -58,10 +58,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final res = await ref
           .read(authControllerProvider.notifier)
           .login(
-            skNumber: _sk.text.trim(),
+            username: _sk.text.trim(),
             password: _password.text,
             staySignedIn: _staySignedIn,
-            rememberSk: _remember,
+            rememberUsername: _remember,
           );
       if (!res.isSuccess && mounted) {
         final authState = ref.read(authControllerProvider);

@@ -3,7 +3,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'session_metadata_store.dart';
 
-final class RememberedUsernameStore {
+class RememberedUsernameStore {
   RememberedUsernameStore({
     required SharedPreferences prefs,
     required String key,
