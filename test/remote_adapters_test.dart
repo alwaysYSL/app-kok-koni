@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/remote_auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
