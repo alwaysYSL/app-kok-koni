@@ -3,8 +3,6 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/network/api_client.dart';
 import 'package:kok_app/core/network/api_exceptions.dart';
@@ -33,25 +31,12 @@ void main() {
     );
   });
 
-  test('ApiClient inject bearer dan me-refresh sekali setelah 401', () async {
-    final tokens = AuthSessionTokens()
-      ..replace(accessToken: 'access-old', refreshToken: 'refresh-1');
-    var requestCount = 0;
-    var refreshCount = 0;
+  test('ApiClient menyertakan Authorization Bearer jika token tersedia dan skipAuth false', () async {
+    final tokens = AuthSessionTokens()..replace(accessToken: 'test-token-123');
+    RequestOptions? capturedOptions;
     final dio = Dio()
       ..httpClientAdapter = _FakeAdapter((options) async {
-        requestCount++;
-        if (requestCount == 1) {
-          expect(options.headers['Authorization'], 'Bearer access-old');
-          return ResponseBody.fromString(
-            '',
-            401,
-            headers: {
-              Headers.contentTypeHeader: ['application/json'],
-            },
-          );
-        }
-        expect(options.headers['Authorization'], 'Bearer access-new');
+        capturedOptions = options;
         return ResponseBody.fromString(
           '{"ok":true}',
           200,
@@ -60,96 +45,148 @@ void main() {
           },
         );
       });
+
     final client = ApiClient(
       profile: _remoteProfile,
       tokens: tokens,
-      refreshSession: (refreshToken) async {
-        refreshCount++;
-        expect(refreshToken, 'refresh-1');
-        return _authSuccess(
-          accessToken: 'access-new',
-          refreshToken: 'refresh-2',
-        );
-      },
       dio: dio,
     );
 
     final response = await client.request<Map<String, dynamic>>(
-      '/health',
+      '/data',
       method: 'GET',
     );
 
     expect(response.data, {'ok': true});
-    expect(refreshCount, 1);
-    expect(tokens.refreshToken, 'refresh-2');
+    expect(capturedOptions?.headers['Authorization'], 'Bearer test-token-123');
   });
 
-  test(
-    'ApiClient menggabungkan concurrent 401 ke satu refresh flight',
-    () async {
-      final tokens = AuthSessionTokens()
-        ..replace(accessToken: 'access-old', refreshToken: 'refresh-1');
-      final refreshGate = Completer<void>();
-      var refreshCount = 0;
-      var requestCount = 0;
-      final dio = Dio()
-        ..httpClientAdapter = _FakeAdapter((options) async {
-          requestCount++;
-          if (requestCount <= 2) {
-            return ResponseBody.fromString(
-              '',
-              401,
-              headers: {
-                Headers.contentTypeHeader: ['application/json'],
-              },
-            );
-          }
-          return ResponseBody.fromString(
-            '{"ok":true}',
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['application/json'],
-            },
-          );
-        });
-      final client = ApiClient(
-        profile: _remoteProfile,
-        tokens: tokens,
-        refreshSession: (refreshToken) async {
-          refreshCount++;
-          await refreshGate.future;
-          return _authSuccess(
-            accessToken: 'access-new',
-            refreshToken: refreshToken,
-          );
-        },
-        dio: dio,
-      );
+  test('ApiClient tidak menyertakan Authorization jika skipAuth true', () async {
+    final tokens = AuthSessionTokens()..replace(accessToken: 'test-token-123');
+    RequestOptions? capturedOptions;
+    final dio = Dio()
+      ..httpClientAdapter = _FakeAdapter((options) async {
+        capturedOptions = options;
+        return ResponseBody.fromString(
+          '{"ok":true}',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        );
+      });
 
-      final first = client.request<Map<String, dynamic>>('/one', method: 'GET');
-      final second = client.request<Map<String, dynamic>>(
-        '/two',
-        method: 'GET',
-      );
-      await Future<void>.delayed(Duration.zero);
-      refreshGate.complete();
+    final client = ApiClient(
+      profile: _remoteProfile,
+      tokens: tokens,
+      dio: dio,
+    );
 
-      await Future.wait([first, second]);
-      expect(refreshCount, 1);
-    },
-  );
+    await client.request<Map<String, dynamic>>(
+      '/public',
+      method: 'GET',
+      skipAuth: true,
+    );
+
+    expect(capturedOptions?.headers.containsKey('Authorization'), isFalse);
+  });
+
+  test('ApiClient melempar UnauthorizedException langsung saat menerima 401 tanpa retry', () async {
+    final tokens = AuthSessionTokens()..replace(accessToken: 'expired-token');
+    var requestCount = 0;
+    final dio = Dio()
+      ..httpClientAdapter = _FakeAdapter((options) async {
+        requestCount++;
+        return ResponseBody.fromString(
+          '{"success":false,"message":"Sesi berakhir","error_code":"INVALID_TOKEN"}',
+          401,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        );
+      });
+
+    final client = ApiClient(
+      profile: _remoteProfile,
+      tokens: tokens,
+      dio: dio,
+    );
+
+    await expectLater(
+      client.request<Map<String, dynamic>>('/protected', method: 'GET'),
+      throwsA(
+        isA<UnauthorizedException>()
+            .having((e) => e.statusCode, 'statusCode', 401)
+            .having((e) => e.errorCode, 'errorCode', 'INVALID_TOKEN')
+            .having((e) => e.message, 'message', 'Sesi berakhir')
+            .having((e) => e.serverMessage, 'serverMessage', 'Sesi berakhir'),
+      ),
+    );
+
+    expect(requestCount, 1);
+  });
+
+  test('ApiClient memetakan 403 dan mengekstrak error_code ke ForbiddenException', () async {
+    final tokens = AuthSessionTokens()..replace(accessToken: 'active-token');
+    final dio = Dio()
+      ..httpClientAdapter = _FakeAdapter((options) async {
+        return ResponseBody.fromString(
+          '{"success":false,"message":"Hanya admin KOK","error_code":"NOT_KOK"}',
+          403,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        );
+      });
+
+    final client = ApiClient(
+      profile: _remoteProfile,
+      tokens: tokens,
+      dio: dio,
+    );
+
+    await expectLater(
+      client.request<Map<String, dynamic>>('/admin-only', method: 'GET'),
+      throwsA(
+        isA<ForbiddenException>()
+            .having((e) => e.statusCode, 'statusCode', 403)
+            .having((e) => e.errorCode, 'errorCode', 'NOT_KOK')
+            .having((e) => e.message, 'message', 'Hanya admin KOK')
+            .having((e) => e.serverMessage, 'serverMessage', 'Hanya admin KOK'),
+      ),
+    );
+  });
+
+  test('ApiClient menangani response error non-JSON secara graceful', () async {
+    final dio = Dio()
+      ..httpClientAdapter = _FakeAdapter((options) async {
+        return ResponseBody.fromString('<html>502 Bad Gateway</html>', 502);
+      });
+
+    final client = ApiClient(
+      profile: _remoteProfile,
+      tokens: AuthSessionTokens(),
+      dio: dio,
+    );
+
+    await expectLater(
+      client.request<void>('/bad-gateway', method: 'GET'),
+      throwsA(
+        isA<ServerErrorException>().having((e) => e.statusCode, 'statusCode', 502),
+      ),
+    );
+  });
 
   test('ApiClient mempertahankan cancellation domain exception', () async {
     final controller = RequestCancellationController()..cancel('stop');
     final client = ApiClient(
       profile: _remoteProfile,
       tokens: AuthSessionTokens(),
-      refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
       dio: Dio(),
     );
 
-    expect(
-      () => client.request<void>(
+    await expectLater(
+      client.request<void>(
         '/cancelled',
         method: 'GET',
         cancellation: controller.token,
@@ -172,12 +209,11 @@ void main() {
       final client = ApiClient(
         profile: _remoteProfile,
         tokens: AuthSessionTokens(),
-        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
         dio: dio,
       );
 
-      expect(
-        () => client.request<void>('/status', method: 'GET'),
+      await expectLater(
+        client.request<void>('/status', method: 'GET'),
         throwsA(predicate((error) => error.runtimeType == entry.value)),
       );
     }
@@ -192,12 +228,11 @@ void main() {
       final client = ApiClient(
         profile: _remoteProfile,
         tokens: AuthSessionTokens(),
-        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
         dio: dio,
       );
 
-      expect(
-        () => client.request<void>('/status', method: 'GET'),
+      await expectLater(
+        client.request<void>('/status', method: 'GET'),
         throwsA(
           isA<BadRequestException>().having(
             (e) => e.statusCode,
@@ -226,12 +261,11 @@ void main() {
       final client = ApiClient(
         profile: _remoteProfile,
         tokens: AuthSessionTokens(),
-        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
         dio: dio,
       );
 
-      expect(
-        () => client.request<void>('/timeout', method: 'GET'),
+      await expectLater(
+        client.request<void>('/timeout', method: 'GET'),
         throwsA(isA<ApiTimeoutException>()),
       );
     }
@@ -257,7 +291,6 @@ void main() {
       final client = ApiClient(
         profile: _remoteProfile,
         tokens: AuthSessionTokens(),
-        refreshSession: (_) async => _authSuccess(accessToken: 'unused'),
         dio: dio,
       );
 
@@ -292,24 +325,6 @@ const _remoteProfile = DeploymentProfile(
   dataMode: DataMode.remote,
   apiBaseUrl: 'https://api.example.test',
 );
-
-AuthResult _authSuccess({required String accessToken, String? refreshToken}) {
-  return AuthResult.success(
-    user: UserPrincipal(
-      id: 'u',
-      skNumber: 'sk',
-      fullName: 'User',
-      roleTitle: 'Coordinator',
-      scope: const AccessScope(
-        type: AccessScopeType.district,
-        id: 'garut_kota',
-        name: 'Kecamatan Garut Kota',
-      ),
-    ),
-    accessToken: accessToken,
-    refreshToken: refreshToken,
-  );
-}
 
 final class _FakeAdapter implements HttpClientAdapter {
   _FakeAdapter(this.handler);
