@@ -8,7 +8,7 @@ class DemoAuthRepository implements AuthRepository {
 
   static final _garutKotaUser = UserPrincipal(
     id: 'usr_garut_kota',
-    skNumber: 'DEMO-001',
+    username: 'DEMO-001',
     fullName: 'Pak Asep',
     roleTitle: 'Koordinator Kecamatan',
     scope: const AccessScope(
@@ -26,7 +26,7 @@ class DemoAuthRepository implements AuthRepository {
 
   static final _tarogongKidulUser = UserPrincipal(
     id: 'usr_tarogong_kidul',
-    skNumber: 'DEMO-002',
+    username: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',
     scope: const AccessScope(
@@ -39,7 +39,7 @@ class DemoAuthRepository implements AuthRepository {
 
   static final _koniKabUser = UserPrincipal(
     id: 'usr_koni_kab',
-    skNumber: 'DEMO-003',
+    username: 'DEMO-003',
     fullName: 'Ibu Rina',
     roleTitle: 'Tim Verifikator',
     scope: const AccessScope(
@@ -66,35 +66,35 @@ class DemoAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async {
     await _maybeDelay();
 
-    if (skNumber == 'DEMO-TIMEOUT') {
+    if (username == 'DEMO-TIMEOUT') {
       return const AuthResult.failed(NetworkTimeoutFailure());
     }
 
     UserPrincipal? matchedUser;
     String? accessToken;
-    String? refreshTokenValue;
+    String? sessionTokenValue;
     RemoteSessionHandle? sessionHandle;
 
-    if (skNumber == 'DEMO-001' && password == 'kokgarut123') {
+    if (username == 'DEMO-001' && password == 'kokgarut123') {
       matchedUser = _garutKotaUser;
       accessToken = 'access_demo_garut_kota';
-      refreshTokenValue = 'token_usr_garut_kota';
+      sessionTokenValue = 'token_usr_garut_kota';
       sessionHandle = RemoteSessionHandle('session_usr_garut_kota');
-    } else if (skNumber == 'DEMO-002' && password == 'koktarogong123') {
+    } else if (username == 'DEMO-002' && password == 'koktarogong123') {
       matchedUser = _tarogongKidulUser;
       accessToken = 'access_demo_tarogong_kidul';
-      refreshTokenValue = 'token_usr_tarogong_kidul';
+      sessionTokenValue = 'token_usr_tarogong_kidul';
       sessionHandle = RemoteSessionHandle('session_usr_tarogong_kidul');
-    } else if (skNumber == 'DEMO-003' && password == 'konigarut123') {
+    } else if (username == 'DEMO-003' && password == 'konigarut123') {
       matchedUser = _koniKabUser;
       accessToken = 'access_demo_koni_kab';
-      refreshTokenValue = 'token_usr_koni_kab';
+      sessionTokenValue = 'token_usr_koni_kab';
       sessionHandle = RemoteSessionHandle('session_usr_koni_kab');
     }
 
@@ -105,15 +105,15 @@ class DemoAuthRepository implements AuthRepository {
     return AuthResult.success(
       user: matchedUser,
       accessToken: accessToken,
-      refreshToken: staySignedIn ? refreshTokenValue : null,
+      sessionToken: staySignedIn ? sessionTokenValue : null,
       sessionHandle: sessionHandle,
     );
   }
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async {
+  Future<AuthResult> restoreSession(String sessionToken) async {
     await _maybeDelay();
-    if (refreshToken.trim().isEmpty) {
+    if (sessionToken.trim().isEmpty) {
       return const AuthResult.failed(
         SessionExpiredFailure(
           'Tidak ada sesi yang tersimpan di perangkat ini.',
@@ -121,25 +121,25 @@ class DemoAuthRepository implements AuthRepository {
       );
     }
 
-    if (refreshToken == 'token_usr_garut_kota') {
+    if (sessionToken == 'token_usr_garut_kota') {
       return AuthResult.success(
         user: _garutKotaUser,
         accessToken: 'access_demo_garut_kota',
-        refreshToken: refreshToken,
+        sessionToken: sessionToken,
         sessionHandle: RemoteSessionHandle('session_usr_garut_kota'),
       );
-    } else if (refreshToken == 'token_usr_tarogong_kidul') {
+    } else if (sessionToken == 'token_usr_tarogong_kidul') {
       return AuthResult.success(
         user: _tarogongKidulUser,
         accessToken: 'access_demo_tarogong_kidul',
-        refreshToken: refreshToken,
+        sessionToken: sessionToken,
         sessionHandle: RemoteSessionHandle('session_usr_tarogong_kidul'),
       );
-    } else if (refreshToken == 'token_usr_koni_kab') {
+    } else if (sessionToken == 'token_usr_koni_kab') {
       return AuthResult.success(
         user: _koniKabUser,
         accessToken: 'access_demo_koni_kab',
-        refreshToken: refreshToken,
+        sessionToken: sessionToken,
         sessionHandle: RemoteSessionHandle('session_usr_koni_kab'),
       );
     }
@@ -147,11 +147,6 @@ class DemoAuthRepository implements AuthRepository {
     return const AuthResult.failed(
       SessionExpiredFailure('Sesi Anda tidak valid atau telah kedaluwarsa.'),
     );
-  }
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession(refreshToken);
   }
 
   @override

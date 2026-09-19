@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
-import 'package:kok_app/core/auth/data/session_metadata_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -105,36 +104,6 @@ class FakeSecureKeyValStore implements SecureKeyValStore {
     }
     return data.containsKey(key);
   }
-}
-
-class FailingSharedPreferences implements SharedPreferences {
-  FailingSharedPreferences({
-    this.failSetString = false,
-    this.failRemove = false,
-    this.containsKeyResult = true,
-  });
-
-  final bool failSetString;
-  final bool failRemove;
-  final bool containsKeyResult;
-
-  @override
-  Future<bool> setString(String key, String value) async {
-    if (failSetString) return false;
-    return true;
-  }
-
-  @override
-  Future<bool> remove(String key) async {
-    if (failRemove) return false;
-    return true;
-  }
-
-  @override
-  bool containsKey(String key) => containsKeyResult;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class InMemoryAuthTokenStorage implements AuthTokenStorage {
@@ -257,16 +226,16 @@ void main() {
   });
 
   group('StoredCredential', () {
-    test('direct construction rejects invalid IDs and refresh tokens', () {
+    test('direct construction rejects invalid IDs and session tokens', () {
       for (final id in ['', '   ', 'x' * 129]) {
         expect(
-          () => StoredCredential(credentialId: id, refreshToken: 'valid-token'),
+          () => StoredCredential(credentialId: id, sessionToken: 'valid-token'),
           throwsA(isA<CorruptCredentialException>()),
         );
       }
       for (final token in ['', ' \t\n', 'x' * 8193]) {
         expect(
-          () => StoredCredential(credentialId: 'valid-id', refreshToken: token),
+          () => StoredCredential(credentialId: 'valid-id', sessionToken: token),
           throwsA(isA<CorruptCredentialException>()),
         );
       }
@@ -275,44 +244,44 @@ void main() {
     test('direct construction and JSON accept exact maximum lengths', () {
       final credential = StoredCredential(
         credentialId: 'i' * 128,
-        refreshToken: 't' * 8192,
+        sessionToken: 't' * 8192,
       );
       expect(credential.credentialId.length, 128);
-      expect(credential.refreshToken.length, 8192);
+      expect(credential.sessionToken.length, 8192);
       expect(StoredCredential.fromJson(credential.toJson()), credential);
     });
 
     test('redacts toString() completely', () {
       final cred = StoredCredential(
         credentialId: 'user-cred-id-123',
-        refreshToken: 'super_secret_refresh_token_xyz',
+        sessionToken: 'super_secret_session_token_xyz',
       );
       expect(cred.toString(), 'StoredCredential([REDACTED])');
       expect(cred.toString(), isNot(contains('user-cred-id-123')));
       expect(
         cred.toString(),
-        isNot(contains('super_secret_refresh_token_xyz')),
+        isNot(contains('super_secret_session_token_xyz')),
       );
     });
 
     test('toJson produces expected structure', () {
       final cred = StoredCredential(
         credentialId: 'cid-1',
-        refreshToken: 'token-1',
+        sessionToken: 'token-1',
       );
       expect(cred.toJson(), {
         'credentialId': 'cid-1',
-        'refreshToken': 'token-1',
+        'sessionToken': 'token-1',
       });
     });
 
     test('fromJson parses valid credential', () {
       final cred = StoredCredential.fromJson({
         'credentialId': 'valid-cred-id',
-        'refreshToken': 'valid-refresh-token',
+        'sessionToken': 'valid-session-token',
       });
       expect(cred.credentialId, 'valid-cred-id');
-      expect(cred.refreshToken, 'valid-refresh-token');
+      expect(cred.sessionToken, 'valid-session-token');
     });
 
     test('fromJson rejects non-map values', () {
@@ -336,28 +305,28 @@ void main() {
         expect(
           () => StoredCredential.fromJson({
             'credentialId': '',
-            'refreshToken': 'valid_token',
+            'sessionToken': 'valid_token',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': '   ',
-            'refreshToken': 'valid_token',
+            'sessionToken': 'valid_token',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 123,
-            'refreshToken': 'valid_token',
+            'sessionToken': 'valid_token',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 'a' * 129,
-            'refreshToken': 'valid_token',
+            'sessionToken': 'valid_token',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
@@ -365,33 +334,33 @@ void main() {
     );
 
     test(
-      'fromJson rejects invalid refreshToken (empty, whitespace, non-string, >8192 chars)',
+      'fromJson rejects invalid sessionToken (empty, whitespace, non-string, >8192 chars)',
       () {
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 'valid_id',
-            'refreshToken': '',
+            'sessionToken': '',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 'valid_id',
-            'refreshToken': '   ',
+            'sessionToken': '   ',
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 'valid_id',
-            'refreshToken': 999,
+            'sessionToken': 999,
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
         expect(
           () => StoredCredential.fromJson({
             'credentialId': 'valid_id',
-            'refreshToken': 't' * 8193,
+            'sessionToken': 't' * 8193,
           }),
           throwsA(isA<CorruptCredentialException>()),
         );
@@ -452,14 +421,14 @@ void main() {
     test('read() and write() round-trip preserves stored credential', () async {
       final cred = StoredCredential(
         credentialId: 'cred-pak-asep',
-        refreshToken: 'rf-pak-asep-secret',
+        sessionToken: 'rf-pak-asep-secret',
       );
       await storage.write(cred);
 
       final readCred = await storage.read();
       expect(readCred, isNotNull);
       expect(readCred!.credentialId, 'cred-pak-asep');
-      expect(readCred.refreshToken, 'rf-pak-asep-secret');
+      expect(readCred.sessionToken, 'rf-pak-asep-secret');
     });
 
     test(
@@ -468,7 +437,7 @@ void main() {
         store.data[legacyKey] = 'old_token';
         store.data[testKey] = jsonEncode({
           'credentialId': 'cred-1',
-          'refreshToken': 'tok-1',
+          'sessionToken': 'tok-1',
         });
 
         final cred = await storage.read();
@@ -491,7 +460,7 @@ void main() {
         store.throwOnWrite = true;
         expect(
           () => storage.write(
-            StoredCredential(credentialId: 'cred-1', refreshToken: 'tok-1'),
+            StoredCredential(credentialId: 'cred-1', sessionToken: 'tok-1'),
           ),
           throwsA(isA<StorageException>()),
         );
@@ -504,7 +473,7 @@ void main() {
         await storage.write(
           StoredCredential(
             credentialId: 'cred-owner-A',
-            refreshToken: 'token-A',
+            sessionToken: 'token-A',
           ),
         );
         expect(store.data[testKey], isNotNull);
@@ -521,7 +490,7 @@ void main() {
         await storage.write(
           StoredCredential(
             credentialId: 'cred-owner-B',
-            refreshToken: 'token-B',
+            sessionToken: 'token-B',
           ),
         );
         expect(store.data[testKey], isNotNull);
@@ -539,7 +508,7 @@ void main() {
 
     test('forceClearForRecovery unconditionally deletes key', () async {
       await storage.write(
-        StoredCredential(credentialId: 'cred-any', refreshToken: 'token-any'),
+        StoredCredential(credentialId: 'cred-any', sessionToken: 'token-any'),
       );
       expect(store.data[testKey], isNotNull);
 
@@ -560,61 +529,55 @@ void main() {
       },
     );
 
+    test('migrateLegacyStorage deletes all default legacy keys when configured', () async {
+      final multiStore = FakeSecureKeyValStore();
+      multiStore.data['v1_kok_refresh_token'] = 'v1_token';
+      multiStore.data['kok.auth.v2.credential'] = 'v2_token';
+      multiStore.data['kok.auth.v2.development.credential'] = 'v2_dev_token';
+
+      final defaultStorage = SecureAuthTokenStorage(
+        store: multiStore,
+        key: 'kok.auth.v3.credential',
+      );
+
+      await defaultStorage.migrateLegacyStorage();
+
+      expect(multiStore.data['v1_kok_refresh_token'], isNull);
+      expect(multiStore.data['kok.auth.v2.credential'], isNull);
+      expect(multiStore.data['kok.auth.v2.development.credential'], isNull);
+      expect(multiStore.data['kok.auth.v3.credential'], isNull);
+    });
+
     test('migrateLegacyStorage does nothing if legacy key absent', () async {
       await storage.migrateLegacyStorage();
       expect(store.data[legacyKey], isNull);
     });
   });
 
-  group('RememberedSkStore', () {
-    const rememberedSkKey = 'kok.auth.v2.test.remembered_sk';
+  group('RememberedUsernameStore', () {
+    const rememberedUsernameKey = 'kok.auth.v2.test.remembered_username';
 
-    test('menyimpan dan membaca nomor SK dari SharedPreferences', () async {
+    test('menyimpan dan membaca username dari SharedPreferences', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final store = RememberedSkStore(prefs: prefs, key: rememberedSkKey);
+      final store = RememberedUsernameStore(
+        prefs: prefs,
+        key: rememberedUsernameKey,
+      );
 
-      expect(await store.readSk(), isNull);
-      await store.saveSk('DEMO-001');
-      expect(await store.readSk(), 'DEMO-001');
+      expect(await store.readUsername(), isNull);
+      await store.saveUsername('DEMO-001');
+      expect(await store.readUsername(), 'DEMO-001');
       await store.clear();
-      expect(await store.readSk(), isNull);
+      expect(await store.readUsername(), isNull);
     });
-
-    test(
-      'saveSk throws MetadataStorageException when setString fails',
-      () async {
-        final store = RememberedSkStore(
-          prefs: FailingSharedPreferences(failSetString: true),
-          key: rememberedSkKey,
-        );
-        expect(
-          () => store.saveSk('DEMO-001'),
-          throwsA(isA<MetadataStorageException>()),
-        );
-      },
-    );
-
-    test(
-      'clear throws MetadataStorageException when remove fails and key still exists',
-      () async {
-        final store = RememberedSkStore(
-          prefs: FailingSharedPreferences(
-            failRemove: true,
-            containsKeyResult: true,
-          ),
-          key: rememberedSkKey,
-        );
-        expect(() => store.clear(), throwsA(isA<MetadataStorageException>()));
-      },
-    );
   });
 
   group('UserPrincipal & AuthState', () {
     test('UserPrincipal memeriksa permissions dengan benar', () {
       final user = UserPrincipal(
         id: 'usr-1',
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         fullName: 'Pak Asep',
         roleTitle: 'Koordinator',
         scope: const AccessScope(

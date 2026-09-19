@@ -46,14 +46,14 @@ final class RemoteRevocationResult {
 class AuthResult {
   final UserPrincipal? user;
   final String? accessToken;
-  final String? refreshToken;
+  final String? sessionToken;
   final RemoteSessionHandle? sessionHandle;
   final AuthFailure? failure;
 
   const AuthResult.success({
     required UserPrincipal this.user,
     this.accessToken,
-    this.refreshToken,
+    this.sessionToken,
     RemoteSessionHandle? sessionHandle,
     RemoteSessionHandle? remoteHandle,
   }) : sessionHandle = sessionHandle ?? remoteHandle,
@@ -62,7 +62,7 @@ class AuthResult {
   const AuthResult.failed(AuthFailure this.failure)
     : user = null,
       accessToken = null,
-      refreshToken = null,
+      sessionToken = null,
       sessionHandle = null;
 
   bool get isSuccess => user != null;
@@ -73,14 +73,12 @@ class AuthResult {
 
 abstract interface class AuthRepository {
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   });
 
-  Future<AuthResult> restoreSession(String refreshToken);
-
-  Future<AuthResult> refreshToken(String refreshToken);
+  Future<AuthResult> restoreSession(String sessionToken);
 
   Future<RemoteRevocationResult> revokeSession(RemoteSessionHandle session);
 }

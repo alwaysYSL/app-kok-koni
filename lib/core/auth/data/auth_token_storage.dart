@@ -11,36 +11,36 @@ final class CorruptCredentialException extends StorageException {
 }
 
 final class StoredCredential {
-  StoredCredential({required this.credentialId, required this.refreshToken}) {
+  StoredCredential({required this.credentialId, required this.sessionToken}) {
     if (credentialId.trim().isEmpty || credentialId.length > 128) {
       throw const CorruptCredentialException('credentialId tidak valid');
     }
-    if (refreshToken.trim().isEmpty || refreshToken.length > 8192) {
-      throw const CorruptCredentialException('refreshToken tidak valid');
+    if (sessionToken.trim().isEmpty || sessionToken.length > 8192) {
+      throw const CorruptCredentialException('sessionToken tidak valid');
     }
   }
 
   final String credentialId;
-  final String refreshToken;
+  final String sessionToken;
 
   factory StoredCredential.fromJson(dynamic value) {
     if (value is! Map<String, dynamic>) {
       throw const CorruptCredentialException('Credential harus berupa object');
     }
     final id = value['credentialId'];
-    final token = value['refreshToken'];
+    final token = value['sessionToken'];
     if (id is! String) {
       throw const CorruptCredentialException('credentialId tidak valid');
     }
     if (token is! String) {
-      throw const CorruptCredentialException('refreshToken tidak valid');
+      throw const CorruptCredentialException('sessionToken tidak valid');
     }
-    return StoredCredential(credentialId: id, refreshToken: token);
+    return StoredCredential(credentialId: id, sessionToken: token);
   }
 
   Map<String, dynamic> toJson() => {
     'credentialId': credentialId,
-    'refreshToken': refreshToken,
+    'sessionToken': sessionToken,
   };
 
   @override
@@ -52,10 +52,10 @@ final class StoredCredential {
       other is StoredCredential &&
           runtimeType == other.runtimeType &&
           credentialId == other.credentialId &&
-          refreshToken == other.refreshToken;
+          sessionToken == other.sessionToken;
 
   @override
-  int get hashCode => Object.hash(credentialId, refreshToken);
+  int get hashCode => Object.hash(credentialId, sessionToken);
 }
 
 abstract interface class AuthTokenStorage {
@@ -70,14 +70,21 @@ class SecureAuthTokenStorage implements AuthTokenStorage {
   SecureAuthTokenStorage({
     required SecureKeyValStore store,
     required String key,
-    String legacyKey = 'v1_kok_refresh_token',
+    List<String> legacyKeys = const [
+      'v1_kok_refresh_token',
+      'kok.auth.v2.credential',
+      'kok.auth.v2.development.credential',
+      'kok.auth.v2.staging.credential',
+      'kok.auth.v2.production.credential',
+    ],
+    String? legacyKey,
   }) : _store = store,
        _key = key,
-       _legacyKey = legacyKey;
+       _legacyKeys = legacyKey != null ? [legacyKey] : legacyKeys;
 
   final SecureKeyValStore _store;
   final String _key;
-  final String _legacyKey;
+  final List<String> _legacyKeys;
 
   @override
   Future<StoredCredential?> read() async {
@@ -118,8 +125,10 @@ class SecureAuthTokenStorage implements AuthTokenStorage {
 
   @override
   Future<void> migrateLegacyStorage() async {
-    if (await _store.containsKey(key: _legacyKey)) {
-      await _store.delete(key: _legacyKey);
+    for (final legacyKey in _legacyKeys) {
+      if (await _store.containsKey(key: legacyKey)) {
+        await _store.delete(key: legacyKey);
+      }
     }
   }
 }
