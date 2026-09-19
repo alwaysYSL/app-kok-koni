@@ -57,17 +57,17 @@ final class AppComposition {
 
     final tokenStorage = SecureAuthTokenStorage(
       store: secureStore,
-      key: 'kok.auth.v2.$envName.credential',
+      key: 'kok.auth.v3.$envName.credential',
     );
 
     final metadataStore = SharedPrefsSessionMetadataStore(
       prefs: preferences,
-      key: 'kok.auth.v2.$envName.metadata',
+      key: 'kok.auth.v3.$envName.metadata',
     );
 
     final usernameStore = RememberedUsernameStore(
       prefs: preferences,
-      key: 'kok.auth.v2.$envName.remembered_username',
+      key: 'kok.auth.v3.$envName.remembered_username',
     );
 
     final ApiClient? apiClient;

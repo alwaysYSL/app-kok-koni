@@ -19,7 +19,7 @@ void main() {
 
   final userWithExport = UserPrincipal(
     id: 'usr_garut_kota',
-    skNumber: 'DEMO-001',
+    username: 'DEMO-001',
     fullName: 'Pak Asep',
     roleTitle: 'Koordinator Kecamatan',
     scope: garutScope,
@@ -28,7 +28,7 @@ void main() {
 
   final userWithoutExport = UserPrincipal(
     id: 'usr_tarogong_kidul',
-    skNumber: 'DEMO-002',
+    username: 'DEMO-002',
     fullName: 'Pak Cecep',
     roleTitle: 'Koordinator Kecamatan',
     scope: const AccessScope(

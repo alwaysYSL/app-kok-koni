@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/app.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
@@ -49,12 +49,12 @@ class _FakeTokenStorage implements AuthTokenStorage {
 
   @override
   Future<StoredCredential?> read() async => _token != null
-      ? StoredCredential(credentialId: 'legacy', refreshToken: _token!)
+      ? StoredCredential(credentialId: 'legacy', sessionToken: _token!)
       : null;
 
   @override
   Future<void> write(StoredCredential credential) async =>
-      _token = credential.refreshToken;
+      _token = credential.sessionToken;
 
   @override
   Future<bool> clearIfOwnedBy(String credentialId) async {
@@ -111,10 +111,13 @@ Future<ProviderContainer> start(
   );
   if (initialToken != null) {
     await tokenStorage.write(
-      StoredCredential(credentialId: 'legacy', refreshToken: initialToken),
+      StoredCredential(credentialId: 'legacy', sessionToken: initialToken),
     );
   }
-  final skStore = RememberedSkStore(prefs: prefs, key: 'test_remembered_sk');
+  final usernameStore = RememberedUsernameStore(
+    prefs: prefs,
+    key: 'test_remembered_username',
+  );
   final authRepo = DemoAuthRepository(simulateLatency: false);
   final composition = AppComposition.fromProfile(
     const DeploymentProfile(
@@ -131,7 +134,7 @@ Future<ProviderContainer> start(
       preferencesProvider.overrideWithValue(prefs),
       authTokenStorageProvider.overrideWithValue(tokenStorage),
       sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-      rememberedSkStoreProvider.overrideWithValue(skStore),
+      rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
       authRepositoryProvider.overrideWithValue(authRepo),
       ...overrides,
     ],
@@ -152,10 +155,10 @@ Future<void> signInTestUser(
   await container
       .read(authControllerProvider.notifier)
       .login(
-        skNumber: sk,
+        username: sk,
         password: password,
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
 }
 

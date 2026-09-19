@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
@@ -17,16 +17,16 @@ import 'auth_token_storage_test.dart';
 
 void main() {
   test(
-    'Regression Audit: Remembered SK tidak memulihkan sesi autentikasi',
+    'Regression Audit: Remembered Username tidak memulihkan sesi autentikasi',
     () async {
       SharedPreferences.setMockInitialValues({
-        'test_remembered_sk': 'DEMO-001',
+        'test_remembered_username': 'DEMO-001',
       });
       final prefs = await SharedPreferences.getInstance();
       final tokenStorage = InMemoryAuthTokenStorage();
-      final skStore = RememberedSkStore(
+      final usernameStore = RememberedUsernameStore(
         prefs: prefs,
-        key: 'test_remembered_sk',
+        key: 'test_remembered_username',
       );
       final authRepo = DemoAuthRepository(simulateLatency: false);
       final composition = AppComposition.fromProfile(
@@ -44,13 +44,13 @@ void main() {
           appCompositionProvider.overrideWithValue(composition),
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepo),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
 
       await container.read(authControllerProvider.notifier).bootstrap();
-      expect(await skStore.readSk(), 'DEMO-001');
+      expect(await usernameStore.readUsername(), 'DEMO-001');
       expect(container.read(authControllerProvider), isA<AuthSignedOut>());
       expect(container.read(dataRequestContextProvider), isNull);
     },
@@ -62,9 +62,9 @@ void main() {
       final tokenStorage = InMemoryAuthTokenStorage();
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final skStore = RememberedSkStore(
+      final usernameStore = RememberedUsernameStore(
         prefs: prefs,
-        key: 'test_remembered_sk',
+        key: 'test_remembered_username',
       );
       final authRepo = DemoAuthRepository(simulateLatency: false);
       final composition = AppComposition.fromProfile(
@@ -82,7 +82,7 @@ void main() {
           appCompositionProvider.overrideWithValue(composition),
           authTokenStorageProvider.overrideWithValue(tokenStorage),
           authRepositoryProvider.overrideWithValue(authRepo),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
       );
       addTearDown(container.dispose);
@@ -92,10 +92,10 @@ void main() {
 
       // Login Pak Asep (Garut Kota)
       await controller.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'kokgarut123',
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
 
       final scopeAsep = container.read(dataRequestContextProvider);
@@ -110,10 +110,10 @@ void main() {
 
       // Login Pak Cecep (Tarogong Kidul)
       await controller.login(
-        skNumber: 'DEMO-002',
+        username: 'DEMO-002',
         password: 'koktarogong123',
         staySignedIn: false,
-        rememberSk: false,
+        rememberUsername: false,
       );
 
       final scopeCecep = container.read(dataRequestContextProvider);
@@ -237,7 +237,7 @@ void main() {
         final tokenStorage = InMemoryAuthTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
+        final usernameStore = RememberedUsernameStore(prefs: prefs, key: 'test_username');
         final authRepo = DemoAuthRepository(simulateLatency: false);
         final composition = AppComposition.fromProfile(
           const DeploymentProfile(
@@ -254,7 +254,7 @@ void main() {
             appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
         );
         addTearDown(container.dispose);
@@ -264,10 +264,10 @@ void main() {
         final controller = container.read(authControllerProvider.notifier);
         await controller.bootstrap();
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         final context = container.read(dataRequestContextProvider);
@@ -327,7 +327,7 @@ void main() {
         final tokenStorage = InMemoryAuthTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(prefs: prefs, key: 'test_sk');
+        final usernameStore = RememberedUsernameStore(prefs: prefs, key: 'test_username');
         final authRepo = DemoAuthRepository(simulateLatency: false);
         final slowRepo = _SlowIgnoringCancellationRepository();
         final composition = AppComposition.fromProfile(
@@ -345,7 +345,7 @@ void main() {
             appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             repositoryProvider.overrideWithValue(slowRepo),
           ],
         );
@@ -356,10 +356,10 @@ void main() {
 
         // 1. Login User A (Garut Kota)
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // 2. Start snapshot fetch for User A with active listener
@@ -371,10 +371,10 @@ void main() {
         // 3. User switches to User B (Tarogong Kidul) while User A request is in-flight
         await controller.logout();
         await controller.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // 4. Slow transport now completes User A's data late (transport ignored cancellation)
@@ -452,9 +452,9 @@ void main() {
         final tokenStorage = InMemoryAuthTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
@@ -480,7 +480,7 @@ void main() {
             appCompositionProvider.overrideWithValue(composition),
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             authRepositoryProvider.overrideWithValue(authRepo),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             repositoryProvider.overrideWithValue(mismatchRepo),
           ],
         );
@@ -491,10 +491,10 @@ void main() {
 
         // Login Pak Asep (Garut Kota)
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(

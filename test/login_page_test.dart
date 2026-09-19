@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/secure_key_val_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
@@ -62,9 +62,12 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({'remembered_sk': 'DEMO-001'});
+    SharedPreferences.setMockInitialValues({'remembered_username': 'DEMO-001'});
     final prefs = await SharedPreferences.getInstance();
-    final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
+    final usernameStore = RememberedUsernameStore(
+      prefs: prefs,
+      key: 'remembered_username',
+    );
     final repo = DemoAuthRepository(simulateLatency: false);
     final composition = _demoComposition(prefs);
 
@@ -73,13 +76,13 @@ void main() {
         overrides: [
           appCompositionProvider.overrideWithValue(composition),
           authRepositoryProvider.overrideWithValue(repo),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
         child: const MaterialApp(home: LoginPage()),
       ),
     );
 
-    expect(find.text('Ingat nomor SK di perangkat ini'), findsOneWidget);
+    expect(find.text('Ingat username'), findsOneWidget);
     expect(find.text('Tetap Masuk'), findsOneWidget);
     expect(find.text('Pilih Akun Demo'), findsOneWidget);
 
@@ -135,7 +138,10 @@ void main() {
 
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
-    final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
+    final usernameStore = RememberedUsernameStore(
+      prefs: prefs,
+      key: 'remembered_username',
+    );
     final repo = DemoAuthRepository(simulateLatency: false);
     final composition = _demoComposition(prefs);
 
@@ -144,7 +150,7 @@ void main() {
         overrides: [
           appCompositionProvider.overrideWithValue(composition),
           authRepositoryProvider.overrideWithValue(repo),
-          rememberedSkStoreProvider.overrideWithValue(skStore),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
         ],
         child: const MaterialApp(home: LoginPage()),
       ),
@@ -170,7 +176,10 @@ void main() {
 
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
-      final skStore = RememberedSkStore(prefs: prefs, key: 'remembered_sk');
+      final usernameStore = RememberedUsernameStore(
+        prefs: prefs,
+        key: 'remembered_username',
+      );
       final composition = _demoComposition(prefs);
 
       final controller = _MockLoginStateAuthController(
@@ -182,7 +191,7 @@ void main() {
           overrides: [
             appCompositionProvider.overrideWithValue(composition),
             authControllerProvider.overrideWith(() => controller),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
           ],
           child: const MaterialApp(home: LoginPage()),
         ),
@@ -194,10 +203,10 @@ void main() {
       expect(find.text('Coba Bersihkan Lagi'), findsOneWidget);
 
       // Verify input fields and submit button disabled
-      final skField = tester.widget<TextFormField>(
-        find.widgetWithText(TextFormField, 'Masukkan nomor SK'),
+      final usernameField = tester.widget<TextFormField>(
+        find.widgetWithText(TextFormField, 'Masukkan username'),
       );
-      expect(skField.enabled, isFalse);
+      expect(usernameField.enabled, isFalse);
 
       final pwdField = tester.widget<TextFormField>(
         find.widgetWithText(TextFormField, 'Masukkan kata sandi'),
