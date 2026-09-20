@@ -10,16 +10,12 @@ import '../athlete_service.dart';
 
 final class DemoAthleteService implements AthleteService {
   DemoAthleteService({
-    required DemoKokRepository demoRepo,
-    required AccessScope Function() currentScopeProvider,
-  }) : _demoRepo = demoRepo,
-       _currentScopeProvider = currentScopeProvider;
+    required this.demoRepo,
+    required this.currentScopeProvider,
+  });
 
-  final DemoKokRepository _demoRepo;
-  final AccessScope Function() _currentScopeProvider;
-
-  DemoKokRepository get demoRepo => _demoRepo;
-  AccessScope Function() get currentScopeProvider => _currentScopeProvider;
+  final DemoKokRepository demoRepo;
+  final AccessScope Function() currentScopeProvider;
 
   @override
   Future<PaginatedResult<Athlete>> fetchAthleteList({
@@ -34,8 +30,8 @@ final class DemoAthleteService implements AthleteService {
     RequestCancellation? cancellation,
   }) async {
     cancellation?.throwIfCancelled();
-    final scope = _currentScopeProvider();
-    final snapshot = await _demoRepo.fetchScope(
+    final scope = currentScopeProvider();
+    final snapshot = await demoRepo.fetchScope(
       scope,
       cancellation: cancellation,
     );
@@ -119,8 +115,8 @@ final class DemoAthleteService implements AthleteService {
     RequestCancellation? cancellation,
   }) async {
     cancellation?.throwIfCancelled();
-    final scope = _currentScopeProvider();
-    final snapshot = await _demoRepo.fetchScope(
+    final scope = currentScopeProvider();
+    final snapshot = await demoRepo.fetchScope(
       scope,
       cancellation: cancellation,
     );
@@ -137,7 +133,7 @@ final class DemoAthleteService implements AthleteService {
 
     // Try fetchPersonDetail from repo with id.toString()
     try {
-      final person = await _demoRepo.fetchPersonDetail(
+      final person = await demoRepo.fetchPersonDetail(
         id.toString(),
         cancellation: cancellation,
       );
@@ -168,7 +164,7 @@ final class DemoAthleteService implements AthleteService {
     for (final s in scopes) {
       if (s.id == scope.id) continue;
       try {
-        final snap = await _demoRepo.fetchScope(s, cancellation: cancellation);
+        final snap = await demoRepo.fetchScope(s, cancellation: cancellation);
         final snapSports = snap.clubs.map((c) => c.sport).toSet().toList()
           ..sort();
         for (final person in snap.people) {
