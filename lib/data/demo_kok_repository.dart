@@ -304,7 +304,8 @@ class DemoKokRepository implements KokRepository {
     }
 
     return KokSnapshot(
-      scope: scope ??
+      scope:
+          scope ??
           const AccessScope(
             type: AccessScopeType.district,
             id: 'garut_kota',
@@ -461,7 +462,8 @@ class DemoKokRepository implements KokRepository {
     }
 
     return KokSnapshot(
-      scope: scope ??
+      scope:
+          scope ??
           const AccessScope(
             type: AccessScopeType.district,
             id: 'tarogong_kidul',
@@ -567,7 +569,8 @@ class DemoKokRepository implements KokRepository {
     }
 
     return KokSnapshot(
-      scope: scope ??
+      scope:
+          scope ??
           const AccessScope(
             type: AccessScopeType.district,
             id: 'balubur_limbangan',
@@ -609,7 +612,8 @@ class DemoKokRepository implements KokRepository {
     final tk = _buildTarogongKidulSnapshot();
 
     return KokSnapshot(
-      scope: scope ??
+      scope:
+          scope ??
           const AccessScope(
             type: AccessScopeType.county,
             id: 'koni_kab',
