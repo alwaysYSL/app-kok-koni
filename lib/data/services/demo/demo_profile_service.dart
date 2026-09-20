@@ -41,11 +41,7 @@ final class DemoProfileService implements ProfileService {
         status: 1,
         statusLabel: 'Aktif',
       ),
-      kontingen: SicaborKontingen(
-        id: 1,
-        code: 'KGPK-0001',
-        name: scope.name,
-      ),
+      kontingen: SicaborKontingen(id: 1, code: 'KGPK-0001', name: scope.name),
       totalCabor: sports.length,
       totalCaborFromClub: sports.length,
       totalCaborFromAthlete: sports.length,

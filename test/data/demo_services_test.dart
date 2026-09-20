@@ -118,54 +118,57 @@ void main() {
         expect(service, isA<CaborService>());
       });
 
-      test('adapts snapshot into PaginatedResult<Cabor> with default pagination', () async {
-        final service = DemoCaborService(
-          demoRepo: demoRepo,
-          currentScopeProvider: () => scope,
-        );
+      test(
+        'adapts snapshot into PaginatedResult<Cabor> with default pagination',
+        () async {
+          final service = DemoCaborService(
+            demoRepo: demoRepo,
+            currentScopeProvider: () => scope,
+          );
 
-        final result = await service.fetchCaborList();
+          final result = await service.fetchCaborList();
 
-        expect(result, isA<PaginatedResult<Cabor>>());
-        expect(result.total, equals(5));
-        expect(result.limit, equals(25));
-        expect(result.offset, equals(0));
-        expect(result.items.length, equals(5));
-        expect(result.hasMore, isFalse);
+          expect(result, isA<PaginatedResult<Cabor>>());
+          expect(result.total, equals(5));
+          expect(result.limit, equals(25));
+          expect(result.offset, equals(0));
+          expect(result.items.length, equals(5));
+          expect(result.hasMore, isFalse);
 
-        // Sports in Garut Kota alphabetically: Bola Voli, Bulu Tangkis, Pencak Silat, Renang, Sepak Bola
-        expect(result.items[0].id, equals(1));
-        expect(result.items[0].code, equals('DEMO-CB-001'));
-        expect(result.items[0].name, equals('BOLA VOLI'));
-        expect(result.items[0].status, equals(1));
-        expect(result.items[0].statusLabel, equals('Aktif'));
-        expect(result.items[0].totalClub, equals(1));
-        expect(result.items[0].totalAthlete, equals(18));
+          // Sports in Garut Kota alphabetically: Bola Voli, Bulu Tangkis, Pencak Silat, Renang, Sepak Bola
+          expect(result.items[0].id, equals(1));
+          expect(result.items[0].code, equals('DEMO-CB-001'));
+          expect(result.items[0].name, equals('BOLA VOLI'));
+          expect(result.items[0].status, equals(1));
+          expect(result.items[0].statusLabel, equals('Aktif'));
+          expect(result.items[0].totalClub, equals(1));
+          expect(result.items[0].totalAthlete, equals(18));
 
-        expect(result.items[1].id, equals(2));
-        expect(result.items[1].code, equals('DEMO-CB-002'));
-        expect(result.items[1].name, equals('BULU TANGKIS'));
-        expect(result.items[1].totalClub, equals(1));
-        expect(result.items[1].totalAthlete, equals(21));
+          expect(result.items[1].id, equals(2));
+          expect(result.items[1].code, equals('DEMO-CB-002'));
+          expect(result.items[1].name, equals('BULU TANGKIS'));
+          expect(result.items[1].totalClub, equals(1));
+          expect(result.items[1].totalAthlete, equals(21));
 
-        expect(result.items[2].id, equals(3));
-        expect(result.items[2].code, equals('DEMO-CB-003'));
-        expect(result.items[2].name, equals('PENCAK SILAT'));
-        expect(result.items[2].totalClub, equals(1));
-        expect(result.items[2].totalAthlete, equals(44));
+          expect(result.items[2].id, equals(3));
+          expect(result.items[2].code, equals('DEMO-CB-003'));
+          expect(result.items[2].name, equals('PENCAK SILAT'));
+          expect(result.items[2].totalClub, equals(1));
+          expect(result.items[2].totalAthlete, equals(44));
 
-        expect(result.items[3].id, equals(4));
-        expect(result.items[3].code, equals('DEMO-CB-004'));
-        expect(result.items[3].name, equals('RENANG'));
-        expect(result.items[3].totalClub, equals(1));
-        expect(result.items[3].totalAthlete, equals(8));
+          expect(result.items[3].id, equals(4));
+          expect(result.items[3].code, equals('DEMO-CB-004'));
+          expect(result.items[3].name, equals('RENANG'));
+          expect(result.items[3].totalClub, equals(1));
+          expect(result.items[3].totalAthlete, equals(8));
 
-        expect(result.items[4].id, equals(5));
-        expect(result.items[4].code, equals('DEMO-CB-005'));
-        expect(result.items[4].name, equals('SEPAK BOLA'));
-        expect(result.items[4].totalClub, equals(1));
-        expect(result.items[4].totalAthlete, equals(34));
-      });
+          expect(result.items[4].id, equals(5));
+          expect(result.items[4].code, equals('DEMO-CB-005'));
+          expect(result.items[4].name, equals('SEPAK BOLA'));
+          expect(result.items[4].totalClub, equals(1));
+          expect(result.items[4].totalAthlete, equals(34));
+        },
+      );
 
       test('supports pagination with limit and offset', () async {
         final service = DemoCaborService(

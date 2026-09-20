@@ -31,67 +31,79 @@ void main() {
   });
 
   group('RemoteProfileService', () {
-    test('fetchProfileSummary calls GET /profile and returns mapped ProfileSummary', () async {
-      RequestOptions? capturedOptions;
+    test(
+      'fetchProfileSummary calls GET /profile and returns mapped ProfileSummary',
+      () async {
+        RequestOptions? capturedOptions;
 
-      final dio = Dio()
-        ..httpClientAdapter = _FakeAdapter((options) async {
-          capturedOptions = options;
-          return ResponseBody.fromString(
-            jsonEncode(_sampleProfileJson),
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['application/json'],
-            },
-          );
-        });
+        final dio = Dio()
+          ..httpClientAdapter = _FakeAdapter((options) async {
+            capturedOptions = options;
+            return ResponseBody.fromString(
+              jsonEncode(_sampleProfileJson),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
 
-      final apiClient = ApiClient(
-        profile: deploymentProfile,
-        tokens: tokens,
-        dio: dio,
-      );
+        final apiClient = ApiClient(
+          profile: deploymentProfile,
+          tokens: tokens,
+          dio: dio,
+        );
 
-      final service = RemoteProfileService(client: apiClient);
-      expect(service, isA<ProfileService>());
-      final result = await service.fetchProfileSummary();
+        final service = RemoteProfileService(client: apiClient);
+        expect(service, isA<ProfileService>());
+        final result = await service.fetchProfileSummary();
 
-      expect(capturedOptions?.path, '/profile');
-      expect(capturedOptions?.method, 'GET');
-      expect(capturedOptions?.headers['Authorization'], 'Bearer mock-token-abc');
+        expect(capturedOptions?.path, '/profile');
+        expect(capturedOptions?.method, 'GET');
+        expect(
+          capturedOptions?.headers['Authorization'],
+          'Bearer mock-token-abc',
+        );
 
-      expect(result, isA<ProfileSummary>());
-      expect(result.scope.subdistrictId, 1);
-      expect(result.scope.subdistrictName, 'Tarogong Kidul');
-      expect(result.member.username, 'admin_tarogong');
-      expect(result.member.name, 'Admin Tarogong Kidul');
-      expect(result.kontingen?.name, 'Kecamatan Tarogong Kidul');
-      expect(result.totalCabor, 12);
-      expect(result.totalCaborFromClub, 10);
-      expect(result.totalCaborFromAthlete, 2);
-      expect(result.totalClub, 24);
-      expect(result.totalAthlete, 150);
-      expect(result.totalAthleteWithoutClub, 15);
-      expect(result.dataNotes, ['Catatan sinkronisasi data']);
-    });
+        expect(result, isA<ProfileSummary>());
+        expect(result.scope.subdistrictId, 1);
+        expect(result.scope.subdistrictName, 'Tarogong Kidul');
+        expect(result.member.username, 'admin_tarogong');
+        expect(result.member.name, 'Admin Tarogong Kidul');
+        expect(result.kontingen?.name, 'Kecamatan Tarogong Kidul');
+        expect(result.totalCabor, 12);
+        expect(result.totalCaborFromClub, 10);
+        expect(result.totalCaborFromAthlete, 2);
+        expect(result.totalClub, 24);
+        expect(result.totalAthlete, 150);
+        expect(result.totalAthleteWithoutClub, 15);
+        expect(result.dataNotes, ['Catatan sinkronisasi data']);
+      },
+    );
 
-    test('fetchProfileSummary forwards cancellation token and handles cancellation', () async {
-      final cancellationController = RequestCancellationController()..cancel('cancelled by user');
+    test(
+      'fetchProfileSummary forwards cancellation token and handles cancellation',
+      () async {
+        final cancellationController = RequestCancellationController()
+          ..cancel('cancelled by user');
 
-      final dio = Dio();
-      final apiClient = ApiClient(
-        profile: deploymentProfile,
-        tokens: tokens,
-        dio: dio,
-      );
+        final dio = Dio();
+        final apiClient = ApiClient(
+          profile: deploymentProfile,
+          tokens: tokens,
+          dio: dio,
+        );
 
-      final service = RemoteProfileService(client: apiClient);
+        final service = RemoteProfileService(client: apiClient);
 
-      expect(
-        () => service.fetchProfileSummary(cancellation: cancellationController.token),
-        throwsA(isA<RequestCancelledException>()),
-      );
-    });
+        expect(
+          () => service.fetchProfileSummary(
+            cancellation: cancellationController.token,
+          ),
+          throwsA(isA<RequestCancelledException>()),
+        );
+      },
+    );
 
     test('fetchProfileSummary propagates ApiClient exceptions', () async {
       final dio = Dio()
@@ -121,68 +133,71 @@ void main() {
   });
 
   group('RemoteCaborService', () {
-    test('fetchCaborList calls GET /cabor with default parameters and returns PaginatedResult<Cabor>', () async {
-      RequestOptions? capturedOptions;
+    test(
+      'fetchCaborList calls GET /cabor with default parameters and returns PaginatedResult<Cabor>',
+      () async {
+        RequestOptions? capturedOptions;
 
-      final dio = Dio()
-        ..httpClientAdapter = _FakeAdapter((options) async {
-          capturedOptions = options;
-          return ResponseBody.fromString(
-            jsonEncode(_sampleCaborJson),
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['application/json'],
-            },
-          );
+        final dio = Dio()
+          ..httpClientAdapter = _FakeAdapter((options) async {
+            capturedOptions = options;
+            return ResponseBody.fromString(
+              jsonEncode(_sampleCaborJson),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final apiClient = ApiClient(
+          profile: deploymentProfile,
+          tokens: tokens,
+          dio: dio,
+        );
+
+        final service = RemoteCaborService(client: apiClient);
+        expect(service, isA<CaborService>());
+        final result = await service.fetchCaborList();
+
+        expect(capturedOptions?.path, '/cabor');
+        expect(capturedOptions?.method, 'GET');
+        expect(capturedOptions?.queryParameters, {
+          'limit': 25,
+          'offset': 0,
+          'source': 'all',
+          'sort': 'name',
         });
 
-      final apiClient = ApiClient(
-        profile: deploymentProfile,
-        tokens: tokens,
-        dio: dio,
-      );
+        expect(result, isA<PaginatedResult<Cabor>>());
+        expect(result.limit, 25);
+        expect(result.offset, 0);
+        expect(result.total, 2);
+        expect(result.items.length, 2);
 
-      final service = RemoteCaborService(client: apiClient);
-      expect(service, isA<CaborService>());
-      final result = await service.fetchCaborList();
+        final item1 = result.items[0];
+        expect(item1.id, 1);
+        expect(item1.code, 'PSSI');
+        expect(item1.name, 'Sepak Bola');
+        expect(item1.groupName, 'Permainan');
+        expect(item1.logoUrl, 'https://example.com/logo.png');
+        expect(item1.status, 1);
+        expect(item1.statusLabel, 'Aktif');
+        expect(item1.totalClub, 5);
+        expect(item1.totalAthlete, 40);
 
-      expect(capturedOptions?.path, '/cabor');
-      expect(capturedOptions?.method, 'GET');
-      expect(capturedOptions?.queryParameters, {
-        'limit': 25,
-        'offset': 0,
-        'source': 'all',
-        'sort': 'name',
-      });
-
-      expect(result, isA<PaginatedResult<Cabor>>());
-      expect(result.limit, 25);
-      expect(result.offset, 0);
-      expect(result.total, 2);
-      expect(result.items.length, 2);
-
-      final item1 = result.items[0];
-      expect(item1.id, 1);
-      expect(item1.code, 'PSSI');
-      expect(item1.name, 'Sepak Bola');
-      expect(item1.groupName, 'Permainan');
-      expect(item1.logoUrl, 'https://example.com/logo.png');
-      expect(item1.status, 1);
-      expect(item1.statusLabel, 'Aktif');
-      expect(item1.totalClub, 5);
-      expect(item1.totalAthlete, 40);
-
-      final item2 = result.items[1];
-      expect(item2.id, 2);
-      expect(item2.code, 'PBSI');
-      expect(item2.name, 'Bulutangkis');
-      expect(item2.groupName, 'Raket');
-      expect(item2.logoUrl, isNull);
-      expect(item2.status, 1);
-      expect(item2.statusLabel, 'Aktif');
-      expect(item2.totalClub, 3);
-      expect(item2.totalAthlete, 20);
-    });
+        final item2 = result.items[1];
+        expect(item2.id, 2);
+        expect(item2.code, 'PBSI');
+        expect(item2.name, 'Bulutangkis');
+        expect(item2.groupName, 'Raket');
+        expect(item2.logoUrl, isNull);
+        expect(item2.status, 1);
+        expect(item2.statusLabel, 'Aktif');
+        expect(item2.totalClub, 3);
+        expect(item2.totalAthlete, 20);
+      },
+    );
 
     test('fetchCaborList uses custom query parameters', () async {
       RequestOptions? capturedOptions;
@@ -221,23 +236,29 @@ void main() {
       });
     });
 
-    test('fetchCaborList forwards cancellation token and handles cancellation', () async {
-      final cancellationController = RequestCancellationController()..cancel('cabor cancel');
+    test(
+      'fetchCaborList forwards cancellation token and handles cancellation',
+      () async {
+        final cancellationController = RequestCancellationController()
+          ..cancel('cabor cancel');
 
-      final dio = Dio();
-      final apiClient = ApiClient(
-        profile: deploymentProfile,
-        tokens: tokens,
-        dio: dio,
-      );
+        final dio = Dio();
+        final apiClient = ApiClient(
+          profile: deploymentProfile,
+          tokens: tokens,
+          dio: dio,
+        );
 
-      final service = RemoteCaborService(client: apiClient);
+        final service = RemoteCaborService(client: apiClient);
 
-      expect(
-        () => service.fetchCaborList(cancellation: cancellationController.token),
-        throwsA(isA<RequestCancelledException>()),
-      );
-    });
+        expect(
+          () => service.fetchCaborList(
+            cancellation: cancellationController.token,
+          ),
+          throwsA(isA<RequestCancelledException>()),
+        );
+      },
+    );
 
     test('fetchCaborList propagates ApiClient exceptions', () async {
       final dio = Dio()
@@ -277,8 +298,7 @@ final class _FakeAdapter implements HttpClientAdapter {
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
-  ) =>
-      handler(options);
+  ) => handler(options);
 
   @override
   void close({bool force = false}) {}
@@ -303,11 +323,7 @@ const _sampleProfileJson = {
       'status': 1,
       'status_label': 'Aktif',
     },
-    'kontingen': {
-      'id': 5,
-      'code': 'TRG',
-      'name': 'Kecamatan Tarogong Kidul',
-    },
+    'kontingen': {'id': 5, 'code': 'TRG', 'name': 'Kecamatan Tarogong Kidul'},
     'summary': {
       'total_cabor': 12,
       'total_cabor_from_club': 10,
@@ -329,11 +345,7 @@ const _sampleCaborJson = {
     'district_id': 3205,
     'district_name': 'Kabupaten Garut',
   },
-  'meta': {
-    'limit': 25,
-    'offset': 0,
-    'total': 2,
-  },
+  'meta': {'limit': 25, 'offset': 0, 'total': 2},
   'data': [
     {
       'id': 1,

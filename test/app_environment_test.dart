@@ -344,10 +344,7 @@ void main() {
           productionComposition.profileService,
           isA<RemoteProfileService>(),
         );
-        expect(
-          productionComposition.caborService,
-          isA<RemoteCaborService>(),
-        );
+        expect(productionComposition.caborService, isA<RemoteCaborService>());
         expect(productionComposition.apiClient, isNotNull);
       },
     );

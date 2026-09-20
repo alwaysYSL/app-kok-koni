@@ -18,10 +18,7 @@ import 'package:kok_app/data/services/cabor_service.dart';
 import 'package:kok_app/features/sports_page.dart';
 
 class FakeCaborService implements CaborService {
-  FakeCaborService({
-    required this.allCabors,
-    this.shouldThrow = false,
-  });
+  FakeCaborService({required this.allCabors, this.shouldThrow = false});
 
   final List<Cabor> allCabors;
   final bool shouldThrow;
@@ -143,10 +140,7 @@ void main() {
       final router = GoRouter(
         initialLocation: '/sports',
         routes: [
-          GoRoute(
-            path: '/sports',
-            builder: (_, _) => const SportsPage(),
-          ),
+          GoRoute(path: '/sports', builder: (_, _) => const SportsPage()),
           GoRoute(
             path: '/sport/:id',
             builder: (_, s) {
@@ -249,50 +243,46 @@ void main() {
       },
     );
 
-    testWidgets(
-      'tapping cabor card navigates to /sport/:id',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('tapping cabor card navigates to /sport/:id', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        String? navigatedRoute;
-        await tester.pumpWidget(
-          buildSubject(onNavigated: (route) => navigatedRoute = route),
-        );
-        await tester.pumpAndSettle();
+      String? navigatedRoute;
+      await tester.pumpWidget(
+        buildSubject(onNavigated: (route) => navigatedRoute = route),
+      );
+      await tester.pumpAndSettle();
 
-        // Ensure visible and tap Bulu Tangkis card (id = 3)
-        final buluTangkisFinder = find.text('Bulu Tangkis').last;
-        await tester.ensureVisible(buluTangkisFinder);
-        await tester.pumpAndSettle();
-        await tester.tap(buluTangkisFinder);
-        await tester.pumpAndSettle();
+      // Ensure visible and tap Bulu Tangkis card (id = 3)
+      final buluTangkisFinder = find.text('Bulu Tangkis').last;
+      await tester.ensureVisible(buluTangkisFinder);
+      await tester.pumpAndSettle();
+      await tester.tap(buluTangkisFinder);
+      await tester.pumpAndSettle();
 
-        expect(navigatedRoute, '/sport/3');
-        expect(find.text('Detail ID: 3'), findsOneWidget);
-      },
-    );
+      expect(navigatedRoute, '/sport/3');
+      expect(find.text('Detail ID: 3'), findsOneWidget);
+    });
 
-    testWidgets(
-      'tapping horizontal distribution bar navigates to /sport/:id',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('tapping horizontal distribution bar navigates to /sport/:id', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        String? navigatedRoute;
-        await tester.pumpWidget(
-          buildSubject(onNavigated: (route) => navigatedRoute = route),
-        );
-        await tester.pumpAndSettle();
+      String? navigatedRoute;
+      await tester.pumpWidget(
+        buildSubject(onNavigated: (route) => navigatedRoute = route),
+      );
+      await tester.pumpAndSettle();
 
-        // Tap Sepak Bola distribution row (id = 2)
-        await tester.tap(find.text('Sepak Bola').first);
-        await tester.pumpAndSettle();
+      // Tap Sepak Bola distribution row (id = 2)
+      await tester.tap(find.text('Sepak Bola').first);
+      await tester.pumpAndSettle();
 
-        expect(navigatedRoute, '/sport/2');
-        expect(find.text('Detail ID: 2'), findsOneWidget);
-      },
-    );
+      expect(navigatedRoute, '/sport/2');
+      expect(find.text('Detail ID: 2'), findsOneWidget);
+    });
 
     testWidgets(
       'renders dynamic territory scope title when profileSummary has custom scope',
@@ -334,47 +324,50 @@ void main() {
       },
     );
 
-    testWidgets(
-      'infinite scroll triggers loadMore when scrolled to bottom',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 800));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('infinite scroll triggers loadMore when scrolled to bottom', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        // Create 30 cabors so page 1 loads 25 and page 2 loads 5
-        final thirtyCabors = List.generate(
-          30,
-          (i) => Cabor(
-            id: i + 1,
-            code: 'CB-${(i + 1).toString().padLeft(3, '0')}',
-            name: 'Cabor ${i + 1}',
-            groupName: 'GROUP ${i + 1}',
-            status: 1,
-            statusLabel: 'Aktif',
-            totalClub: (i % 5) + 1,
-            totalAthlete: (30 - i) * 2,
-          ),
-        );
+      // Create 30 cabors so page 1 loads 25 and page 2 loads 5
+      final thirtyCabors = List.generate(
+        30,
+        (i) => Cabor(
+          id: i + 1,
+          code: 'CB-${(i + 1).toString().padLeft(3, '0')}',
+          name: 'Cabor ${i + 1}',
+          groupName: 'GROUP ${i + 1}',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: (i % 5) + 1,
+          totalAthlete: (30 - i) * 2,
+        ),
+      );
 
-        await tester.pumpWidget(buildSubject(cabors: thirtyCabors));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSubject(cabors: thirtyCabors));
+      await tester.pumpAndSettle();
 
-        // Initially first page has Cabor 1 but not Cabor 30
-        expect(find.text('Cabor 1'), findsWidgets);
-        expect(find.text('Cabor 30'), findsNothing);
+      // Initially first page has Cabor 1 but not Cabor 30
+      expect(find.text('Cabor 1'), findsWidgets);
+      expect(find.text('Cabor 30'), findsNothing);
 
-        // Scroll to the end of the scrollable
-        final scrollable = find.byType(Scrollable).first;
-        await tester.scrollUntilVisible(find.text('Cabor 25').last, 300, scrollable: scrollable);
-        await tester.pumpAndSettle();
+      // Scroll to the end of the scrollable
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(
+        find.text('Cabor 25').last,
+        300,
+        scrollable: scrollable,
+      );
+      await tester.pumpAndSettle();
 
-        // Drag further to trigger loadMore
-        await tester.drag(scrollable, const Offset(0, -300));
-        await tester.pumpAndSettle();
+      // Drag further to trigger loadMore
+      await tester.drag(scrollable, const Offset(0, -300));
+      await tester.pumpAndSettle();
 
-        // Now Cabor 30 should be loaded and visible
-        expect(find.text('Cabor 30'), findsOneWidget);
-      },
-    );
+      // Now Cabor 30 should be loaded and visible
+      expect(find.text('Cabor 30'), findsOneWidget);
+    });
 
     testWidgets(
       'renders error state and retry button when initial fetch fails',
@@ -393,20 +386,16 @@ void main() {
       },
     );
 
-    testWidgets(
-      'renders empty state when no cabors are returned',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('renders empty state when no cabors are returned', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await tester.pumpWidget(buildSubject(cabors: []));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSubject(cabors: []));
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Belum ada cabang olahraga terdaftar.'),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.text('Belum ada cabang olahraga terdaftar.'), findsOneWidget);
+    });
   });
 }

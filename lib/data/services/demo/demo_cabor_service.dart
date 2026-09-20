@@ -32,8 +32,9 @@ final class DemoCaborService implements CaborService {
     final caborList = <Cabor>[];
     for (var i = 0; i < sports.length; i++) {
       final sportName = sports[i];
-      final clubsWithSport =
-          snapshot.clubs.where((c) => c.sport == sportName).toList();
+      final clubsWithSport = snapshot.clubs
+          .where((c) => c.sport == sportName)
+          .toList();
       final athletesCount = snapshot.people
           .where(
             (p) =>

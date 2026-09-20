@@ -105,11 +105,7 @@ void main() {
     });
 
     test('fromJson parses string numbers correctly', () {
-      final json = {
-        'limit': '15',
-        'offset': '30',
-        'total': '75',
-      };
+      final json = {'limit': '15', 'offset': '30', 'total': '75'};
 
       final meta = SicaborPaginationMeta.fromJson(json);
 
@@ -145,11 +141,7 @@ void main() {
           'district_id': 126,
           'district_name': 'Garut',
         },
-        'meta': {
-          'limit': 25,
-          'offset': 0,
-          'total': 2,
-        },
+        'meta': {'limit': 25, 'offset': 0, 'total': 2},
         'data': [
           {
             'id': 1,
@@ -252,55 +244,19 @@ void main() {
       );
     });
 
-    test('mapProfileSummary correctly maps SicaborProfileResponse to ProfileSummary model', () {
-      const profileResponse = SicaborProfileResponse(
-        success: true,
-        message: 'Berhasil mengambil data.',
-        scope: SicaborScope(
-          subdistrictId: 1728,
-          subdistrictName: 'Garut Kota',
-          districtId: 126,
-          districtName: 'Garut',
-        ),
-        data: SicaborProfileData(
-          member: SicaborMember(
-            id: 578,
-            username: 'kt.garutkota',
-            name: 'ADMIN KONTINGEN GARUT KOTA',
-            email: 'admin@garutkota.id',
-            type: 'admin_kok',
-            status: 1,
-            statusLabel: 'Aktif',
+    test(
+      'mapProfileSummary correctly maps SicaborProfileResponse to ProfileSummary model',
+      () {
+        const profileResponse = SicaborProfileResponse(
+          success: true,
+          message: 'Berhasil mengambil data.',
+          scope: SicaborScope(
+            subdistrictId: 1728,
+            subdistrictName: 'Garut Kota',
+            districtId: 126,
+            districtName: 'Garut',
           ),
-          kontingen: SicaborKontingen(
-            id: 1,
-            code: 'KGPK-0001',
-            name: 'Garut Kota',
-          ),
-          summary: SicaborSummary(
-            totalCabor: 32,
-            totalCaborFromClub: 5,
-            totalCaborFromAthlete: 31,
-            totalClub: 10,
-            totalAthlete: 361,
-            totalAthleteWithoutClub: 320,
-          ),
-          dataNotes: ['Catatan batasan 1', 'Catatan batasan 2'],
-        ),
-      );
-
-      final summary = mapper.mapProfileSummary(profileResponse);
-
-      expect(
-        summary,
-        equals(
-          const ProfileSummary(
-            scope: SicaborScope(
-              subdistrictId: 1728,
-              subdistrictName: 'Garut Kota',
-              districtId: 126,
-              districtName: 'Garut',
-            ),
+          data: SicaborProfileData(
             member: SicaborMember(
               id: 578,
               username: 'kt.garutkota',
@@ -315,16 +271,55 @@ void main() {
               code: 'KGPK-0001',
               name: 'Garut Kota',
             ),
-            totalCabor: 32,
-            totalCaborFromClub: 5,
-            totalCaborFromAthlete: 31,
-            totalClub: 10,
-            totalAthlete: 361,
-            totalAthleteWithoutClub: 320,
+            summary: SicaborSummary(
+              totalCabor: 32,
+              totalCaborFromClub: 5,
+              totalCaborFromAthlete: 31,
+              totalClub: 10,
+              totalAthlete: 361,
+              totalAthleteWithoutClub: 320,
+            ),
             dataNotes: ['Catatan batasan 1', 'Catatan batasan 2'],
           ),
-        ),
-      );
-    });
+        );
+
+        final summary = mapper.mapProfileSummary(profileResponse);
+
+        expect(
+          summary,
+          equals(
+            const ProfileSummary(
+              scope: SicaborScope(
+                subdistrictId: 1728,
+                subdistrictName: 'Garut Kota',
+                districtId: 126,
+                districtName: 'Garut',
+              ),
+              member: SicaborMember(
+                id: 578,
+                username: 'kt.garutkota',
+                name: 'ADMIN KONTINGEN GARUT KOTA',
+                email: 'admin@garutkota.id',
+                type: 'admin_kok',
+                status: 1,
+                statusLabel: 'Aktif',
+              ),
+              kontingen: SicaborKontingen(
+                id: 1,
+                code: 'KGPK-0001',
+                name: 'Garut Kota',
+              ),
+              totalCabor: 32,
+              totalCaborFromClub: 5,
+              totalCaborFromAthlete: 31,
+              totalClub: 10,
+              totalAthlete: 361,
+              totalAthleteWithoutClub: 320,
+              dataNotes: ['Catatan batasan 1', 'Catatan batasan 2'],
+            ),
+          ),
+        );
+      },
+    );
   });
 }

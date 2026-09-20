@@ -87,7 +87,8 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
     final pct = athleteCount > 0
         ? ((verifiedCount / athleteCount) * 100).round()
         : 100;
-    final summary = '''
+    final summary =
+        '''
 REKAPITULASI CABANG OLAHRAGA
 Cabang Olahraga : $sportName
 Wilayah         : $scopeName
@@ -159,13 +160,13 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
       }).firstOrNull;
 
       final summary = ref.watch(profileSummaryProvider).asData?.value;
-      final sportName = cabor?.name ??
+      final sportName =
+          cabor?.name ??
           (int.tryParse(widget.sport) != null
               ? 'Cabang Olahraga'
               : widget.sport);
-      final scopeName = summary?.scope.subdistrictName ??
-          user?.scope.name ??
-          'KONI Garut';
+      final scopeName =
+          summary?.scope.subdistrictName ?? user?.scope.name ?? 'KONI Garut';
 
       final clubCount = cabor?.totalClub ?? 0;
       final athleteCount = cabor?.totalAthlete ?? 0;
@@ -1145,8 +1146,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: isComplete
-                                        ? const Color(0xFF16A34A)
-                                        : KokColors.red,
+                                          ? const Color(0xFF16A34A)
+                                          : KokColors.red,
                                     ),
                                   ),
                                 ],

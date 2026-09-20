@@ -260,30 +260,29 @@ void main() {
     },
   );
 
-  testWidgets(
-    'HomePage menampilkan kartu Kontingen jika kontingen tersedia',
-    (tester) async {
-      final composition = await _createTestComposition();
+  testWidgets('HomePage menampilkan kartu Kontingen jika kontingen tersedia', (
+    tester,
+  ) async {
+    final composition = await _createTestComposition();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(
-              () => _FakeHomeAuthController(cecepUser),
-            ),
-            profileSummaryProvider.overrideWith((ref) => sampleSummary),
-            appCompositionProvider.overrideWithValue(composition),
-          ],
-          child: const MaterialApp(home: HomePage()),
-        ),
-      );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => sampleSummary),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
 
-      await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
 
-      expect(find.text('KONTINGEN KECAMATAN'), findsOneWidget);
-      expect(find.text('Tarogong Kidul (KGPK-0002)'), findsOneWidget);
-    },
-  );
+    expect(find.text('KONTINGEN KECAMATAN'), findsOneWidget);
+    expect(find.text('Tarogong Kidul (KGPK-0002)'), findsOneWidget);
+  });
 
   testWidgets(
     'HomePage menyembunyikan elemen metrik demo dalam DataMode.remote',

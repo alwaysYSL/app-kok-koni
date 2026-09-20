@@ -190,9 +190,8 @@ void main() {
                 routes: [
                   GoRoute(
                     path: '/sport/:id',
-                    builder: (_, s) => SportDetailPage(
-                      sport: s.pathParameters['id'] ?? sport,
-                    ),
+                    builder: (_, s) =>
+                        SportDetailPage(sport: s.pathParameters['id'] ?? sport),
                   ),
                   GoRoute(
                     path: '/club/:id',
@@ -228,20 +227,17 @@ void main() {
       expect(find.byType(TabBar), findsOneWidget);
     });
 
-    testWidgets(
-      'resolves numeric ID in demo mode',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('resolves numeric ID in demo mode', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await tester.pumpWidget(buildSubject(sport: '2'));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSubject(sport: '2'));
+      await tester.pumpAndSettle();
 
-        // Sport 2 in sorted list is Bulu Tangkis
-        expect(find.text('Bulu Tangkis'), findsWidgets);
-        expect(find.text('Kecamatan Garut Kota'), findsWidgets);
-      },
-    );
+      // Sport 2 in sorted list is Bulu Tangkis
+      expect(find.text('Bulu Tangkis'), findsWidgets);
+      expect(find.text('Kecamatan Garut Kota'), findsWidgets);
+    });
 
     testWidgets(
       'renders analytic fl_chart and toggles between age groups and document status',
@@ -469,16 +465,11 @@ void main() {
               profileSummaryProvider.overrideWith((ref) => remoteSummary),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
-                  const CaborPaginationState(
-                    items: [sampleCabor],
-                    total: 1,
-                  ),
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
                 ),
               ),
             ],
-            child: const MaterialApp(
-              home: SportDetailPage(sport: '42'),
-            ),
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
         await tester.pumpAndSettle();

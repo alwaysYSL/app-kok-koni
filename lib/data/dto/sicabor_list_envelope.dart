@@ -53,9 +53,7 @@ final class SicaborPaginationMeta {
     limit,
     offset,
     total,
-    Object.hashAll(
-      extra.entries.map((e) => Object.hash(e.key, e.value)),
-    ),
+    Object.hashAll(extra.entries.map((e) => Object.hash(e.key, e.value))),
   );
 }
 
@@ -95,15 +93,15 @@ final class SicaborListEnvelope<T> {
     final scopeMap = rawScope is Map<String, dynamic>
         ? rawScope
         : rawScope is Map
-            ? Map<String, dynamic>.from(rawScope)
-            : const <String, dynamic>{};
+        ? Map<String, dynamic>.from(rawScope)
+        : const <String, dynamic>{};
 
     final rawMeta = json['meta'];
     final metaMap = rawMeta is Map<String, dynamic>
         ? rawMeta
         : rawMeta is Map
-            ? Map<String, dynamic>.from(rawMeta)
-            : const <String, dynamic>{};
+        ? Map<String, dynamic>.from(rawMeta)
+        : const <String, dynamic>{};
 
     return SicaborListEnvelope<T>(
       success: json['success'] as bool? ?? false,
@@ -121,9 +119,7 @@ final class SicaborListEnvelope<T> {
     'message': message,
     'scope': scope.toJson(),
     'meta': meta.toJson(),
-    'data': itemSerializer != null
-        ? data.map(itemSerializer).toList()
-        : data,
+    'data': itemSerializer != null ? data.map(itemSerializer).toList() : data,
   };
 
   @override
@@ -138,13 +134,8 @@ final class SicaborListEnvelope<T> {
           listEquals(data, other.data);
 
   @override
-  int get hashCode => Object.hash(
-    success,
-    message,
-    scope,
-    meta,
-    Object.hashAll(data),
-  );
+  int get hashCode =>
+      Object.hash(success, message, scope, meta, Object.hashAll(data));
 }
 
 int _asInt(dynamic value, {int fallback = 0}) {

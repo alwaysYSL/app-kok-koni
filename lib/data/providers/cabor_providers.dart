@@ -25,12 +25,7 @@ final caborServiceProvider = Provider<CaborService>((ref) {
   return composition.caborService;
 });
 
-typedef CaborListParams = ({
-  int offset,
-  int limit,
-  String source,
-  String sort,
-});
+typedef CaborListParams = ({int offset, int limit, String source, String sort});
 
 final caborListProvider =
     FutureProvider.family<PaginatedResult<Cabor>, CaborListParams>((

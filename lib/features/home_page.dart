@@ -59,15 +59,18 @@ class HomePage extends ConsumerWidget {
         data: (summary) {
           final snapshot = snapshotAsync?.asData?.value;
 
-          final subdistrictTitle =
-              _formatSubdistrictTitle(summary.scope.subdistrictName);
+          final subdistrictTitle = _formatSubdistrictTitle(
+            summary.scope.subdistrictName,
+          );
 
-          final adminName = user?.fullName ??
+          final adminName =
+              user?.fullName ??
               (summary.member.name.isNotEmpty
                   ? summary.member.name
                   : 'Pak Asep');
 
-          final adminRole = user?.roleTitle ??
+          final adminRole =
+              user?.roleTitle ??
               (summary.member.statusLabel.isNotEmpty
                   ? summary.member.statusLabel
                   : 'Koordinator Kecamatan');
@@ -227,9 +230,7 @@ class HomePage extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -245,10 +246,7 @@ class HomePage extends ConsumerWidget {
                 Text(
                   error.toString().replaceAll('Exception: ', ''),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: KokColors.ink,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: KokColors.ink),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(
@@ -279,9 +277,7 @@ class HomePage extends ConsumerWidget {
         .toList();
     final missingSubtitle = missingClubs.isNotEmpty
         ? '${missingClubs.first.name.replaceFirst('Klub ', '')} · ${missingClubs.first.sport}'
-        : (missing > 0
-            ? 'Garuda Muda · Sepak Bola'
-            : 'Semua berkas lengkap');
+        : (missing > 0 ? 'Garuda Muda · Sepak Bola' : 'Semua berkas lengkap');
 
     final expiredCoaches = data.people
         .where((p) => p.role == 'Pelatih' && p.expiredLicense)
@@ -290,10 +286,7 @@ class HomePage extends ConsumerWidget {
     final expiredClubs = data.clubs
         .where((c) => expiredClubIds.contains(c.id))
         .toList();
-    final expiredSportsCount = expiredClubs
-        .map((c) => c.sport)
-        .toSet()
-        .length;
+    final expiredSportsCount = expiredClubs.map((c) => c.sport).toSet().length;
     final expiredSubtitle = expired > 0
         ? '${expiredClubs.length} klub · $expiredSportsCount cabor'
         : 'Semua lisensi aktif';
@@ -458,8 +451,9 @@ class _SummaryCountersCard extends StatelessWidget {
                         final athletes = snapshot!.people
                             .where((p) => p.role == 'Atlet')
                             .toList();
-                        final verified =
-                            athletes.where((p) => p.verified).length;
+                        final verified = athletes
+                            .where((p) => p.verified)
+                            .length;
                         final percentage = athletes.isEmpty
                             ? 0
                             : (verified / athletes.length * 100).round();

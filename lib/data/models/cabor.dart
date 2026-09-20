@@ -41,14 +41,14 @@ final class Cabor {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        code,
-        name,
-        groupName,
-        logoUrl,
-        status,
-        statusLabel,
-        totalClub,
-        totalAthlete,
-      );
+    id,
+    code,
+    name,
+    groupName,
+    logoUrl,
+    status,
+    statusLabel,
+    totalClub,
+    totalAthlete,
+  );
 }

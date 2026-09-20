@@ -32,10 +32,13 @@ class _SportsPageState extends ConsumerState<SportsPage> {
   String _displaySportName(String sport) {
     final lower = sport.toLowerCase().trim();
     if (lower == 'voli') return 'Bola Voli';
-    return lower.split(' ').map((word) {
-      if (word.isEmpty) return '';
-      return word[0].toUpperCase() + word.substring(1);
-    }).join(' ');
+    return lower
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return '';
+          return word[0].toUpperCase() + word.substring(1);
+        })
+        .join(' ');
   }
 
   @override
@@ -46,7 +49,8 @@ class _SportsPageState extends ConsumerState<SportsPage> {
     final user = ref.watch(currentUserProvider);
     final contextScope = ref.watch(dataRequestContextProvider)?.scope;
 
-    final scopeName = summary?.scope.subdistrictName ??
+    final scopeName =
+        summary?.scope.subdistrictName ??
         user?.scope.name ??
         contextScope?.name ??
         'KONI Garut';
@@ -55,7 +59,8 @@ class _SportsPageState extends ConsumerState<SportsPage> {
         ? caborState.total
         : (summary?.totalCabor ?? caborState.items.length);
 
-    final totalAthletes = summary?.totalAthlete ??
+    final totalAthletes =
+        summary?.totalAthlete ??
         caborState.items.fold<int>(0, (sum, c) => sum + c.totalAthlete);
 
     final sortedCabors = List<Cabor>.from(caborState.items)
@@ -258,8 +263,7 @@ class _SportsPageState extends ConsumerState<SportsPage> {
           width: 44,
           height: 44,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) =>
-              SportAvatar(cabor.name),
+          errorBuilder: (context, error, stackTrace) => SportAvatar(cabor.name),
         ),
       );
     }

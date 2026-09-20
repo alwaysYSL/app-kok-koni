@@ -46,15 +46,15 @@ final class ProfileSummary {
 
   @override
   int get hashCode => Object.hash(
-        scope,
-        member,
-        kontingen,
-        totalCabor,
-        totalCaborFromClub,
-        totalCaborFromAthlete,
-        totalClub,
-        totalAthlete,
-        totalAthleteWithoutClub,
-        Object.hashAll(dataNotes),
-      );
+    scope,
+    member,
+    kontingen,
+    totalCabor,
+    totalCaborFromClub,
+    totalCaborFromAthlete,
+    totalClub,
+    totalAthlete,
+    totalAthleteWithoutClub,
+    Object.hashAll(dataNotes),
+  );
 }

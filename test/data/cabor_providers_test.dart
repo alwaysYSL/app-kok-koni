@@ -370,28 +370,29 @@ void main() {
       final completer = Completer<PaginatedResult<Cabor>>();
 
       final mockService = MockCaborService(
-        onFetch: ({
-          limit = 25,
-          offset = 0,
-          source = 'all',
-          sort = 'name',
-          cancellation,
-        }) {
-          capturedToken = cancellation;
-          cancellation?.whenCancelled.then((reason) {
-            if (!completer.isCompleted) {
-              completer.complete(
-                const PaginatedResult(
-                  items: [],
-                  limit: 25,
-                  offset: 0,
-                  total: 0,
-                ),
-              );
-            }
-          });
-          return completer.future;
-        },
+        onFetch:
+            ({
+              limit = 25,
+              offset = 0,
+              source = 'all',
+              sort = 'name',
+              cancellation,
+            }) {
+              capturedToken = cancellation;
+              cancellation?.whenCancelled.then((reason) {
+                if (!completer.isCompleted) {
+                  completer.complete(
+                    const PaginatedResult(
+                      items: [],
+                      limit: 25,
+                      offset: 0,
+                      total: 0,
+                    ),
+                  );
+                }
+              });
+              return completer.future;
+            },
       );
 
       final container = ProviderContainer(
@@ -423,19 +424,20 @@ void main() {
         var fetchCount = 0;
 
         final mockService = MockCaborService(
-          onFetch: ({
-            limit = 25,
-            offset = 0,
-            source = 'all',
-            sort = 'name',
-            cancellation,
-          }) {
-            fetchCount++;
-            if (fetchCount == 1) {
-              return completerA.future;
-            }
-            return completerB.future;
-          },
+          onFetch:
+              ({
+                limit = 25,
+                offset = 0,
+                source = 'all',
+                sort = 'name',
+                cancellation,
+              }) {
+                fetchCount++;
+                if (fetchCount == 1) {
+                  return completerA.future;
+                }
+                return completerB.future;
+              },
         );
 
         var activeContext = defaultContext;
@@ -577,13 +579,14 @@ void main() {
         overrides: [
           caborServiceProvider.overrideWithValue(
             MockCaborService(
-              onFetch: ({
-                limit = 25,
-                offset = 0,
-                source = 'all',
-                sort = 'name',
-                cancellation,
-              }) => Future.error(Exception('Network error')),
+              onFetch:
+                  ({
+                    limit = 25,
+                    offset = 0,
+                    source = 'all',
+                    sort = 'name',
+                    cancellation,
+                  }) => Future.error(Exception('Network error')),
             ),
           ),
           dataRequestContextProvider.overrideWithValue(defaultContext),
@@ -639,36 +642,37 @@ void main() {
         overrides: [
           caborServiceProvider.overrideWithValue(
             MockCaborService(
-              onFetch: ({
-                limit = 25,
-                offset = 0,
-                source = 'all',
-                sort = 'name',
-                cancellation,
-              }) async {
-                callCount++;
-                if (callCount == 1) {
-                  return PaginatedResult(
-                    items: List.generate(
-                      25,
-                      (i) => Cabor(
-                        id: i + 1,
-                        code: 'CB-${i + 1}',
-                        name: 'Cabor ${i + 1}',
-                        status: 1,
-                        statusLabel: 'Aktif',
-                        totalClub: 1,
-                        totalAthlete: 5,
-                      ),
-                    ),
-                    limit: 25,
-                    offset: 0,
-                    total: 50,
-                  );
-                } else {
-                  throw Exception('Load more failed');
-                }
-              },
+              onFetch:
+                  ({
+                    limit = 25,
+                    offset = 0,
+                    source = 'all',
+                    sort = 'name',
+                    cancellation,
+                  }) async {
+                    callCount++;
+                    if (callCount == 1) {
+                      return PaginatedResult(
+                        items: List.generate(
+                          25,
+                          (i) => Cabor(
+                            id: i + 1,
+                            code: 'CB-${i + 1}',
+                            name: 'Cabor ${i + 1}',
+                            status: 1,
+                            statusLabel: 'Aktif',
+                            totalClub: 1,
+                            totalAthlete: 5,
+                          ),
+                        ),
+                        limit: 25,
+                        offset: 0,
+                        total: 50,
+                      );
+                    } else {
+                      throw Exception('Load more failed');
+                    }
+                  },
             ),
           ),
           dataRequestContextProvider.overrideWithValue(defaultContext),
@@ -698,32 +702,33 @@ void main() {
         overrides: [
           caborServiceProvider.overrideWithValue(
             MockCaborService(
-              onFetch: ({
-                limit = 25,
-                offset = 0,
-                source = 'all',
-                sort = 'name',
-                cancellation,
-              }) async {
-                lastSource = source;
-                lastSort = sort;
-                return PaginatedResult(
-                  items: [
-                    const Cabor(
-                      id: 1,
-                      code: 'CB-1',
-                      name: 'Cabor 1',
-                      status: 1,
-                      statusLabel: 'Aktif',
-                      totalClub: 1,
-                      totalAthlete: 5,
-                    ),
-                  ],
-                  limit: limit,
-                  offset: offset,
-                  total: 1,
-                );
-              },
+              onFetch:
+                  ({
+                    limit = 25,
+                    offset = 0,
+                    source = 'all',
+                    sort = 'name',
+                    cancellation,
+                  }) async {
+                    lastSource = source;
+                    lastSort = sort;
+                    return PaginatedResult(
+                      items: [
+                        const Cabor(
+                          id: 1,
+                          code: 'CB-1',
+                          name: 'Cabor 1',
+                          status: 1,
+                          statusLabel: 'Aktif',
+                          totalClub: 1,
+                          totalAthlete: 5,
+                        ),
+                      ],
+                      limit: limit,
+                      offset: offset,
+                      total: 1,
+                    );
+                  },
             ),
           ),
           dataRequestContextProvider.overrideWithValue(defaultContext),
