@@ -7,12 +7,17 @@ final class PaginatedResult<T> {
     required this.limit,
     required this.offset,
     required this.total,
+    this.filterWarning,
   });
 
   final List<T> items;
   final int limit;
   final int offset;
   final int total;
+  final Map<String, dynamic>? filterWarning;
+
+  bool get hasFilterWarning => filterWarning != null;
+  String? get filterWarningMessage => filterWarning?['message'] as String?;
 
   bool get hasMore => offset + items.length < total;
   int get nextOffset => offset + items.length;
@@ -25,8 +30,20 @@ final class PaginatedResult<T> {
           listEquals(items, other.items) &&
           limit == other.limit &&
           offset == other.offset &&
-          total == other.total;
+          total == other.total &&
+          mapEquals(filterWarning, other.filterWarning);
 
   @override
-  int get hashCode => Object.hash(Object.hashAll(items), limit, offset, total);
+  int get hashCode => Object.hash(
+    Object.hashAll(items),
+    limit,
+    offset,
+    total,
+    filterWarning == null
+        ? null
+        : Object.hash(
+            Object.hashAll(filterWarning!.keys),
+            Object.hashAll(filterWarning!.values),
+          ),
+  );
 }
