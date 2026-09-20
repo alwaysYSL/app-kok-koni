@@ -120,8 +120,8 @@ final class AppComposition {
       );
     } else {
       kokRepo = RemoteKokRepository(apiClient!);
-      profileService = RemoteProfileService(client: apiClient!);
-      caborService = RemoteCaborService(client: apiClient!);
+      profileService = RemoteProfileService(client: apiClient);
+      caborService = RemoteCaborService(client: apiClient);
     }
 
     return AppComposition(

@@ -16,10 +16,8 @@ import 'package:kok_app/data/remote_kok_repository.dart';
 import 'package:kok_app/data/providers/cabor_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
-import 'package:kok_app/data/services/cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
-import 'package:kok_app/data/services/profile_service.dart';
 import 'package:kok_app/data/services/remote/remote_cabor_service.dart';
 import 'package:kok_app/data/services/remote/remote_profile_service.dart';
 
