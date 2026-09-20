@@ -15,15 +15,20 @@ class DemoKokRepository implements KokRepository {
   }
 
   KokSnapshot _snapshotForScope(AccessScope scope) {
-    if (scope.type == AccessScopeType.district && scope.id == 'garut_kota') {
-      return _buildGarutKotaSnapshot();
+    if (scope.type == AccessScopeType.district &&
+        (scope.id == 'garut_kota' || scope.id == '1728')) {
+      return _buildGarutKotaSnapshot(scope: scope);
     }
     if (scope.type == AccessScopeType.district &&
-        scope.id == 'tarogong_kidul') {
-      return _buildTarogongKidulSnapshot();
+        (scope.id == 'tarogong_kidul' || scope.id == '1729')) {
+      return _buildTarogongKidulSnapshot(scope: scope);
+    }
+    if (scope.type == AccessScopeType.district &&
+        (scope.id == 'balubur_limbangan' || scope.id == '1714')) {
+      return _buildLimbanganSnapshot(scope: scope);
     }
     if (scope.type == AccessScopeType.county && scope.id == 'koni_kab') {
-      return _buildCountySnapshot();
+      return _buildCountySnapshot(scope: scope);
     }
 
     throw UnsupportedScopeException(scope);
@@ -32,6 +37,7 @@ class DemoKokRepository implements KokRepository {
   List<KokSnapshot> _detailSnapshots() => [
     _buildGarutKotaSnapshot(),
     _buildTarogongKidulSnapshot(),
+    _buildLimbanganSnapshot(),
   ];
 
   String _normalized(String value) => value.trim().toLowerCase();
@@ -170,7 +176,7 @@ class DemoKokRepository implements KokRepository {
     return _snapshotForScope(scope);
   }
 
-  KokSnapshot _buildGarutKotaSnapshot() {
+  KokSnapshot _buildGarutKotaSnapshot({AccessScope? scope}) {
     final clubs = [
       Club(
         id: 'garuda',
@@ -298,11 +304,12 @@ class DemoKokRepository implements KokRepository {
     }
 
     return KokSnapshot(
-      scope: const AccessScope(
-        type: AccessScopeType.district,
-        id: 'garut_kota',
-        name: 'Kecamatan Garut Kota',
-      ),
+      scope: scope ??
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'garut_kota',
+            name: 'Kecamatan Garut Kota',
+          ),
       clubs: clubs,
       people: people,
       loadedAt: DateTime.now(),
@@ -358,7 +365,7 @@ class DemoKokRepository implements KokRepository {
     );
   }
 
-  KokSnapshot _buildTarogongKidulSnapshot() {
+  KokSnapshot _buildTarogongKidulSnapshot({AccessScope? scope}) {
     const tkClubs = [
       Club(
         id: 'club-tk-1',
@@ -454,11 +461,12 @@ class DemoKokRepository implements KokRepository {
     }
 
     return KokSnapshot(
-      scope: const AccessScope(
-        type: AccessScopeType.district,
-        id: 'tarogong_kidul',
-        name: 'Kecamatan Tarogong Kidul',
-      ),
+      scope: scope ??
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'tarogong_kidul',
+            name: 'Kecamatan Tarogong Kidul',
+          ),
       clubs: tkClubs,
       people: tkPeople,
       loadedAt: DateTime.now(),
@@ -490,16 +498,123 @@ class DemoKokRepository implements KokRepository {
     );
   }
 
-  KokSnapshot _buildCountySnapshot() {
+  KokSnapshot _buildLimbanganSnapshot({AccessScope? scope}) {
+    final blClubs = [
+      const Club(
+        id: 'bl-persibal',
+        name: 'Persibal Balubur Limbangan',
+        sport: 'Sepak Bola',
+        village: 'Limbangan Tengah',
+        brandPrimaryHex: '#1B4D3E',
+        brandSecondaryHex: '#0F2D24',
+        phone: '081234567814',
+        email: 'persibal@example.test',
+        address: 'Jl. Raya Limbangan Barat No. 12',
+      ),
+      const Club(
+        id: 'bl-silat',
+        name: 'Pusaka Limbangan Silat',
+        sport: 'Pencak Silat',
+        village: 'Limbangan Timur',
+        brandPrimaryHex: '#B45309',
+        brandSecondaryHex: '#78350F',
+        address: 'Jl. Alun-Alun Limbangan No. 3',
+      ),
+      const Club(
+        id: 'bl-voli',
+        name: 'Voli Putra Limbangan',
+        sport: 'Bola Voli',
+        village: 'Pasirwaru',
+        brandPrimaryHex: '#2563EB',
+        brandSecondaryHex: '#1E40AF',
+      ),
+    ];
+
+    final blPeople = <SportPerson>[];
+    for (var c = 0; c < blClubs.length; c++) {
+      for (var i = 0; i < 20; i++) {
+        blPeople.add(
+          SportPerson(
+            id: '${blClubs[c].id}-atlet-$i',
+            name: 'Atlet ${i + 1} · ${blClubs[c].name}',
+            clubId: blClubs[c].id,
+            role: 'Atlet',
+            group: i.isEven ? 'U-18' : 'U-16',
+            gender: i.isEven ? 'L' : 'P',
+            age: 15 + (i % 4),
+            verified: true,
+          ),
+        );
+      }
+      blPeople.add(
+        SportPerson(
+          id: '${blClubs[c].id}-pelatih-0',
+          name: 'Pelatih · ${blClubs[c].name}',
+          clubId: blClubs[c].id,
+          role: 'Pelatih',
+          group: 'Lisensi C',
+        ),
+      );
+      blPeople.add(
+        SportPerson(
+          id: '${blClubs[c].id}-official',
+          name: 'Official · ${blClubs[c].name}',
+          clubId: blClubs[c].id,
+          role: 'Official',
+          group: 'Manajer tim',
+        ),
+      );
+    }
+
+    return KokSnapshot(
+      scope: scope ??
+          const AccessScope(
+            type: AccessScopeType.district,
+            id: 'balubur_limbangan',
+            name: 'Kecamatan Balubur Limbangan',
+          ),
+      clubs: blClubs,
+      people: blPeople,
+      loadedAt: DateTime.now(),
+      committee: const [
+        CommitteeMember(
+          id: 'ketua-bl',
+          name: 'Agus (contoh)',
+          position: 'Ketua KOK',
+          division: 'Pengurus inti',
+          phone: '081200000021',
+          email: 'agus@example.test',
+        ),
+        CommitteeMember(
+          id: 'sekretaris-bl',
+          name: 'Hadi (contoh)',
+          position: 'Sekretaris',
+          division: 'Pengurus inti',
+          phone: '081200000022',
+          email: 'hadi@example.test',
+        ),
+      ],
+      helpdesk: const HelpdeskContact(
+        whatsapp: '081299999999',
+        phone: '0262234567',
+        email: 'helpdesk@koni-garut.example.test',
+        address: 'Sekretariat KONI Kabupaten Garut',
+        operationalHours: 'Senin–Jumat, 08.00–16.00',
+      ),
+    );
+  }
+
+  KokSnapshot _buildCountySnapshot({AccessScope? scope}) {
     final gk = _buildGarutKotaSnapshot();
     final tk = _buildTarogongKidulSnapshot();
 
     return KokSnapshot(
-      scope: const AccessScope(
-        type: AccessScopeType.county,
-        id: 'koni_kab',
-        name: 'KONI Kabupaten Garut',
-      ),
+      scope: scope ??
+          const AccessScope(
+            type: AccessScopeType.county,
+            id: 'koni_kab',
+            name: 'KONI Kabupaten Garut',
+          ),
       clubs: [...gk.clubs, ...tk.clubs],
       people: [...gk.people, ...tk.people],
       committee: [...gk.committee, ...tk.committee],
