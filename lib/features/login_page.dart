@@ -15,7 +15,7 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _form = GlobalKey<FormState>();
-  final _sk = TextEditingController();
+  final _username = TextEditingController();
   final _password = TextEditingController();
   bool _remember = false;
   bool _staySignedIn = false;
@@ -26,14 +26,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _loadRememberedSk();
+    _loadRememberedUsername();
   }
 
-  Future<void> _loadRememberedSk() async {
-    final sk = await ref.read(rememberedSkStoreProvider).readSk();
-    if (mounted && sk != null && sk.isNotEmpty) {
+  Future<void> _loadRememberedUsername() async {
+    final username = await ref
+        .read(rememberedUsernameStoreProvider)
+        .readUsername();
+    if (mounted && username != null && username.isNotEmpty) {
       setState(() {
-        _sk.text = sk;
+        _username.text = username;
         _remember = true;
       });
     }
@@ -41,7 +43,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   void dispose() {
-    _sk.dispose();
+    _username.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -58,10 +60,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final res = await ref
           .read(authControllerProvider.notifier)
           .login(
-            skNumber: _sk.text.trim(),
+            username: _username.text.trim(),
             password: _password.text,
             staySignedIn: _staySignedIn,
-            rememberSk: _remember,
+            rememberUsername: _remember,
           );
       if (!res.isSuccess && mounted) {
         final authState = ref.read(authControllerProvider);
@@ -70,12 +72,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         } else if (res.errorMessage != null) {
           setState(() => _error = res.errorMessage);
         } else {
-          setState(() => _error = 'Nomor SK atau kata sandi tidak sesuai.');
+          setState(() => _error = 'Username atau kata sandi tidak sesuai.');
         }
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Nomor SK atau kata sandi tidak sesuai.');
+        setState(() => _error = 'Username atau kata sandi tidak sesuai.');
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -146,7 +148,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 onTap: () {
                   setState(() {
-                    _sk.text = 'DEMO-001';
+                    _username.text = 'DEMO-001';
                     _password.text = 'kokgarut123';
                     _error = null;
                   });
@@ -188,7 +190,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 onTap: () {
                   setState(() {
-                    _sk.text = 'DEMO-002';
+                    _username.text = 'DEMO-002';
                     _password.text = 'koktarogong123';
                     _error = null;
                   });
@@ -230,7 +232,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 onTap: () {
                   setState(() {
-                    _sk.text = 'DEMO-003';
+                    _username.text = 'DEMO-003';
                     _password.text = 'konigarut123';
                     _error = null;
                   });
@@ -269,7 +271,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ),
                 onTap: () {
                   setState(() {
-                    _sk.text = 'DEMO-TIMEOUT';
+                    _username.text = 'DEMO-TIMEOUT';
                     _password.text = 'timeout123';
                     _error = null;
                   });
@@ -511,7 +513,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ),
                                   ),
                                 const Text(
-                                  'Nomor SK',
+                                  'Username',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF0C2464),
@@ -520,12 +522,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 ),
                                 const SizedBox(height: 8),
                                 TextFormField(
-                                  controller: _sk,
+                                  controller: _username,
                                   enabled: !isFormDisabled,
                                   textInputAction: TextInputAction.next,
                                   autofillHints: const [AutofillHints.username],
                                   decoration: InputDecoration(
-                                    hintText: 'Masukkan nomor SK',
+                                    hintText: 'Masukkan username',
                                     hintStyle: const TextStyle(
                                       color: Color(0xFF9E9E9E),
                                       fontSize: 14,
@@ -560,7 +562,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   ),
                                   validator: (v) =>
                                       v == null || v.trim().isEmpty
-                                      ? 'Nomor SK wajib diisi.'
+                                      ? 'Username wajib diisi.'
                                       : null,
                                 ),
                                 const SizedBox(height: 18),
@@ -634,7 +636,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       : null,
                                 ),
                                 const SizedBox(height: 12),
-                                // Checkbox 1: Ingat nomor SK (min tap target >= 44px)
+                                // Checkbox 1: Ingat username (min tap target >= 44px)
                                 ConstrainedBox(
                                   constraints: const BoxConstraints(
                                     minHeight: 44,
@@ -678,7 +680,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         const SizedBox(width: 10),
                                         const Expanded(
                                           child: Text(
-                                            'Ingat nomor SK di perangkat ini',
+                                            'Ingat username',
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: Color(0xFF616161),

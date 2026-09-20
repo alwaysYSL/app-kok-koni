@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
@@ -183,10 +183,10 @@ void main() {
 
         // Step 1: Persistent login as DEMO-003 (Ibu Rina, KONI Kab)
         final loginResult = await controller1.login(
-          skNumber: 'DEMO-003',
+          username: 'DEMO-003',
           password: 'konigarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginResult.isSuccess, isTrue);
 
@@ -292,9 +292,9 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.metadata',
         );
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'kok.auth.v2.demo.remembered_sk',
+          key: 'kok.auth.v2.demo.remembered_username',
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
@@ -302,7 +302,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
             repositoryProvider.overrideWithValue(delayedRepo),
           ],
@@ -314,10 +314,10 @@ void main() {
 
         // 1. User A (Pak Asep, Garut Kota) logs in
         final loginA = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginA.isSuccess, isTrue);
         final initialGeneration = controller.sessionGeneration;
@@ -332,10 +332,10 @@ void main() {
         // 3. Before fetch completes, User A logs out and User B logs in
         await controller.logout();
         final loginB = await controller.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginB.isSuccess, isTrue);
         expect(controller.sessionGeneration, greaterThan(initialGeneration));
@@ -411,9 +411,9 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.metadata',
         );
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'kok.auth.v2.demo.remembered_sk',
+          key: 'kok.auth.v2.demo.remembered_username',
         );
         final authRepo = DemoAuthRepository(simulateLatency: false);
 
@@ -421,7 +421,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -431,10 +431,10 @@ void main() {
 
         // 1. Login with staySignedIn: true
         final loginResult = await controller1.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginResult.isSuccess, isTrue);
         expect(tokenStorage.credential, isNotNull);
@@ -461,7 +461,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -496,10 +496,10 @@ void main() {
 
         // 5. Re-login is available and succeeds cleanly
         final reLoginResult = await controller2.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(reLoginResult.isSuccess, isTrue);
         expect(container2.read(authControllerProvider), isA<AuthSignedIn>());
@@ -521,9 +521,9 @@ void main() {
           prefs: prefs,
           key: 'kok.auth.v2.demo.metadata',
         );
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'kok.auth.v2.demo.remembered_sk',
+          key: 'kok.auth.v2.demo.remembered_username',
         );
         final trackingRepo = _TrackingAuthRepository();
 
@@ -531,7 +531,7 @@ void main() {
           overrides: [
             authTokenStorageProvider.overrideWithValue(tokenStorage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(trackingRepo),
           ],
         );
@@ -542,10 +542,10 @@ void main() {
 
         // 1. Login with staySignedIn: false
         final loginResult = await controller.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginResult.isSuccess, isTrue);
 

@@ -73,7 +73,7 @@ class _CompleterAuthController extends AuthController {
 
 final testUser = UserPrincipal(
   id: 'usr_garut_kota',
-  skNumber: 'DEMO-001',
+  username: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
   scope: const AccessScope(
@@ -86,7 +86,7 @@ final testUser = UserPrincipal(
 
 final cecepUser = UserPrincipal(
   id: 'usr_tarogong_kidul',
-  skNumber: 'DEMO-002',
+  username: 'DEMO-002',
   fullName: 'Pak Cecep',
   roleTitle: 'Koordinator Kecamatan',
   scope: const AccessScope(
@@ -99,7 +99,7 @@ final cecepUser = UserPrincipal(
 
 final cecepUserWithExport = UserPrincipal(
   id: 'usr_tarogong_kidul',
-  skNumber: 'DEMO-002',
+  username: 'DEMO-002',
   fullName: 'Pak Cecep',
   roleTitle: 'Koordinator Kecamatan',
   scope: const AccessScope(
@@ -112,7 +112,7 @@ final cecepUserWithExport = UserPrincipal(
 
 final koniKabUser = UserPrincipal(
   id: 'usr_koni_kab',
-  skNumber: 'DEMO-003',
+  username: 'DEMO-003',
   fullName: 'Ibu Rina',
   roleTitle: 'Tim Verifikator',
   scope: const AccessScope(
@@ -1026,7 +1026,7 @@ void main() {
           ),
           authTokenStorage: base.authTokenStorage,
           sessionMetadataStore: base.sessionMetadataStore,
-          rememberedSkStore: base.rememberedSkStore,
+          rememberedUsernameStore: base.rememberedUsernameStore,
           authRepository: base.authRepository,
           kokRepository: base.kokRepository,
           credentialIdGenerator: base.credentialIdGenerator,

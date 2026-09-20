@@ -42,7 +42,7 @@ void main() {
       'login sukses akun DEMO-001 Garut Kota (Pak Asep) dengan persistent session',
       () async {
         final result = await repository.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
         );
@@ -51,7 +51,7 @@ void main() {
         expect(result.user?.fullName, 'Pak Asep');
         expect(result.user?.scope.id, 'garut_kota');
         expect(result.user?.scope.type, AccessScopeType.district);
-        expect(result.refreshToken, 'token_usr_garut_kota');
+        expect(result.sessionToken, 'token_usr_garut_kota');
         expect(result.sessionHandle, isNotNull);
         expect(
           result.sessionHandle,
@@ -64,7 +64,7 @@ void main() {
       'login sukses akun DEMO-002 Tarogong Kidul (Pak Cecep) dengan persistent session',
       () async {
         final result = await repository.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: true,
         );
@@ -73,7 +73,7 @@ void main() {
         expect(result.user?.fullName, 'Pak Cecep');
         expect(result.user?.scope.id, 'tarogong_kidul');
         expect(result.user?.scope.type, AccessScopeType.district);
-        expect(result.refreshToken, 'token_usr_tarogong_kidul');
+        expect(result.sessionToken, 'token_usr_tarogong_kidul');
         expect(result.sessionHandle, isNotNull);
       },
     );
@@ -82,7 +82,7 @@ void main() {
       'login sukses akun DEMO-003 Kabupaten Garut (Ibu Rina) dengan persistent session',
       () async {
         final result = await repository.login(
-          skNumber: 'DEMO-003',
+          username: 'DEMO-003',
           password: 'konigarut123',
           staySignedIn: true,
         );
@@ -91,7 +91,7 @@ void main() {
         expect(result.user?.fullName, 'Ibu Rina');
         expect(result.user?.scope.id, 'koni_kab');
         expect(result.user?.scope.type, AccessScopeType.county);
-        expect(result.refreshToken, 'token_usr_koni_kab');
+        expect(result.sessionToken, 'token_usr_koni_kab');
         expect(result.sessionHandle, isNotNull);
       },
     );
@@ -100,33 +100,33 @@ void main() {
       'login nonpersisten (staySignedIn: false) tetap menghasilkan RemoteSessionHandle',
       () async {
         final result = await repository.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: false,
         );
 
         expect(result.isSuccess, isTrue);
         expect(result.user?.fullName, 'Pak Cecep');
-        expect(result.refreshToken, isNull);
+        expect(result.sessionToken, isNull);
         expect(result.sessionHandle, isNotNull);
       },
     );
 
     test('kredensial salah mengembalikan pesan generik', () async {
       final result = await repository.login(
-        skNumber: 'DEMO-001',
+        username: 'DEMO-001',
         password: 'salah_password',
         staySignedIn: false,
       );
 
       expect(result.isSuccess, isFalse);
       expect(result.failure, isA<InvalidCredentialsFailure>());
-      expect(result.failure?.message, 'Nomor SK atau kata sandi tidak sesuai.');
+      expect(result.failure?.message, 'Username atau kata sandi tidak sesuai.');
     });
 
     test('simulasi network timeout DEMO-TIMEOUT', () async {
       final result = await repository.login(
-        skNumber: 'DEMO-TIMEOUT',
+        username: 'DEMO-TIMEOUT',
         password: 'timeout123',
         staySignedIn: false,
       );

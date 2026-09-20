@@ -14,59 +14,56 @@ void main() {
     () {
       final tokens = AuthSessionTokens();
 
-      tokens.replace(accessToken: 'access-1', refreshToken: 'refresh-1');
+      tokens.replace(accessToken: 'access-1', sessionToken: 'session-1');
       expect(tokens.accessToken, 'access-1');
-      expect(tokens.refreshToken, 'refresh-1');
+      expect(tokens.sessionToken, 'session-1');
 
       tokens.clear();
       expect(tokens.accessToken, isNull);
-      expect(tokens.refreshToken, isNull);
+      expect(tokens.sessionToken, isNull);
     },
   );
 
-  test(
-    'login mengekspos access token tetapi hanya menyimpan refresh token',
-    () async {
-      final storage = _MemoryTokenStorage();
-      final container = createTestProviderContainer(
-        overrides: [
-          authRepositoryProvider.overrideWithValue(_TokenAuthRepository()),
-          authTokenStorageProvider.overrideWithValue(storage),
-        ],
-      );
-      addTearDown(container.dispose);
+  test('login mengekspos access token dan session token di bridge', () async {
+    final storage = _MemoryTokenStorage();
+    final container = createTestProviderContainer(
+      overrides: [
+        authRepositoryProvider.overrideWithValue(_TokenAuthRepository()),
+        authTokenStorageProvider.overrideWithValue(storage),
+      ],
+    );
+    addTearDown(container.dispose);
 
-      final controller = container.read(authControllerProvider.notifier);
-      await controller.bootstrap();
-      final result = await controller.login(
-        skNumber: 'DEMO-001',
-        password: 'password',
-        staySignedIn: true,
-        rememberSk: false,
-      );
+    final controller = container.read(authControllerProvider.notifier);
+    await controller.bootstrap();
+    final result = await controller.login(
+      username: 'DEMO-001',
+      password: 'password',
+      staySignedIn: true,
+      rememberUsername: false,
+    );
 
-      expect(result.isSuccess, isTrue);
-      final state = container.read(authControllerProvider);
-      expect(state, isA<AuthSignedIn>());
-      expect((state as AuthSignedIn).accessToken, 'access-1');
-      final tokens = container.read(sessionTokensProvider);
-      expect(tokens.accessToken, 'access-1');
-      expect(tokens.refreshToken, 'refresh-1');
-      expect((await storage.read())?.refreshToken, 'refresh-1');
+    expect(result.isSuccess, isTrue);
+    final state = container.read(authControllerProvider);
+    expect(state, isA<AuthSignedIn>());
+    expect((state as AuthSignedIn).accessToken, 'access-1');
+    final tokens = container.read(sessionTokensProvider);
+    expect(tokens.accessToken, 'access-1');
+    expect(tokens.sessionToken, 'refresh-1');
+    expect((await storage.read())?.sessionToken, 'refresh-1');
 
-      await controller.logout();
-      expect(tokens.accessToken, isNull);
-      expect(tokens.refreshToken, isNull);
-    },
-  );
+    await controller.logout();
+    expect(tokens.accessToken, isNull);
+    expect(tokens.sessionToken, isNull);
+  });
 
   test(
-    'restore mengisi access token state dan token bridge dari refresh token aktif',
+    'restore mengisi access token state dan token bridge dari session token aktif',
     () async {
       final storage = _MemoryTokenStorage()
         ..credential = StoredCredential(
           credentialId: 'credential-restore',
-          refreshToken: 'refresh-restore',
+          sessionToken: 'refresh-restore',
         );
       final metadata = _MetadataStore(
         SessionMetadata.restoreEnabled('credential-restore'),
@@ -86,7 +83,7 @@ void main() {
       expect(state, isA<AuthSignedIn>());
       expect((state as AuthSignedIn).accessToken, 'access-restore');
       expect(
-        container.read(sessionTokensProvider).refreshToken,
+        container.read(sessionTokensProvider).sessionToken,
         'refresh-restore',
       );
     },
@@ -95,10 +92,10 @@ void main() {
   test('AuthSignedIn equality and hashCode include accessToken', () {
     final user = UserPrincipal(
       id: 'usr-1',
-      skNumber: 'DEMO-001',
+      username: 'DEMO-001',
       fullName: 'Nama User',
       roleTitle: 'Koordinator Kecamatan',
-      scope: AccessScope(
+      scope: const AccessScope(
         type: AccessScopeType.district,
         id: 'garut_kota',
         name: 'Kecamatan Garut Kota',
@@ -131,10 +128,10 @@ void main() {
 final class _TokenAuthRepository implements AuthRepository {
   static final _user = UserPrincipal(
     id: 'usr-1',
-    skNumber: 'DEMO-001',
+    username: 'DEMO-001',
     fullName: 'Nama User',
     roleTitle: 'Koordinator Kecamatan',
-    scope: AccessScope(
+    scope: const AccessScope(
       type: AccessScopeType.district,
       id: 'garut_kota',
       name: 'Kecamatan Garut Kota',
@@ -143,26 +140,22 @@ final class _TokenAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async => AuthResult.success(
     user: _user,
     accessToken: 'access-1',
-    refreshToken: staySignedIn ? 'refresh-1' : null,
+    sessionToken: staySignedIn ? 'refresh-1' : null,
   );
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async =>
+  Future<AuthResult> restoreSession(String sessionToken) async =>
       AuthResult.success(
         user: _user,
         accessToken: 'access-restore',
-        refreshToken: refreshToken,
+        sessionToken: sessionToken,
       );
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) =>
-      restoreSession(refreshToken);
 
   @override
   Future<RemoteRevocationResult> revokeSession(

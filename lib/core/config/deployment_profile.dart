@@ -111,6 +111,11 @@ final class DeploymentProfile {
           'API_BASE_URL wajib berupa URL absolut http/https untuk mode remote.',
         );
       }
+      if (environment == AppEnv.production && uri.scheme != 'https') {
+        throw StateError(
+          'Production wajib menggunakan HTTPS untuk API_BASE_URL.',
+        );
+      }
     }
   }
 

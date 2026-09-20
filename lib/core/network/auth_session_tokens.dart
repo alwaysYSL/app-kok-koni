@@ -1,17 +1,17 @@
 final class AuthSessionTokens {
   String? _accessToken;
-  String? _refreshToken;
+  String? _sessionToken;
 
   String? get accessToken => _accessToken;
-  String? get refreshToken => _refreshToken;
+  String? get sessionToken => _sessionToken;
 
-  void replace({String? accessToken, String? refreshToken}) {
+  void replace({String? accessToken, String? sessionToken}) {
     _accessToken = accessToken;
-    _refreshToken = refreshToken;
+    _sessionToken = sessionToken;
   }
 
   void clear() {
     _accessToken = null;
-    _refreshToken = null;
+    _sessionToken = null;
   }
 }

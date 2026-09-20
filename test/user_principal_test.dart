@@ -1,7 +1,60 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 
 void main() {
+  group('AuthFailure Tests', () {
+    test('default messages match specification', () {
+      expect(
+        const InvalidCredentialsFailure().message,
+        'Username atau kata sandi tidak sesuai.',
+      );
+      expect(
+        const NetworkTimeoutFailure().message,
+        'Koneksi ke server autentikasi terputus. Silakan coba lagi.',
+      );
+      expect(
+        const SessionExpiredFailure().message,
+        'Sesi Anda telah kedaluwarsa. Silakan masuk kembali.',
+      );
+      expect(
+        const StorageErrorFailure().message,
+        'Penyimpanan sesi lokal mengalami kendala.',
+      );
+      expect(
+        const AccountNotKokFailure().message,
+        'Akun ini bukan akun KOK dan tidak memiliki akses.',
+      );
+      expect(
+        const AccountInactiveFailure().message,
+        'Akun Anda berstatus non-aktif. Hubungi admin SICABOR.',
+      );
+      expect(
+        const NoSubdistrictFailure().message,
+        'Akun belum memiliki kecamatan yang terdaftar. Hubungi admin.',
+      );
+      expect(
+        const MemberNotFoundFailure().message,
+        'Data akun anggota tidak ditemukan pada sistem SICABOR.',
+      );
+      expect(
+        const ProfileFetchFailedFailure().message,
+        'Gagal memuat data profil akun dari server.',
+      );
+    });
+
+    test('custom messages override default messages', () {
+      expect(
+        const InvalidCredentialsFailure('Custom invalid credentials').message,
+        'Custom invalid credentials',
+      );
+      expect(
+        const AccountNotKokFailure('Custom not KOK').message,
+        'Custom not KOK',
+      );
+    });
+  });
+
   group('AccessScope Tests', () {
     test(
       'equality dan hashCode hanya berdasarkan type dan id, mengabaikan label name',
@@ -134,7 +187,7 @@ void main() {
         final mutablePermissions = <String>{'read:district', 'edit:club'};
         final principal = UserPrincipal(
           id: 'usr_01',
-          skNumber: 'SK-01',
+          username: 'USER_01',
           fullName: 'Nama User',
           roleTitle: 'Koordinator',
           scope: defaultScope,
@@ -158,7 +211,7 @@ void main() {
       () {
         final p1 = UserPrincipal(
           id: 'usr_01',
-          skNumber: 'SK-01',
+          username: 'USER_01',
           fullName: 'Nama User',
           roleTitle: 'Koordinator',
           scope: defaultScope,
@@ -168,7 +221,7 @@ void main() {
 
         final p2 = UserPrincipal(
           id: 'usr_01',
-          skNumber: 'SK-01',
+          username: 'USER_01',
           fullName: 'Nama User',
           roleTitle: 'Koordinator',
           scope: defaultScope,
@@ -178,7 +231,7 @@ void main() {
 
         final pDifferentScope = UserPrincipal(
           id: 'usr_01',
-          skNumber: 'SK-01',
+          username: 'USER_01',
           fullName: 'Nama User',
           roleTitle: 'Koordinator',
           scope: const AccessScope(
@@ -192,7 +245,7 @@ void main() {
 
         final pDifferentPermissions = UserPrincipal(
           id: 'usr_01',
-          skNumber: 'SK-01',
+          username: 'USER_01',
           fullName: 'Nama User',
           roleTitle: 'Koordinator',
           scope: defaultScope,
@@ -211,12 +264,13 @@ void main() {
     test('principal fields expose canonical names and scope directly', () {
       final principal = UserPrincipal(
         id: 'usr_01',
-        skNumber: 'SK-01',
+        username: 'USER_01',
         fullName: 'Nama Lengkap',
         roleTitle: 'Ketua Umum',
         scope: defaultScope,
       );
 
+      expect(principal.username, equals('USER_01'));
       expect(principal.fullName, equals('Nama Lengkap'));
       expect(principal.roleTitle, equals('Ketua Umum'));
       expect(principal.scope.id, equals('garut_kota'));
@@ -226,7 +280,7 @@ void main() {
     test('hasPermission mengembalikan boolean status secara akurat', () {
       final principal = UserPrincipal(
         id: 'usr_01',
-        skNumber: 'SK-01',
+        username: 'USER_01',
         fullName: 'Nama User',
         roleTitle: 'Koordinator',
         scope: defaultScope,
@@ -240,7 +294,7 @@ void main() {
     test('toJson dan fromJson round-trip dengan permissions deterministik', () {
       final principal = UserPrincipal(
         id: 'usr_01',
-        skNumber: 'SK-01',
+        username: 'USER_01',
         fullName: 'Nama User',
         roleTitle: 'Koordinator',
         scope: defaultScope,
@@ -252,7 +306,7 @@ void main() {
 
       expect(json, {
         'id': 'usr_01',
-        'skNumber': 'SK-01',
+        'username': 'USER_01',
         'fullName': 'Nama User',
         'roleTitle': 'Koordinator',
         'scope': {
@@ -269,13 +323,14 @@ void main() {
     test('fromJson menerima permissions kosong saat field tidak tersedia', () {
       final principal = UserPrincipal.fromJson({
         'id': 'usr_01',
-        'skNumber': 'SK-01',
+        'username': 'USER_01',
         'fullName': 'Nama User',
         'roleTitle': 'Koordinator',
         'scope': defaultScope.toJson(),
       });
 
       expect(principal.permissions, isEmpty);
+      expect(principal.username, 'USER_01');
     });
 
     test('fromJson menolak payload yang bukan object JSON', () {
@@ -290,14 +345,14 @@ void main() {
     test('fromJson menolak string wajib kosong atau bukan string', () {
       final valid = {
         'id': 'usr_01',
-        'skNumber': 'SK-01',
+        'username': 'USER_01',
         'fullName': 'Nama User',
         'roleTitle': 'Koordinator',
         'scope': defaultScope.toJson(),
         'permissions': <String>[],
       };
 
-      for (final key in ['id', 'skNumber', 'fullName', 'roleTitle']) {
+      for (final key in ['id', 'username', 'fullName', 'roleTitle']) {
         final empty = Map<String, dynamic>.from(valid)..[key] = '   ';
         expect(() => UserPrincipal.fromJson(empty), throwsFormatException);
 
@@ -309,7 +364,7 @@ void main() {
     test('fromJson menolak scope atau permissions yang corrupt', () {
       final valid = {
         'id': 'usr_01',
-        'skNumber': 'SK-01',
+        'username': 'USER_01',
         'fullName': 'Nama User',
         'roleTitle': 'Koordinator',
         'scope': defaultScope.toJson(),

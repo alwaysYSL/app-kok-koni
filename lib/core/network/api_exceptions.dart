@@ -9,13 +9,25 @@ sealed class ApiException implements Exception {
 }
 
 final class UnauthorizedException extends ApiException {
-  const UnauthorizedException([super.message = 'Sesi tidak sah'])
-    : super(statusCode: 401);
+  const UnauthorizedException([
+    super.message = 'Sesi tidak sah',
+    this.errorCode,
+    this.serverMessage,
+  ]) : super(statusCode: 401);
+
+  final String? errorCode;
+  final String? serverMessage;
 }
 
 final class ForbiddenException extends ApiException {
-  const ForbiddenException([super.message = 'Akses ditolak'])
-    : super(statusCode: 403);
+  const ForbiddenException([
+    super.message = 'Akses ditolak',
+    this.errorCode,
+    this.serverMessage,
+  ]) : super(statusCode: 403);
+
+  final String? errorCode;
+  final String? serverMessage;
 }
 
 final class NotFoundException extends ApiException {

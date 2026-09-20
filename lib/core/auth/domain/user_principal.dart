@@ -45,7 +45,7 @@ final class AccessScope {
 final class UserPrincipal {
   UserPrincipal({
     required this.id,
-    required this.skNumber,
+    required this.username,
     required this.fullName,
     required this.roleTitle,
     required this.scope,
@@ -54,7 +54,7 @@ final class UserPrincipal {
   }) : permissions = Set.unmodifiable(permissions);
 
   final String id;
-  final String skNumber;
+  final String username;
   final String fullName;
   final String roleTitle;
   final AccessScope scope;
@@ -65,7 +65,7 @@ final class UserPrincipal {
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'skNumber': skNumber,
+    'username': username,
     'fullName': fullName,
     'roleTitle': roleTitle,
     'scope': scope.toJson(),
@@ -107,7 +107,7 @@ final class UserPrincipal {
 
     return UserPrincipal(
       id: requiredString('id'),
-      skNumber: requiredString('skNumber'),
+      username: requiredString('username'),
       fullName: requiredString('fullName'),
       roleTitle: requiredString('roleTitle'),
       scope: AccessScope.fromJson(value['scope']),
@@ -121,7 +121,7 @@ final class UserPrincipal {
       identical(this, other) ||
       other is UserPrincipal &&
           other.id == id &&
-          other.skNumber == skNumber &&
+          other.username == username &&
           other.fullName == fullName &&
           other.roleTitle == roleTitle &&
           other.scope == scope &&
@@ -131,7 +131,7 @@ final class UserPrincipal {
   @override
   int get hashCode => Object.hash(
     id,
-    skNumber,
+    username,
     fullName,
     roleTitle,
     scope,

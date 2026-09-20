@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remote_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
@@ -281,7 +281,10 @@ void main() {
         composition.sessionMetadataStore,
         isA<SharedPrefsSessionMetadataStore>(),
       );
-      expect(composition.rememberedSkStore, isA<RememberedSkStore>());
+      expect(
+        composition.rememberedUsernameStore,
+        isA<RememberedUsernameStore>(),
+      );
       expect(composition.authRepository, isA<DemoAuthRepository>());
       expect(composition.kokRepository, isA<DemoKokRepository>());
       expect(
@@ -391,61 +394,63 @@ void main() {
         await demoComposition.authTokenStorage.write(
           StoredCredential(
             credentialId: 'demo_cid',
-            refreshToken: 'demo_token',
+            sessionToken: 'demo_token',
           ),
         );
         await demoComposition.sessionMetadataStore.write(
           SessionMetadata.restoreEnabled('demo_cid'),
         );
-        await demoComposition.rememberedSkStore.saveSk('SK-DEMO-001');
+        await demoComposition.rememberedUsernameStore.saveUsername('DEMO-001');
 
         // Write Staging data
         await stagingComposition.authTokenStorage.write(
           StoredCredential(
             credentialId: 'staging_cid',
-            refreshToken: 'staging_token',
+            sessionToken: 'staging_token',
           ),
         );
         await stagingComposition.sessionMetadataStore.write(
           SessionMetadata.restoreEnabled('staging_cid'),
         );
-        await stagingComposition.rememberedSkStore.saveSk('SK-STAGING-002');
+        await stagingComposition.rememberedUsernameStore.saveUsername(
+          'SK-STAGING-002',
+        );
 
         // Verify exact keys in stores
         expect(
-          secureStore.data.containsKey('kok.auth.v2.demo.credential'),
+          secureStore.data.containsKey('kok.auth.v3.demo.credential'),
           isTrue,
         );
         expect(
-          secureStore.data['kok.auth.v2.demo.credential'],
+          secureStore.data['kok.auth.v3.demo.credential'],
           contains('demo_cid'),
         );
         expect(
-          secureStore.data.containsKey('kok.auth.v2.staging.credential'),
+          secureStore.data.containsKey('kok.auth.v3.staging.credential'),
           isTrue,
         );
         expect(
-          secureStore.data['kok.auth.v2.staging.credential'],
+          secureStore.data['kok.auth.v3.staging.credential'],
           contains('staging_cid'),
         );
 
-        expect(prefs.containsKey('kok.auth.v2.demo.metadata'), isTrue);
+        expect(prefs.containsKey('kok.auth.v3.demo.metadata'), isTrue);
         expect(
-          prefs.getString('kok.auth.v2.demo.metadata'),
+          prefs.getString('kok.auth.v3.demo.metadata'),
           contains('demo_cid'),
         );
-        expect(prefs.containsKey('kok.auth.v2.staging.metadata'), isTrue);
+        expect(prefs.containsKey('kok.auth.v3.staging.metadata'), isTrue);
         expect(
-          prefs.getString('kok.auth.v2.staging.metadata'),
+          prefs.getString('kok.auth.v3.staging.metadata'),
           contains('staging_cid'),
         );
 
         expect(
-          prefs.getString('kok.auth.v2.demo.remembered_sk'),
-          'SK-DEMO-001',
+          prefs.getString('kok.auth.v3.demo.remembered_username'),
+          'DEMO-001',
         );
         expect(
-          prefs.getString('kok.auth.v2.staging.remembered_sk'),
+          prefs.getString('kok.auth.v3.staging.remembered_username'),
           'SK-STAGING-002',
         );
 
@@ -461,10 +466,12 @@ void main() {
         expect(demoMeta?.expectedCredentialId, 'demo_cid');
         expect(stagingMeta?.expectedCredentialId, 'staging_cid');
 
-        final demoSk = await demoComposition.rememberedSkStore.readSk();
-        final stagingSk = await stagingComposition.rememberedSkStore.readSk();
-        expect(demoSk, 'SK-DEMO-001');
-        expect(stagingSk, 'SK-STAGING-002');
+        final demoUsername = await demoComposition.rememberedUsernameStore
+            .readUsername();
+        final stagingUsername = await stagingComposition.rememberedUsernameStore
+            .readUsername();
+        expect(demoUsername, 'DEMO-001');
+        expect(stagingUsername, 'SK-STAGING-002');
       },
     );
   });
@@ -502,8 +509,8 @@ void main() {
           same(composition.sessionMetadataStore),
         );
         expect(
-          container.read(rememberedSkStoreProvider),
-          same(composition.rememberedSkStore),
+          container.read(rememberedUsernameStoreProvider),
+          same(composition.rememberedUsernameStore),
         );
         expect(
           container.read(authRepositoryProvider),
@@ -543,7 +550,9 @@ void main() {
       expectMissingComposition(
         () => container.read(sessionMetadataStoreProvider),
       );
-      expectMissingComposition(() => container.read(rememberedSkStoreProvider));
+      expectMissingComposition(
+        () => container.read(rememberedUsernameStoreProvider),
+      );
       expectMissingComposition(() => container.read(authRepositoryProvider));
       expectMissingComposition(() => container.read(repositoryProvider));
     });
@@ -558,6 +567,7 @@ void main() {
             environment: AppEnv.production,
             authMode: AuthMode.demo,
             dataMode: DataMode.remote,
+            apiBaseUrl: 'https://api.example.test',
           ).validate(),
           throwsStateError,
         );
@@ -567,8 +577,42 @@ void main() {
             environment: AppEnv.production,
             authMode: AuthMode.remote,
             dataMode: DataMode.demo,
+            apiBaseUrl: 'https://api.example.test',
           ).validate(),
           throwsStateError,
+        );
+      },
+    );
+
+    test(
+      'DeploymentProfile.validate menolak HTTP plaintext untuk production',
+      () {
+        expect(
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.remote,
+            apiBaseUrl: 'http://api.example.test',
+          ).validate(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains(
+                'Production wajib menggunakan HTTPS untuk API_BASE_URL.',
+              ),
+            ),
+          ),
+        );
+
+        expect(
+          () => const DeploymentProfile(
+            environment: AppEnv.production,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.remote,
+            apiBaseUrl: 'https://api.example.test',
+          ).validate(),
+          returnsNormally,
         );
       },
     );

@@ -34,7 +34,7 @@ class FailingSharedPreferences implements SharedPreferences {
 }
 
 void main() {
-  const testKey = 'kok.auth.v2.test.metadata';
+  const testKey = 'kok.auth.v3.test.metadata';
 
   group('SessionMetadata Invariant Constructors', () {
     test('signedOutClean creates valid metadata with default values', () {

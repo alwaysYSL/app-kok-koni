@@ -1,27 +1,24 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
-import '../auth/data/auth_repository.dart';
 import '../config/deployment_profile.dart';
 import '../../data/request_cancellation.dart';
 import 'api_exceptions.dart';
 import 'auth_session_tokens.dart';
 
-typedef RefreshSession = Future<AuthResult> Function(String refreshToken);
-
 final class ApiClient {
   ApiClient({
     required DeploymentProfile profile,
-    required this._tokens,
-    required this._refreshSession,
+    required AuthSessionTokens tokens,
     Dio? dio,
-  }) : _dio = dio ?? Dio(_optionsFor(profile)) {
+  }) : _tokens = tokens, // ignore: prefer_initializing_formals
+       _dio = dio ?? Dio(_optionsFor(profile)) {
     profile.validate();
   }
 
   final Dio _dio;
   final AuthSessionTokens _tokens;
-  final RefreshSession _refreshSession;
-  Future<String>? _refreshFlight;
 
   static BaseOptions _optionsFor(DeploymentProfile profile) {
     profile.validate();
@@ -40,10 +37,8 @@ final class ApiClient {
     Options? options,
     RequestCancellation? cancellation,
     bool skipAuth = false,
-    bool retryAttempt = false,
   }) async {
     cancellation?.throwIfCancelled();
-    final requestAccessToken = _tokens.accessToken;
 
     CancelToken? cancelToken;
     if (cancellation != null) {
@@ -76,31 +71,6 @@ final class ApiClient {
         throw RequestCancelledException(cancellation?.reason);
       }
       cancellation?.throwIfCancelled();
-      if (error.response?.statusCode == 401 && !skipAuth && !retryAttempt) {
-        if (_tokens.accessToken != null &&
-            _tokens.accessToken != requestAccessToken) {
-          return request<T>(
-            path,
-            method: method,
-            data: data,
-            queryParameters: queryParameters,
-            options: options,
-            cancellation: cancellation,
-            retryAttempt: true,
-          );
-        }
-
-        await _refreshAccessToken(cancellation: cancellation);
-        return request<T>(
-          path,
-          method: method,
-          data: data,
-          queryParameters: queryParameters,
-          options: options,
-          cancellation: cancellation,
-          retryAttempt: true,
-        );
-      }
       throw _mapException(error);
     }
   }
@@ -123,65 +93,70 @@ final class ApiClient {
     return options.copyWith(method: method, headers: headers);
   }
 
-  Future<String> _refreshAccessToken({RequestCancellation? cancellation}) {
-    final active = _refreshFlight;
-    if (active != null) return active;
-
-    cancellation?.throwIfCancelled();
-    final refreshToken = _tokens.refreshToken;
-    if (refreshToken == null || refreshToken.isEmpty) {
-      return Future<String>.error(const UnauthorizedException());
-    }
-
-    final future = () async {
-      final result = await _refreshSession(refreshToken);
-      cancellation?.throwIfCancelled();
-      final accessToken = result.accessToken;
-      if (!result.isSuccess || accessToken == null || accessToken.isEmpty) {
-        throw const UnauthorizedException('Refresh sesi gagal');
-      }
-      _tokens.replace(
-        accessToken: accessToken,
-        refreshToken: result.refreshToken ?? refreshToken,
-      );
-      return accessToken;
-    }();
-    _refreshFlight = future;
-    return future.whenComplete(() {
-      if (identical(_refreshFlight, future)) _refreshFlight = null;
-    });
-  }
-
   ApiException _mapException(DioException error) {
     final status = error.response?.statusCode;
-    final message = error.message;
+    final jsonMap = _extractJson(error.response?.data);
+    final errorCode = jsonMap?['error_code']?.toString();
+    final serverMessage = jsonMap?['message']?.toString();
+    final fallbackMessage = error.message;
+
     if (status == 401) {
-      return UnauthorizedException(message ?? 'Sesi tidak sah');
+      final message = serverMessage ?? fallbackMessage ?? 'Sesi tidak sah';
+      return UnauthorizedException(message, errorCode, serverMessage);
     }
-    if (status == 403) return ForbiddenException(message ?? 'Akses ditolak');
+    if (status == 403) {
+      final message = serverMessage ?? fallbackMessage ?? 'Akses ditolak';
+      return ForbiddenException(message, errorCode, serverMessage);
+    }
     if (status == 404) {
-      return NotFoundException(message ?? 'Data tidak ditemukan');
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Data tidak ditemukan';
+      return NotFoundException(message);
     }
     if (status != null && status >= 400 && status < 500) {
-      return BadRequestException(
-        message ?? 'Permintaan tidak valid',
-        statusCode: status,
-      );
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Permintaan tidak valid';
+      return BadRequestException(message, statusCode: status);
     }
     if (status != null && status >= 500) {
-      return ServerErrorException(
-        message ?? 'Server gagal memproses request',
-        statusCode: status,
-      );
+      final message =
+          serverMessage ?? fallbackMessage ?? 'Server gagal memproses request';
+      return ServerErrorException(message, statusCode: status);
     }
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return ApiTimeoutException(message ?? 'Request timeout');
+      return ApiTimeoutException(fallbackMessage ?? 'Request timeout');
     }
     if (error.type == DioExceptionType.cancel) {
-      return NetworkOfflineException(message ?? 'Request dibatalkan');
+      return NetworkOfflineException(fallbackMessage ?? 'Request dibatalkan');
     }
-    return NetworkOfflineException(message ?? 'Tidak ada koneksi');
+    if (error.type == DioExceptionType.connectionError) {
+      return NetworkOfflineException(fallbackMessage ?? 'Tidak ada koneksi');
+    }
+    return NetworkOfflineException(fallbackMessage ?? 'Tidak ada koneksi');
+  }
+
+  Map<String, dynamic>? _extractJson(Object? data) {
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    if (data is Map) {
+      return data.cast<String, dynamic>();
+    }
+    if (data is String && data.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+        if (decoded is Map) {
+          return decoded.cast<String, dynamic>();
+        }
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
   }
 }

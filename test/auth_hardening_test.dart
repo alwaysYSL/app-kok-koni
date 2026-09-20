@@ -9,7 +9,7 @@ import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
-import 'package:kok_app/core/auth/data/remembered_sk_store.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
@@ -39,7 +39,7 @@ class _ControlledAuthRepository implements AuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async {
@@ -51,17 +51,12 @@ class _ControlledAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AuthResult> restoreSession(String refreshToken) async {
+  Future<AuthResult> restoreSession(String sessionToken) async {
     restoreCallCount++;
     if (restoreCompleter != null) {
       return restoreCompleter!.future;
     }
     return const AuthResult.failed(SessionExpiredFailure('Expired'));
-  }
-
-  @override
-  Future<AuthResult> refreshToken(String refreshToken) async {
-    return restoreSession(refreshToken);
   }
 
   @override
@@ -77,12 +72,12 @@ class _TarogongWithExportAuthRepository extends DemoAuthRepository {
 
   @override
   Future<AuthResult> login({
-    required String skNumber,
+    required String username,
     required String password,
     required bool staySignedIn,
   }) async {
     final res = await super.login(
-      skNumber: skNumber,
+      username: username,
       password: password,
       staySignedIn: staySignedIn,
     );
@@ -91,14 +86,14 @@ class _TarogongWithExportAuthRepository extends DemoAuthRepository {
       return AuthResult.success(
         user: UserPrincipal(
           id: user.id,
-          skNumber: user.skNumber,
+          username: user.username,
           fullName: user.fullName,
           roleTitle: user.roleTitle,
           scope: user.scope,
           permissions: {...user.permissions, 'reports:export'},
         ),
         accessToken: res.accessToken,
-        refreshToken: res.refreshToken,
+        sessionToken: res.sessionToken,
         sessionHandle: res.sessionHandle,
       );
     }
@@ -223,7 +218,7 @@ class _MutableAuthController extends AuthController {
 
 final _testGarutUser = UserPrincipal(
   id: 'usr_garut_kota',
-  skNumber: 'DEMO-001',
+  username: 'DEMO-001',
   fullName: 'Pak Asep',
   roleTitle: 'Koordinator Kecamatan',
   scope: const AccessScope(
@@ -247,16 +242,16 @@ void main() {
         final storage = _InMemoryTokenStorage();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
 
         final container = createTestProviderContainer(
           overrides: [
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             preferencesProvider.overrideWithValue(prefs),
           ],
         );
@@ -268,10 +263,10 @@ void main() {
 
         // Mulai login yang tertahan secara asinkron
         final loginFuture = controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'password123',
           staySignedIn: true,
-          rememberSk: true,
+          rememberUsername: true,
         );
         expect(container.read(authControllerProvider), isA<AuthSigningIn>());
 
@@ -284,7 +279,7 @@ void main() {
           AuthResult.success(
             user: _testGarutUser,
             accessToken: 'jwt_token_garut',
-            refreshToken: 'token_usr_garut_kota',
+            sessionToken: 'token_usr_garut_kota',
           ),
         );
         final loginSuccess = await loginFuture;
@@ -309,16 +304,16 @@ void main() {
         );
         final storage = _InMemoryTokenStorage();
         await storage.write(
-          StoredCredential(credentialId: 'cred-a07', refreshToken: 'token-a07'),
+          StoredCredential(credentialId: 'cred-a07', sessionToken: 'token-a07'),
         );
         final metadataStore = _FakeSessionMetadataStore(
           SessionMetadata.restoreEnabled('cred-a07'),
         );
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
 
         final container = createTestProviderContainer(
@@ -326,7 +321,7 @@ void main() {
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             preferencesProvider.overrideWithValue(prefs),
           ],
         );
@@ -398,16 +393,16 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final storage = _InMemoryTokenStorage();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
 
         final container = createTestProviderContainer(
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authControllerProvider.overrideWith(() => mutableController),
           ],
         );
@@ -458,9 +453,9 @@ void main() {
         final metadataStore = _FakeSessionMetadataStore();
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
         final repo = DemoAuthRepository(simulateLatency: false);
 
@@ -469,7 +464,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(repo),
           ],
         );
@@ -507,75 +502,55 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 7. Validasi DeploymentProfile Fail-Closed di Lingkungan Produksi (Menutup A-04)
+    // 7. DeploymentProfile Menolak Mode Campuran pada Production (Menutup A-04)
     // -------------------------------------------------------------------------
     test(
       '7. Skenario A-04: DeploymentProfile melempar StateError saat production memakai adapter/data demo',
       () {
-        // Produksi dengan demo auth -> StateError
+        const invalidAuth = DeploymentProfile(
+          environment: AppEnv.production,
+          authMode: AuthMode.demo,
+          dataMode: DataMode.remote,
+        );
         expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.production,
-            authMode: AuthMode.demo,
-            dataMode: DataMode.remote,
-          ).validate(),
-          throwsStateError,
+          () => invalidAuth.validate(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Production wajib'),
+            ),
+          ),
         );
 
-        // Produksi dengan demo data -> StateError
+        const invalidData = DeploymentProfile(
+          environment: AppEnv.production,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.demo,
+        );
         expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.production,
-            authMode: AuthMode.remote,
-            dataMode: DataMode.demo,
-          ).validate(),
-          throwsStateError,
+          () => invalidData.validate(),
+          throwsA(
+            isA<StateError>().having(
+              (e) => e.message,
+              'message',
+              contains('Production wajib'),
+            ),
+          ),
         );
 
-        // Produksi dengan keduanya demo -> StateError
-        expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.production,
-            authMode: AuthMode.demo,
-            dataMode: DataMode.demo,
-          ).validate(),
-          throwsStateError,
+        const validProd = DeploymentProfile(
+          environment: AppEnv.production,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://api.example.test',
         );
-
-        // Demo & Staging lolos normal
-        expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.demo,
-            authMode: AuthMode.demo,
-            dataMode: DataMode.demo,
-          ).validate(),
-          returnsNormally,
-        );
-
-        expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.staging,
-            authMode: AuthMode.demo,
-            dataMode: DataMode.demo,
-          ).validate(),
-          returnsNormally,
-        );
-
-        // Produksi dengan adapter riil lolos normal
-        expect(
-          () => const DeploymentProfile(
-            environment: AppEnv.production,
-            authMode: AuthMode.remote,
-            dataMode: DataMode.remote,
-            apiBaseUrl: 'https://api.example.test',
-          ).validate(),
-          returnsNormally,
-        );
+        expect(() => validProd.validate(), returnsNormally);
       },
     );
 
     // -------------------------------------------------------------------------
-    // 8. Rekapitulasi Data Tarogong Kidul Dinamis (Menutup A-09)
+    // 8. Rekapitulasi Data Dinamis Tarogong Kidul (Menutup A-09)
     // -------------------------------------------------------------------------
     testWidgets(
       '8. Skenario A-09: Rekapitulasi data menampilkan Tarogong Kidul secara dinamis pada modal sheet dan teks clipboard',
@@ -583,9 +558,9 @@ void main() {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
         final storage = _InMemoryTokenStorage();
-        final skStore = RememberedSkStore(
+        final usernameStore = RememberedUsernameStore(
           prefs: prefs,
-          key: 'test_remembered_sk',
+          key: 'test_remembered_username',
         );
         final authRepo = _TarogongWithExportAuthRepository(
           simulateLatency: false,
@@ -595,7 +570,7 @@ void main() {
           overrides: [
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -631,10 +606,10 @@ void main() {
         // Login akun Pak Cecep (Tarogong Kidul)
         final controller = container.read(authControllerProvider.notifier);
         await controller.login(
-          skNumber: 'DEMO-002',
+          username: 'DEMO-002',
           password: 'koktarogong123',
           staySignedIn: false,
-          rememberSk: false,
+          rememberUsername: false,
         );
         await tester.pumpAndSettle();
 
@@ -701,7 +676,7 @@ void main() {
       () {
         final p1 = UserPrincipal(
           id: 'usr-01',
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           fullName: 'Pak Asep',
           roleTitle: 'Koordinator',
           scope: const AccessScope(
@@ -714,7 +689,7 @@ void main() {
 
         final p2 = UserPrincipal(
           id: 'usr-01',
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           fullName: 'Pak Asep',
           roleTitle: 'Koordinator',
           scope: const AccessScope(
@@ -727,7 +702,7 @@ void main() {
 
         final pDifferentPermission = UserPrincipal(
           id: 'usr-01',
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           fullName: 'Pak Asep',
           roleTitle: 'Koordinator',
           scope: const AccessScope(
@@ -740,7 +715,7 @@ void main() {
 
         final pDifferentDistrict = UserPrincipal(
           id: 'usr-01',
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           fullName: 'Pak Asep',
           roleTitle: 'Koordinator',
           scope: const AccessScope(
@@ -772,12 +747,15 @@ void main() {
 
   group('Fault-Injection Suite (FT-01 s/d FT-08)', () {
     late SharedPreferences prefs;
-    late RememberedSkStore skStore;
+    late RememberedUsernameStore usernameStore;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       prefs = await SharedPreferences.getInstance();
-      skStore = RememberedSkStore(prefs: prefs, key: 'test_hardening_sk');
+      usernameStore = RememberedUsernameStore(
+        prefs: prefs,
+        key: 'test_hardening_username',
+      );
     });
 
     // FT-01: Metadata pending login gagal -> tidak ada credential baru; state unavailable
@@ -798,7 +776,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -808,10 +786,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -840,7 +818,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -850,10 +828,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -888,7 +866,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
             credentialIdGeneratorProvider.overrideWithValue(generator),
           ],
@@ -905,10 +883,10 @@ void main() {
         };
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         await logoutFuture;
@@ -938,7 +916,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -948,10 +926,10 @@ void main() {
         await controller.bootstrap();
 
         final result = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         expect(result.isSuccess, isFalse);
@@ -973,7 +951,7 @@ void main() {
       () async {
         final foreignCred = StoredCredential(
           credentialId: 'foreign-cred-999',
-          refreshToken: 'foreign-token',
+          sessionToken: 'foreign-token',
         );
         final storage = _InMemoryTokenStorage();
         final metadataStore = _FakeSessionMetadataStore(
@@ -986,7 +964,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -997,10 +975,10 @@ void main() {
 
         // Login sukses terlebih dahulu
         final loginRes = await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
         expect(loginRes.isSuccess, isTrue);
 
@@ -1026,7 +1004,7 @@ void main() {
       () async {
         final expiredCred = StoredCredential(
           credentialId: 'cred-expired-ft06',
-          refreshToken: 'token-expired',
+          sessionToken: 'token-expired',
         );
         final storage = _InMemoryTokenStorage()
           ..credential = expiredCred
@@ -1046,7 +1024,7 @@ void main() {
             authRepositoryProvider.overrideWithValue(repo),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             preferencesProvider.overrideWithValue(prefs),
           ],
         );
@@ -1077,7 +1055,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -1087,10 +1065,10 @@ void main() {
         await controller.bootstrap();
 
         await controller.login(
-          skNumber: 'DEMO-001',
+          username: 'DEMO-001',
           password: 'kokgarut123',
           staySignedIn: true,
-          rememberSk: false,
+          rememberUsername: false,
         );
 
         // Saat logout, izinkan penulisan metadata pending, lalu gagalkan penulisan metadata clean
@@ -1119,7 +1097,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );
@@ -1161,7 +1139,7 @@ void main() {
             preferencesProvider.overrideWithValue(prefs),
             authTokenStorageProvider.overrideWithValue(storage),
             sessionMetadataStoreProvider.overrideWithValue(metadataStore),
-            rememberedSkStoreProvider.overrideWithValue(skStore),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
             authRepositoryProvider.overrideWithValue(authRepo),
           ],
         );

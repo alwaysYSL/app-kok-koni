@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/remote_auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
-import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
@@ -18,30 +17,19 @@ void main() {
   final client = ApiClient(
     profile: _remoteProfile,
     tokens: AuthSessionTokens(),
-    refreshSession: (_) async =>
-        AuthResult.failed(const InvalidCredentialsFailure()),
     dio: Dio(),
   );
 
-  test('RemoteAuthRepository fail-closed pada seluruh operasi', () async {
-    final repository = RemoteAuthRepository(client);
+  test('RemoteAuthRepository revokeSession returns notApplicable', () async {
+    final repository = RemoteAuthRepository(
+      dio: Dio(),
+      profile: _remoteProfile,
+    );
 
-    await expectLater(
-      repository.login(skNumber: 'sk', password: 'pw', staySignedIn: false),
-      throwsA(isA<UnimplementedError>()),
+    final result = await repository.revokeSession(
+      RemoteSessionHandle('session'),
     );
-    await expectLater(
-      repository.restoreSession('refresh'),
-      throwsA(isA<UnimplementedError>()),
-    );
-    await expectLater(
-      repository.refreshToken('refresh'),
-      throwsA(isA<UnimplementedError>()),
-    );
-    await expectLater(
-      repository.revokeSession(RemoteSessionHandle('session')),
-      throwsA(isA<UnimplementedError>()),
-    );
+    expect(result.status, RemoteRevocationStatus.notApplicable);
   });
 
   test(
@@ -86,7 +74,7 @@ void main() {
   );
 
   test(
-    'staging remote composition membangun adapter placeholder dan satu client',
+    'staging remote composition membangun adapter remote dan api client',
     () async {
       SharedPreferences.setMockInitialValues({});
       final composition = AppComposition.fromProfile(
@@ -98,10 +86,6 @@ void main() {
       expect(composition.authRepository, isA<RemoteAuthRepository>());
       expect(composition.kokRepository, isA<RemoteKokRepository>());
       expect(composition.apiClient, isNotNull);
-      expect(
-        (composition.authRepository as RemoteAuthRepository).client,
-        same(composition.apiClient),
-      );
       expect(
         (composition.kokRepository as RemoteKokRepository).client,
         same(composition.apiClient),
