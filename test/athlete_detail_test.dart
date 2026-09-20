@@ -4,9 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/core/theme.dart';
-import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/models.dart';
+import 'package:kok_app/data/models/athlete.dart';
+import 'package:kok_app/data/models/athlete_detail.dart';
+import 'package:kok_app/data/providers/athlete_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
 import 'package:kok_app/features/club_detail/club_brand_palette.dart';
@@ -14,11 +20,72 @@ import 'package:kok_app/features/dashboard_decorations.dart';
 import 'package:kok_app/features/detail_pages.dart';
 import 'package:kok_app/shared/widgets.dart';
 
+import 'test_composition.dart';
+
 const garutScope = AccessScope(
   type: AccessScopeType.district,
   id: 'garut_kota',
   name: 'Kecamatan Garut Kota',
 );
+
+AppComposition buildTestRemoteAppComposition() {
+  final base = buildTestAppComposition();
+  return AppComposition(
+    profile: const DeploymentProfile(
+      environment: AppEnv.production,
+      authMode: AuthMode.remote,
+      dataMode: DataMode.remote,
+    ),
+    authTokenStorage: base.authTokenStorage,
+    sessionMetadataStore: base.sessionMetadataStore,
+    rememberedUsernameStore: base.rememberedUsernameStore,
+    authRepository: base.authRepository,
+    kokRepository: base.kokRepository,
+    profileService: base.profileService,
+    caborService: base.caborService,
+    athleteService: base.athleteService,
+    credentialIdGenerator: base.credentialIdGenerator,
+  );
+}
+
+Widget createRemoteTestApp({
+  required String initialLocation,
+  List<dynamic> overrides = const [],
+  VoidCallback? onSportsReached,
+}) {
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/person/:id',
+        builder: (_, state) =>
+            AthleteDetailPage(id: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/sports',
+        builder: (_, _) {
+          onSportsReached?.call();
+          return const Scaffold(body: Text('Sports Page'));
+        },
+      ),
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('Home Page')),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+
+  final remoteComposition = buildTestRemoteAppComposition();
+
+  return ProviderScope(
+    overrides: [
+      appCompositionProvider.overrideWithValue(remoteComposition),
+      ...overrides,
+    ],
+    child: MaterialApp.router(theme: kokTheme(), routerConfig: router),
+  );
+}
 
 Widget createTestApp({
   required KokSnapshot snapshot,
@@ -537,5 +604,273 @@ void main() {
         expect(find.text('ID · ATL-ATL-789'), findsNothing);
       },
     );
+  });
+
+  group('AthleteDetailPage Remote Mode Tests', () {
+    final sampleRemoteAthlete = AthleteDetail(
+      id: 101,
+      code: 'ATL-101',
+      name: 'Budi Setiawan',
+      sex: 'l',
+      sexLabel: 'Laki-Laki',
+      pob: 'Garut',
+      dob: '12-05-2002',
+      age: 24,
+      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb',
+      status: 1,
+      statusLabel: 'Aktif',
+      cabor: const AthleteCabor(id: 1, code: 'VOLI', name: 'Bola Voli'),
+      club: const AthleteClub(id: 10, code: 'KLUB-01', name: 'Voli Bina Muda'),
+      domicile: const AthleteDomicile(
+        subdistrictId: 320501,
+        subdistrictName: 'Garut Kota',
+        districtId: 3205,
+        districtName: 'Kabupaten Garut',
+        village: 'Kota Kulon',
+      ),
+      phone: '081234567890',
+      email: 'budi@example.test',
+      height: 180,
+      weight: 75,
+      bloodType: 'O',
+      address: 'Jl. Merdeka No. 10',
+    );
+
+    final sampleRemoteAthleteNoClub = const AthleteDetail(
+      id: 102,
+      code: 'ATL-102',
+      name: 'Siti Rahma',
+      sex: 'p',
+      sexLabel: 'Perempuan',
+      pob: 'Tarogong',
+      dob: '20-10-2004',
+      age: 22,
+      photoUrl: '',
+      status: 1,
+      statusLabel: 'Aktif',
+      cabor: AthleteCabor(id: 2, code: 'SILAT', name: 'Pencak Silat'),
+      club: null,
+      domicile: AthleteDomicile(
+        subdistrictId: 320502,
+        subdistrictName: 'Tarogong Kidul',
+        districtId: 3205,
+        districtName: 'Kabupaten Garut',
+      ),
+      phone: '08987654321',
+      email: null,
+      height: 165,
+      weight: 55,
+      bloodType: 'A',
+      address: null,
+    );
+
+    testWidgets(
+      'renders complete remote athlete profile with physical data, contacts, domicile, and active status',
+      (tester) async {
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/person/101',
+            overrides: [
+              athleteDetailProvider(
+                101,
+              ).overrideWith((ref) async => sampleRemoteAthlete),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // 1. Header & Title
+        expect(find.text('Detail Atlet'), findsOneWidget);
+        expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+        expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+
+        // 2. Profile identity
+        expect(find.text('Budi Setiawan'), findsOneWidget);
+        expect(find.text('ID · ATL-101'), findsOneWidget);
+        expect(find.text('aktif'), findsOneWidget);
+
+        // 3. Detail rows
+        expect(find.text('Klub'), findsOneWidget);
+        expect(find.text('Voli Bina Muda'), findsOneWidget);
+        expect(find.text('Cabor'), findsOneWidget);
+        expect(find.text('Bola Voli'), findsOneWidget);
+        expect(find.text('Jenis Kelamin'), findsOneWidget);
+        expect(find.text('Laki-Laki'), findsOneWidget);
+        expect(find.text('Lahir / Usia'), findsOneWidget);
+        expect(find.text('Garut · 12-05-2002 (24 thn)'), findsOneWidget);
+        expect(find.text('Domisili'), findsOneWidget);
+        expect(find.text('Kota Kulon, Garut Kota'), findsOneWidget);
+
+        // 4. Data Fisik
+        expect(find.text('DATA FISIK'), findsOneWidget);
+        expect(find.text('180 cm'), findsOneWidget);
+        expect(find.text('Tinggi Badan'), findsOneWidget);
+        expect(find.text('75 kg'), findsOneWidget);
+        expect(find.text('Berat Badan'), findsOneWidget);
+        expect(find.text('O'), findsOneWidget);
+        expect(find.text('Golongan Darah'), findsOneWidget);
+
+        // 5. Kontak & Alamat
+        expect(find.text('KONTAK & ALAMAT'), findsOneWidget);
+        expect(find.text('081234567890'), findsOneWidget);
+        expect(find.text('budi@example.test'), findsOneWidget);
+        expect(find.text('Jl. Merdeka No. 10'), findsOneWidget);
+
+        // 6. Hidden items in remote mode
+        expect(find.text('KELENGKAPAN BERKAS'), findsNothing);
+        expect(find.text('RIWAYAT'), findsNothing);
+        expect(find.text('terverifikasi'), findsNothing);
+
+        // 7. Bottom Bar & Secretariat Modal
+        expect(find.text('Hubungi pengurus klub'), findsOneWidget);
+        await tester.tap(find.text('Hubungi pengurus klub'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Sekretariat Klub'), findsOneWidget);
+        expect(find.text('Voli Bina Muda'), findsWidgets);
+        expect(find.text('Kode Klub: KLUB-01'), findsOneWidget);
+
+        await tester.tap(find.text('Tutup'));
+        await tester.pumpAndSettle();
+        expect(find.text('Sekretariat Klub'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders remote athlete without club and hides contact button',
+      (tester) async {
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/person/102',
+            overrides: [
+              athleteDetailProvider(
+                102,
+              ).overrideWith((ref) async => sampleRemoteAthleteNoClub),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Siti Rahma'), findsOneWidget);
+        expect(find.text('ID · ATL-102'), findsOneWidget);
+        expect(find.text('Belum terdaftar di klub'), findsOneWidget);
+        expect(find.text('Tarogong Kidul, Kabupaten Garut'), findsOneWidget);
+        expect(find.text('Hubungi pengurus klub'), findsNothing);
+
+        // Fallback avatar initial
+        expect(find.text('SR'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'displays MissingPage with custom message when 404 NotFoundException is thrown',
+      (tester) async {
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/person/999',
+            overrides: [
+              athleteDetailProvider(999).overrideWith(
+                (ref) => Future.error(
+                  const NotFoundException('Data atlet tidak ditemukan.'),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MissingPage), findsOneWidget);
+        expect(find.text('Data atlet tidak ditemukan.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('displays error view with retry button on unexpected failure', (
+      tester,
+    ) async {
+      var callCount = 0;
+      await tester.pumpWidget(
+        createRemoteTestApp(
+          initialLocation: '/person/101',
+          overrides: [
+            athleteDetailProvider(101).overrideWith((ref) {
+              callCount++;
+              if (callCount == 1) {
+                return Future.error(
+                  const ServerErrorException('Koneksi terputus'),
+                );
+              }
+              return Future.value(sampleRemoteAthlete);
+            }),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gagal memuat detail atlet'), findsOneWidget);
+      expect(find.text('Coba Lagi'), findsOneWidget);
+
+      await tester.tap(find.text('Coba Lagi'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Budi Setiawan'), findsOneWidget);
+    });
+
+    testWidgets(
+      'displays MissingPage when athlete id is non-numeric in remote mode',
+      (tester) async {
+        await tester.pumpWidget(
+          createRemoteTestApp(initialLocation: '/person/abc'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(MissingPage), findsOneWidget);
+        expect(find.text('Data atlet tidak ditemukan.'), findsOneWidget);
+      },
+    );
+
+    testWidgets('tapping back button pops or navigates to /sports', (
+      tester,
+    ) async {
+      var sportsReached = false;
+      await tester.pumpWidget(
+        createRemoteTestApp(
+          initialLocation: '/person/101',
+          onSportsReached: () => sportsReached = true,
+          overrides: [
+            athleteDetailProvider(
+              101,
+            ).overrideWith((ref) async => sampleRemoteAthlete),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.pumpAndSettle();
+
+      expect(sportsReached, isTrue);
+    });
+
+    testWidgets('tapping share button shows SnackBar feedback', (tester) async {
+      await tester.pumpWidget(
+        createRemoteTestApp(
+          initialLocation: '/person/101',
+          overrides: [
+            athleteDetailProvider(
+              101,
+            ).overrideWith((ref) async => sampleRemoteAthlete),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(Icons.share_outlined));
+      await tester.pump();
+
+      expect(
+        find.text('Tautan profil Budi Setiawan disalin ke clipboard.'),
+        findsOneWidget,
+      );
+    });
   });
 }
