@@ -30,7 +30,7 @@ dart run scripts/mock_server/sicabor_mock_server.dart
 
 | Parameter | Alias | Default | Deskripsi |
 | :--- | :--- | :--- | :--- |
-| `--port=<port>` | `-p=<port>` | `8080` | Menentukan nomor port server |
+| `--port=<port>` | `-p=<port>` | `8088` | Menentukan nomor port server |
 | `--host=<host>` | `-h=<host>` | `0.0.0.0` | Menentukan alamat bind host (`0.0.0.0` untuk semua antarmuka) |
 | `--quiet` | `-q` | `false` | Menonaktifkan log request di terminal |
 | `--help` | - | - | Menampilkan panduan bantuan |
@@ -79,22 +79,30 @@ Tentukan URL server sesuai target perangkat atau simulator yang digunakan:
 
 ### A. Android Emulator
 Emulator Android berjalan di dalam virtual router tersendiri. Gunakan alamat IP loopback virtual:
-- **Base API URL**: `http://10.0.2.2:8080/api/v1/kok`
-- **Auth URL**: `http://10.0.2.2:8080/api/auth`
+- **Base API URL**: `http://10.0.2.2:8088/api/v1/kok`
+- **Auth URL**: `http://10.0.2.2:8088/api/auth`
+
+```bash
+flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote --dart-define=DATA_MODE=demo --dart-define=API_BASE_URL=http://10.0.2.2:8088/api/v1/kok
+```
 
 ### B. Smartphone Android Fisik (Kabel USB / Wi-Fi)
 Hubungkan laptop dan smartphone ke jaringan Wi-Fi lokal yang sama:
 1. Temukan alamat IP lokal laptop Anda:
    - Windows: Jalankan `ipconfig` di PowerShell/Command Prompt (cari IPv4 pada adapter Wi-Fi, misal `192.168.1.50`).
    - macOS/Linux: Jalankan `ifconfig` atau `ip a`.
-2. Pastikan firewall tidak memblokir port `8080`.
+2. Pastikan firewall tidak memblokir port `8088`.
 3. Konfigurasikan URL aplikasi:
-   - **Base API URL**: `http://<IP-Laptop>:8080/api/v1/kok` (Contoh: `http://192.168.1.50:8080/api/v1/kok`)
-   - **Auth URL**: `http://<IP-Laptop>:8080/api/auth` (Contoh: `http://192.168.1.50:8080/api/auth`)
+   - **Base API URL**: `http://<IP-Laptop>:8088/api/v1/kok` (Contoh: `http://192.168.1.50:8088/api/v1/kok`)
+   - **Auth URL**: `http://<IP-Laptop>:8088/api/auth` (Contoh: `http://192.168.1.50:8088/api/auth`)
+
+```bash
+flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote --dart-define=DATA_MODE=demo --dart-define=API_BASE_URL=http://192.168.1.50:8088/api/v1/kok
+```
 
 ### C. Flutter Web / Desktop / iOS Simulator
-- **Base API URL**: `http://localhost:8080/api/v1/kok`
-- **Auth URL**: `http://localhost:8080/api/auth`
+- **Base API URL**: `http://localhost:8088/api/v1/kok`
+- **Auth URL**: `http://localhost:8088/api/auth`
 
 ---
 

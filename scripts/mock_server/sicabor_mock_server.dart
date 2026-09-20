@@ -483,14 +483,14 @@ class SicaborMockServer {
 /// CLI Entrypoint for running the SICABOR Mock Server directly.
 void main(List<String> args) async {
   String host = '0.0.0.0';
-  int port = 8080;
+  int? explicitPort;
   bool verbose = true;
 
   for (final arg in args) {
     if (arg.startsWith('--port=')) {
-      port = int.tryParse(arg.substring(7)) ?? port;
+      explicitPort = int.tryParse(arg.substring(7));
     } else if (arg.startsWith('-p=')) {
-      port = int.tryParse(arg.substring(3)) ?? port;
+      explicitPort = int.tryParse(arg.substring(3));
     } else if (arg.startsWith('--host=')) {
       host = arg.substring(7);
     } else if (arg.startsWith('-h=')) {
@@ -504,7 +504,7 @@ void main(List<String> args) async {
       );
       stdout.writeln('Options:');
       stdout.writeln(
-        '  --port=<port>       Set port to listen on (default: 8080)',
+        '  --port=<port>       Set port to listen on (default: 8088)',
       );
       stdout.writeln(
         '  --host=<host>       Set host address (default: 0.0.0.0)',
@@ -516,7 +516,33 @@ void main(List<String> args) async {
   }
 
   final server = SicaborMockServer();
-  await server.start(host: host, port: port, verbose: verbose);
+  int port = explicitPort ?? 8088;
+
+  try {
+    await server.start(host: host, port: port, verbose: verbose);
+  } on SocketException catch (e) {
+    if (explicitPort == null) {
+      // If 8088 failed, try 8090
+      final fallbackPort = (port == 8088) ? 8090 : 8088;
+      stderr.writeln(
+        '${_Ansi.yellow}[WARN] Port $port is occupied or restricted ($e). Trying fallback port $fallbackPort...${_Ansi.reset}',
+      );
+      try {
+        await server.start(host: host, port: fallbackPort, verbose: verbose);
+        port = fallbackPort;
+      } catch (fallbackError) {
+        stderr.writeln(
+          '${_Ansi.red}[ERROR] Failed to start mock server on port $fallbackPort: $fallbackError${_Ansi.reset}',
+        );
+        exit(1);
+      }
+    } else {
+      stderr.writeln(
+        '${_Ansi.red}[ERROR] Port $port is not available: $e${_Ansi.reset}',
+      );
+      exit(1);
+    }
+  }
 
   stdout.writeln('''
 ${_Ansi.cyan}${_Ansi.bold}========================================================================${_Ansi.reset}
