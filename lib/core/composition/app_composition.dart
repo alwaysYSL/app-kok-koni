@@ -16,10 +16,13 @@ import '../network/api_client.dart';
 import '../../data/demo_kok_repository.dart';
 import '../../data/kok_repository.dart';
 import '../../data/remote_kok_repository.dart';
+import '../../data/services/athlete_service.dart';
 import '../../data/services/cabor_service.dart';
+import '../../data/services/demo/demo_athlete_service.dart';
 import '../../data/services/demo/demo_cabor_service.dart';
 import '../../data/services/demo/demo_profile_service.dart';
 import '../../data/services/profile_service.dart';
+import '../../data/services/remote/remote_athlete_service.dart';
 import '../../data/services/remote/remote_cabor_service.dart';
 import '../../data/services/remote/remote_profile_service.dart';
 
@@ -33,6 +36,7 @@ final class AppComposition {
     required this.kokRepository,
     required this.profileService,
     required this.caborService,
+    required this.athleteService,
     required this.credentialIdGenerator,
     AuthSessionTokens? sessionTokens,
     this.apiClient,
@@ -47,6 +51,7 @@ final class AppComposition {
   final KokRepository kokRepository;
   final ProfileService profileService;
   final CaborService caborService;
+  final AthleteService athleteService;
   final CredentialIdGenerator credentialIdGenerator;
   final AuthSessionTokens sessionTokens;
   final ApiClient? apiClient;
@@ -99,6 +104,7 @@ final class AppComposition {
     final KokRepository kokRepo;
     final ProfileService profileService;
     final CaborService caborService;
+    final AthleteService athleteService;
     if (profile.dataMode == DataMode.demo) {
       final demoKokRepo = DemoKokRepository();
       kokRepo = demoKokRepo;
@@ -118,10 +124,19 @@ final class AppComposition {
           name: 'Garut Kota',
         ),
       );
+      athleteService = DemoAthleteService(
+        demoRepo: demoKokRepo,
+        currentScopeProvider: () => const AccessScope(
+          type: AccessScopeType.district,
+          id: '1728',
+          name: 'Garut Kota',
+        ),
+      );
     } else {
       kokRepo = RemoteKokRepository(apiClient!);
       profileService = RemoteProfileService(client: apiClient);
       caborService = RemoteCaborService(client: apiClient);
+      athleteService = RemoteAthleteService(client: apiClient);
     }
 
     return AppComposition(
@@ -133,6 +148,7 @@ final class AppComposition {
       kokRepository: kokRepo,
       profileService: profileService,
       caborService: caborService,
+      athleteService: athleteService,
       credentialIdGenerator: idGen,
       sessionTokens: bridge,
       apiClient: apiClient,

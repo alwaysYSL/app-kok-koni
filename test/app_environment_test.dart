@@ -16,8 +16,10 @@ import 'package:kok_app/data/remote_kok_repository.dart';
 import 'package:kok_app/data/providers/cabor_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
+import 'package:kok_app/data/services/remote/remote_athlete_service.dart';
 import 'package:kok_app/data/services/remote/remote_cabor_service.dart';
 import 'package:kok_app/data/services/remote/remote_profile_service.dart';
 
@@ -295,6 +297,7 @@ void main() {
       expect(composition.kokRepository, isA<DemoKokRepository>());
       expect(composition.profileService, isA<DemoProfileService>());
       expect(composition.caborService, isA<DemoCaborService>());
+      expect(composition.athleteService, isA<DemoAthleteService>());
       expect(
         composition.credentialIdGenerator,
         isA<UuidCredentialIdGenerator>(),
@@ -321,6 +324,7 @@ void main() {
         expect(stagingComposition.kokRepository, isA<DemoKokRepository>());
         expect(stagingComposition.profileService, isA<DemoProfileService>());
         expect(stagingComposition.caborService, isA<DemoCaborService>());
+        expect(stagingComposition.athleteService, isA<DemoAthleteService>());
         expect(stagingComposition.apiClient, isNotNull);
 
         const prodRemoteAuth = DeploymentProfile(
@@ -345,6 +349,10 @@ void main() {
           isA<RemoteProfileService>(),
         );
         expect(productionComposition.caborService, isA<RemoteCaborService>());
+        expect(
+          productionComposition.athleteService,
+          isA<RemoteAthleteService>(),
+        );
         expect(productionComposition.apiClient, isNotNull);
       },
     );

@@ -18,6 +18,7 @@ import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 import 'package:kok_app/features/home_page.dart';
@@ -100,6 +101,14 @@ Future<AppComposition> _createTestComposition({
       name: 'Garut Kota',
     ),
   );
+  final demoAthleteService = DemoAthleteService(
+    demoRepo: demoKokRepo,
+    currentScopeProvider: () => const AccessScope(
+      type: AccessScopeType.district,
+      id: '1728',
+      name: 'Garut Kota',
+    ),
+  );
 
   return AppComposition(
     profile: profile,
@@ -110,6 +119,7 @@ Future<AppComposition> _createTestComposition({
     kokRepository: demoKokRepo,
     profileService: demoProfileService,
     caborService: demoCaborService,
+    athleteService: demoAthleteService,
     credentialIdGenerator: UuidCredentialIdGenerator(),
   );
 }

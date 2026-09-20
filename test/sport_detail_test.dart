@@ -25,6 +25,7 @@ import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/data/services/cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
@@ -126,6 +127,15 @@ Future<AppComposition> _createTestComposition({
           ),
         );
 
+  final demoAthleteService = DemoAthleteService(
+    demoRepo: demoKokRepo,
+    currentScopeProvider: () => const AccessScope(
+      type: AccessScopeType.district,
+      id: '1728',
+      name: 'Garut Kota',
+    ),
+  );
+
   return AppComposition(
     profile: profile,
     authTokenStorage: tokenStorage,
@@ -135,6 +145,7 @@ Future<AppComposition> _createTestComposition({
     kokRepository: demoKokRepo,
     profileService: profileService,
     caborService: caborService,
+    athleteService: demoAthleteService,
     credentialIdGenerator: UuidCredentialIdGenerator(),
   );
 }

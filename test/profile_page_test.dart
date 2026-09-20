@@ -1031,6 +1031,7 @@ void main() {
           kokRepository: base.kokRepository,
           profileService: base.profileService,
           caborService: base.caborService,
+          athleteService: base.athleteService,
           credentialIdGenerator: base.credentialIdGenerator,
         );
 

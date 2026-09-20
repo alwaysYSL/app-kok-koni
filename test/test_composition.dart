@@ -9,6 +9,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 
@@ -78,6 +79,14 @@ AppComposition buildTestAppComposition() {
       ),
     ),
     caborService: DemoCaborService(
+      demoRepo: demoRepo,
+      currentScopeProvider: () => const AccessScope(
+        type: AccessScopeType.district,
+        id: '1728',
+        name: 'Garut Kota',
+      ),
+    ),
+    athleteService: DemoAthleteService(
       demoRepo: demoRepo,
       currentScopeProvider: () => const AccessScope(
         type: AccessScopeType.district,
