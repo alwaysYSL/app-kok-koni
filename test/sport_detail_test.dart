@@ -17,9 +17,11 @@ import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/models/athlete.dart';
 import 'package:kok_app/data/models/cabor.dart';
 import 'package:kok_app/data/models/paginated_result.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
+import 'package:kok_app/data/providers/athlete_providers.dart';
 import 'package:kok_app/data/providers/cabor_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
@@ -72,6 +74,34 @@ class _TestCaborPaginationController extends CaborPaginationController {
 
   @override
   CaborPaginationState build() => _initialState;
+}
+
+class _TestAthletePaginationController extends AthletePaginationController {
+  _TestAthletePaginationController(
+    super.idCabor, [
+    this._initialState = const AthletePaginationState(),
+  ]);
+
+  final AthletePaginationState _initialState;
+
+  @override
+  AthletePaginationState build() => _initialState;
+
+  @override
+  Future<void> loadFirstPage() async {}
+
+  @override
+  Future<void> loadMore() async {}
+
+  @override
+  void updateSearch(String? query) {
+    state = state.copyWith(search: query);
+  }
+
+  @override
+  void updateSexFilter(String? sex) {
+    state = state.copyWith(sex: sex);
+  }
 }
 
 Future<AppComposition> _createTestComposition({
@@ -493,13 +523,274 @@ void main() {
         expect(find.text('7'), findsOneWidget);
         expect(find.text('64'), findsOneWidget);
 
-        // Tab content displays integration placeholder banner
+        // Tab content displays integration placeholder banner on Tab Klub (index 0)
         expect(
           find.text(
             'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
           ),
           findsWidgets,
         );
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: switches to Tab Atlet and renders remote athlete cards, search bar, and filter chips',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 7,
+          totalAthlete: 64,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        final athlete1 = const Athlete(
+          id: 101,
+          code: 'KGAT-001',
+          name: 'Budi Raharja',
+          sex: 'l',
+          sexLabel: 'Laki-Laki',
+          photoUrl: '',
+          status: 1,
+          statusLabel: 'Aktif',
+          cabor: AthleteCabor(id: 42, code: 'CB-42', name: 'Arung Jeram'),
+          club: AthleteClub(
+            id: 10,
+            code: 'CL-10',
+            name: 'Klub Cimanuk Rafting',
+          ),
+          domicile: AthleteDomicile(
+            subdistrictId: 1728,
+            subdistrictName: 'Garut Kota',
+            districtId: 126,
+            districtName: 'Kabupaten Garut',
+          ),
+        );
+
+        final athlete2 = const Athlete(
+          id: 102,
+          code: 'KGAT-002',
+          name: 'Siti Aminah',
+          sex: 'p',
+          sexLabel: 'Perempuan',
+          photoUrl: '',
+          status: 1,
+          statusLabel: 'Aktif',
+          cabor: AthleteCabor(id: 42, code: 'CB-42', name: 'Arung Jeram'),
+          domicile: AthleteDomicile(
+            subdistrictId: 1728,
+            subdistrictName: 'Garut Kota',
+            districtId: 126,
+            districtName: 'Kabupaten Garut',
+          ),
+        );
+
+        String? pushedRoute;
+        final router = GoRouter(
+          initialLocation: '/sport/42',
+          routes: [
+            GoRoute(
+              path: '/sport/:id',
+              builder: (context, state) => const SportDetailPage(sport: '42'),
+            ),
+            GoRoute(
+              path: '/person/:id',
+              builder: (context, state) {
+                pushedRoute = state.uri.toString();
+                return Scaffold(
+                  body: Text('Person ${state.pathParameters['id']}'),
+                );
+              },
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              athletePaginationProvider(42).overrideWith(
+                () => _TestAthletePaginationController(
+                  42,
+                  AthletePaginationState(
+                    items: [athlete1, athlete2],
+                    total: 2,
+                    filterWarning: const {
+                      'message':
+                          'Menampilkan atlet terdaftar di klub wilayah Garut Kota.',
+                    },
+                  ),
+                ),
+              ),
+            ],
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab Atlet (index 1)
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
+
+        // Search bar is present
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Cari nama atlet...'), findsOneWidget);
+
+        // Gender filter chips are present
+        expect(find.widgetWithText(FilterChip, 'Semua'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Laki-Laki'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Perempuan'), findsOneWidget);
+
+        // Filter warning banner is displayed
+        expect(
+          find.text('Menampilkan atlet terdaftar di klub wilayah Garut Kota.'),
+          findsOneWidget,
+        );
+
+        // Athlete cards are rendered
+        expect(find.text('Budi Raharja'), findsOneWidget);
+        expect(find.text('Klub Cimanuk Rafting'), findsOneWidget);
+
+        expect(find.text('Siti Aminah'), findsOneWidget);
+        expect(find.text('Belum terdaftar di klub'), findsOneWidget);
+
+        // Tap athlete card -> navigates to /person/101
+        await tester.tap(find.text('Budi Raharja'));
+        await tester.pumpAndSettle();
+        expect(pushedRoute, '/person/101');
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Atlet shows empty state when athlete list is empty',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 0,
+          totalAthlete: 0,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              athletePaginationProvider(42).overrideWith(
+                () => _TestAthletePaginationController(
+                  42,
+                  const AthletePaginationState(items: [], total: 0),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab Atlet
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Tidak ada atlet yang sesuai dengan filter.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Atlet shows error view when error occurs',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              athletePaginationProvider(42).overrideWith(
+                () => _TestAthletePaginationController(
+                  42,
+                  const AthletePaginationState(
+                    items: [],
+                    total: 0,
+                    error: 'Koneksi ke server terputus',
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab Atlet
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data atlet'), findsOneWidget);
+        expect(find.text('Koneksi ke server terputus'), findsOneWidget);
+        expect(find.text('Coba Lagi'), findsOneWidget);
       },
     );
   });
