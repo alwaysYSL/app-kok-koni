@@ -32,13 +32,35 @@ Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KO
   - Logo cabor dari jaringan dengan fallback inisial avatar yang elegan.
   - Tampilan induk organisasi (`groupName`), filter/search dinamis, dan navigasi detail `/sport/${cabor.id}`.
 
+### Milestone 3: Integrasi Data Atlet (SELESAI)
+- **Domain Models & DTOs**:
+  - Domain model `Athlete`, `AthleteCabor`, `AthleteClub`, `AthleteDomicile`, dan `AthleteDetail`.
+  - Generic detail envelope `SicaborDetailEnvelope<T>` dan DTO `SicaborAthleteItem`, `SicaborAthleteDetailItem`.
+  - Dukungan `filterWarning` pada `PaginatedResult<T>` untuk menangani batasan filter dari server SICABOR.
+- **Service Layer**:
+  - Interface `AthleteService` dengan implementasi remote (`RemoteAthleteService` via `ApiClient`) dan adapter demo (`DemoAthleteService`).
+- **State Management**:
+  - `athleteServiceProvider`, `athleteListProvider`, `AthletePaginationController` (`athletePaginationProvider` berbasis family parameter cabor), dan `athleteDetailProvider`.
+- **UI Tab Atlet di `SportDetailPage`**:
+  - Migrasi tab Atlet remote ke `_RemoteAthletesTab` dengan infinite scrolling pagination (25 item/halaman).
+  - Search bar terintegrasi dengan debounce 500ms untuk efisiensi beban server.
+  - Filter chips jenis kelamin (`Semua`, `Laki-Laki`, `Perempuan`).
+  - Banner peringatan filter (`filterWarning`) interaktif saat filter melebihi kuota.
+  - Kartu atlet dengan avatar/foto jaringan, badge status aktif, badge cabor, dan indikasi klub ("Belum terdaftar di klub" jika null).
+- **UI Halaman Detail Atlet (`AthleteDetailPage`)**:
+  - Migrasi ke `ConsumerWidget` mengonsumsi `athleteDetailProvider(athleteId)`.
+  - Penanganan error 404 `NotFoundException` yang elegan via `MissingPage` ("Data atlet tidak ditemukan.").
+  - Tampilan visual lengkap: data bio identitas, data fisik (tinggi, berat, golongan darah), kontak (telepon, email), dan alamat lengkap domisili desa/kecamatan.
+  - Sembunyikan checklist dokumen, milestones, dan tombol kontak klub jika atlet belum memiliki klub.
+- **Pengujian & Verifikasi**:
+  - 595 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
+
 ### Milestone Berikutnya (In Progress / Backlog)
-- **Milestone 3: Integrasi Atlet**
-  - Endpoint `/api/v1/kok/athlete` (daftar atlet terpaginasi dengan filter cabor & klub).
-  - Endpoint `/api/v1/kok/athlete/detail/{id}` (profil lengkap, dokumen, prestasi atlet).
 - **Milestone 4: Integrasi Klub & Kepengurusan**
   - Endpoint `/api/v1/kok/club` & `/api/v1/kok/club/detail/{id}`.
   - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management`.
+  - Migrasi Tab Klub dan Tab Pelatih di `SportDetailPage`.
+  - Halaman `ClubDetailPage` remote dengan data pengurus dan kontak sekretariat.
 
 ## Gap sebelum Play Store
 
