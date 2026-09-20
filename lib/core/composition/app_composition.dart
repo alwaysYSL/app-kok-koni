@@ -9,12 +9,19 @@ import '../auth/data/remote_auth_repository.dart';
 import '../auth/data/remembered_username_store.dart';
 import '../auth/data/session_metadata_store.dart';
 import '../auth/domain/credential_id_generator.dart';
+import '../auth/domain/user_principal.dart';
 import '../config/deployment_profile.dart';
 import '../network/auth_session_tokens.dart';
 import '../network/api_client.dart';
 import '../../data/demo_kok_repository.dart';
 import '../../data/kok_repository.dart';
 import '../../data/remote_kok_repository.dart';
+import '../../data/services/cabor_service.dart';
+import '../../data/services/demo/demo_cabor_service.dart';
+import '../../data/services/demo/demo_profile_service.dart';
+import '../../data/services/profile_service.dart';
+import '../../data/services/remote/remote_cabor_service.dart';
+import '../../data/services/remote/remote_profile_service.dart';
 
 final class AppComposition {
   AppComposition({
@@ -24,6 +31,8 @@ final class AppComposition {
     required this.rememberedUsernameStore,
     required this.authRepository,
     required this.kokRepository,
+    required this.profileService,
+    required this.caborService,
     required this.credentialIdGenerator,
     AuthSessionTokens? sessionTokens,
     this.apiClient,
@@ -36,6 +45,8 @@ final class AppComposition {
   final RememberedUsernameStore rememberedUsernameStore;
   final AuthRepository authRepository;
   final KokRepository kokRepository;
+  final ProfileService profileService;
+  final CaborService caborService;
   final CredentialIdGenerator credentialIdGenerator;
   final AuthSessionTokens sessionTokens;
   final ApiClient? apiClient;
@@ -86,10 +97,31 @@ final class AppComposition {
     }
 
     final KokRepository kokRepo;
+    final ProfileService profileService;
+    final CaborService caborService;
     if (profile.dataMode == DataMode.demo) {
-      kokRepo = DemoKokRepository();
+      final demoKokRepo = DemoKokRepository();
+      kokRepo = demoKokRepo;
+      profileService = DemoProfileService(
+        demoRepo: demoKokRepo,
+        currentScopeProvider: () => const AccessScope(
+          type: AccessScopeType.district,
+          id: '1728',
+          name: 'Garut Kota',
+        ),
+      );
+      caborService = DemoCaborService(
+        demoRepo: demoKokRepo,
+        currentScopeProvider: () => const AccessScope(
+          type: AccessScopeType.district,
+          id: '1728',
+          name: 'Garut Kota',
+        ),
+      );
     } else {
       kokRepo = RemoteKokRepository(apiClient!);
+      profileService = RemoteProfileService(client: apiClient);
+      caborService = RemoteCaborService(client: apiClient);
     }
 
     return AppComposition(
@@ -99,6 +131,8 @@ final class AppComposition {
       rememberedUsernameStore: usernameStore,
       authRepository: authRepo,
       kokRepository: kokRepo,
+      profileService: profileService,
+      caborService: caborService,
       credentialIdGenerator: idGen,
       sessionTokens: bridge,
       apiClient: apiClient,

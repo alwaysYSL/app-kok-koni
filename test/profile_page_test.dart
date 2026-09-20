@@ -1029,6 +1029,8 @@ void main() {
           rememberedUsernameStore: base.rememberedUsernameStore,
           authRepository: base.authRepository,
           kokRepository: base.kokRepository,
+          profileService: base.profileService,
+          caborService: base.caborService,
           credentialIdGenerator: base.credentialIdGenerator,
         );
 

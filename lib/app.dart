@@ -106,8 +106,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: '/sport/:name',
-        builder: (_, s) => SportDetailPage(sport: s.pathParameters['name']!),
+        path: '/sport/:id',
+        builder: (_, s) => SportDetailPage(sport: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/club/:id',

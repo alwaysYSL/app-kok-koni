@@ -5,9 +5,12 @@ import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
 import 'package:kok_app/core/auth/data/remembered_username_store.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
 import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
+import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 
 final class _TestAuthTokenStorage implements AuthTokenStorage {
   @override
@@ -54,6 +57,7 @@ final class _TestCredentialIdGenerator implements CredentialIdGenerator {
 }
 
 AppComposition buildTestAppComposition() {
+  final demoRepo = DemoKokRepository(simulateLatency: false);
   return AppComposition(
     profile: const DeploymentProfile(
       environment: AppEnv.demo,
@@ -64,7 +68,23 @@ AppComposition buildTestAppComposition() {
     sessionMetadataStore: _TestSessionMetadataStore(),
     rememberedUsernameStore: _TestRememberedUsernameStore(),
     authRepository: DemoAuthRepository(simulateLatency: false),
-    kokRepository: DemoKokRepository(simulateLatency: false),
+    kokRepository: demoRepo,
+    profileService: DemoProfileService(
+      demoRepo: demoRepo,
+      currentScopeProvider: () => const AccessScope(
+        type: AccessScopeType.district,
+        id: '1728',
+        name: 'Garut Kota',
+      ),
+    ),
+    caborService: DemoCaborService(
+      demoRepo: demoRepo,
+      currentScopeProvider: () => const AccessScope(
+        type: AccessScopeType.district,
+        id: '1728',
+        name: 'Garut Kota',
+      ),
+    ),
     credentialIdGenerator: _TestCredentialIdGenerator(),
   );
 }

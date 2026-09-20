@@ -497,7 +497,7 @@ void main() {
       expect(find.byType(DashboardHeaderDecoration), findsOneWidget);
       expect(find.byType(AthletesSilhouetteGraphic), findsOneWidget);
       expect(find.text('KOORDINATOR ORGANISASI KECAMATAN'), findsOneWidget);
-      expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+      expect(find.text('KOK Garut Kota'), findsOneWidget);
       expect(find.text('Pak Asep · Koordinator Kecamatan'), findsOneWidget);
       expect(find.text('PA'), findsOneWidget);
       expect(find.text('Cari nama atlet, klub, cabor...'), findsOneWidget);
@@ -505,9 +505,9 @@ void main() {
       // Check Floating Stats Card
       expect(find.textContaining('Terakhir Dimuat:'), findsOneWidget);
       expect(find.text('ATLET'), findsOneWidget);
-      expect(find.text('PELATIH'), findsOneWidget);
+      expect(find.text('CABOR'), findsOneWidget);
       expect(find.text('KLUB'), findsOneWidget);
-      expect(find.text('OFFICIAL'), findsOneWidget);
+      expect(find.text('TANPA KLUB'), findsOneWidget);
 
       // Check Perlu Perhatian & Klub Sections
       expect(find.text('Perlu Perhatian'), findsOneWidget);
@@ -621,7 +621,7 @@ void main() {
 
         expect(find.byType(HomePage), findsOneWidget);
         expect(find.textContaining('Pak Asep'), findsWidgets);
-        expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+        expect(find.text('KOK Garut Kota'), findsOneWidget);
 
         container.read(routerProvider).go('/profile');
         await tester.pumpAndSettle();
@@ -653,7 +653,7 @@ void main() {
 
       expect(find.byType(HomePage), findsOneWidget);
       expect(find.textContaining('Pak Cecep'), findsWidgets);
-      expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
+      expect(find.text('KOK Tarogong Kidul'), findsOneWidget);
 
       container.read(routerProvider).go('/sports');
       await tester.pumpAndSettle();
@@ -676,7 +676,7 @@ void main() {
       expect(find.text('Masuk Akun'), findsNothing);
       expect(find.byType(HomePage), findsOneWidget);
       expect(find.textContaining('Pak Asep'), findsWidgets);
-      expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
+      expect(find.text('KOK Garut Kota'), findsOneWidget);
       expect(container.read(currentUserProvider)?.fullName, 'Pak Asep');
     });
 
