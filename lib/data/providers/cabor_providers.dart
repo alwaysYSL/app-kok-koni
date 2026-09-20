@@ -2,14 +2,26 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/composition/app_composition.dart';
+import '../../core/config/deployment_profile.dart';
+import '../demo_kok_repository.dart';
 import '../models/cabor.dart';
 import '../models/paginated_result.dart';
 import '../providers/snapshot_provider.dart';
 import '../request_cancellation.dart';
 import '../services/cabor_service.dart';
+import '../services/demo/demo_cabor_service.dart';
 
 final caborServiceProvider = Provider<CaborService>((ref) {
   final composition = ref.watch(appCompositionProvider);
+  final context = ref.watch(dataRequestContextProvider);
+  if (composition.profile.dataMode == DataMode.demo &&
+      context != null &&
+      composition.kokRepository is DemoKokRepository) {
+    return DemoCaborService(
+      demoRepo: composition.kokRepository as DemoKokRepository,
+      currentScopeProvider: () => context.scope,
+    );
+  }
   return composition.caborService;
 });
 

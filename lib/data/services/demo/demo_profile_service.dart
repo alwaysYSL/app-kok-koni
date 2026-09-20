@@ -29,7 +29,7 @@ final class DemoProfileService implements ProfileService {
     return ProfileSummary(
       scope: SicaborScope(
         subdistrictId: int.tryParse(scope.id) ?? 1728,
-        subdistrictName: scope.name,
+        subdistrictName: scope.name.replaceFirst('Kecamatan ', ''),
         districtId: 126,
         districtName: 'Kabupaten Garut',
       ),
