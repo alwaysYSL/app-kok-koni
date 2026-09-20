@@ -5,11 +5,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/presentation/auth_controller.dart';
+import '../../core/composition/app_composition.dart';
+import '../../core/config/deployment_profile.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
+import '../../data/providers/cabor_providers.dart';
+import '../../data/providers/profile_providers.dart';
 import '../../shared/widgets.dart';
 import '../dashboard_decorations.dart';
 import 'sport_brand_palette.dart';
+
+bool _isRemoteMode(WidgetRef ref) {
+  try {
+    return ref.watch(appCompositionProvider).profile.dataMode ==
+        DataMode.remote;
+  } catch (_) {
+    return false;
+  }
+}
 
 class SportDetailPage extends ConsumerStatefulWidget {
   const SportDetailPage({super.key, required this.sport});
@@ -62,6 +75,7 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
   }
 
   Future<void> _copySummary({
+    required String sportName,
     required String scopeName,
     int clubCount = 0,
     int athleteCount = 0,
@@ -73,10 +87,9 @@ class _SportDetailPageState extends ConsumerState<SportDetailPage>
     final pct = athleteCount > 0
         ? ((verifiedCount / athleteCount) * 100).round()
         : 100;
-    final summary =
-        '''
+    final summary = '''
 REKAPITULASI CABANG OLAHRAGA
-Cabang Olahraga : ${widget.sport}
+Cabang Olahraga : $sportName
 Wilayah         : $scopeName
 Jumlah Klub     : $clubCount
 Total Atlet     : $athleteCount
@@ -88,23 +101,165 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Rekapitulasi cabor ${widget.sport} berhasil disalin ke papan klip.',
+          'Rekapitulasi cabor $sportName berhasil disalin ke papan klip.',
         ),
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
+  Widget _buildIntegrationPlaceholder() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.sync_outlined,
+                size: 40,
+                color: KokColors.bluePrimary,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: KokColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final palette = SportBrandPaletteResolver.resolve(widget.sport);
     final user = ref.watch(currentUserProvider);
     final canExport = user?.hasPermission('reports:export') ?? false;
 
+    if (_isRemoteMode(ref)) {
+      final caborState = ref.watch(caborPaginationProvider);
+      final cabor = caborState.items.where((c) {
+        if (c.id.toString() == widget.sport) return true;
+        if (c.name.toLowerCase() == widget.sport.toLowerCase()) return true;
+        if (c.code.toLowerCase() == widget.sport.toLowerCase()) return true;
+        return false;
+      }).firstOrNull;
+
+      final summary = ref.watch(profileSummaryProvider).asData?.value;
+      final sportName = cabor?.name ??
+          (int.tryParse(widget.sport) != null
+              ? 'Cabang Olahraga'
+              : widget.sport);
+      final scopeName = summary?.scope.subdistrictName ??
+          user?.scope.name ??
+          'KONI Garut';
+
+      final clubCount = cabor?.totalClub ?? 0;
+      final athleteCount = cabor?.totalAthlete ?? 0;
+      const coachCount = 0;
+      const verifiedCount = 0;
+
+      final palette = SportBrandPaletteResolver.resolve(sportName);
+
+      return Scaffold(
+        backgroundColor: const Color(0xFFF4F6FA),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverToBoxAdapter(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildHeader(
+                      context,
+                      palette,
+                      sportName: sportName,
+                      scopeName: scopeName,
+                      canExport: canExport,
+                      clubCount: clubCount,
+                      athleteCount: athleteCount,
+                      coachCount: coachCount,
+                      verifiedCount: verifiedCount,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: _buildFloatingStatsCard(
+                        clubCount,
+                        athleteCount,
+                        coachCount,
+                        verifiedCount,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: _buildAnalyticsCard(palette, const []),
+                    ),
+                  ],
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabBarDelegate(_buildTabBar(palette)),
+              ),
+            ];
+          },
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildIntegrationPlaceholder(),
+              _buildIntegrationPlaceholder(),
+              _buildIntegrationPlaceholder(),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildStickyBottomBar(
+          sportName: sportName,
+          clubCount: clubCount,
+          athleteCount: athleteCount,
+          coachCount: coachCount,
+          verifiedCount: verifiedCount,
+          palette: palette,
+          scopeName: scopeName,
+          canExport: canExport,
+        ),
+      );
+    }
+
     return DataView(
       builder: (data) {
+        final allSports = data.clubs.map((c) => c.sport).toSet().toList()
+          ..sort();
+        final sportId = int.tryParse(widget.sport);
+        final String targetSport;
+        if (sportId != null && sportId >= 1 && sportId <= allSports.length) {
+          targetSport = allSports[sportId - 1];
+        } else {
+          final decoded = Uri.decodeComponent(widget.sport);
+          targetSport = allSports.firstWhere(
+            (s) =>
+                s.toLowerCase() == decoded.toLowerCase() ||
+                s.toLowerCase() == widget.sport.toLowerCase(),
+            orElse: () => decoded,
+          );
+        }
+
+        final palette = SportBrandPaletteResolver.resolve(targetSport);
+
         final clubs = data.clubs
-            .where((c) => c.sport.toLowerCase() == widget.sport.toLowerCase())
+            .where((c) => c.sport.toLowerCase() == targetSport.toLowerCase())
             .toList();
         final clubIds = clubs.map((c) => c.id).toSet();
         final clubMap = {for (final c in clubs) c.id: c};
@@ -147,6 +302,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                       _buildHeader(
                         context,
                         palette,
+                        sportName: targetSport,
                         scopeName: data.scope.name,
                         canExport: canExport,
                         clubCount: clubs.length,
@@ -186,13 +342,14 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             ),
           ),
           bottomNavigationBar: _buildStickyBottomBar(
-            clubs.length,
-            athletes.length,
-            coaches.length,
-            verifiedCount,
-            palette,
-            data.scope.name,
-            canExport,
+            sportName: targetSport,
+            clubCount: clubs.length,
+            athleteCount: athletes.length,
+            coachCount: coaches.length,
+            verifiedCount: verifiedCount,
+            palette: palette,
+            scopeName: data.scope.name,
+            canExport: canExport,
           ),
         );
       },
@@ -202,6 +359,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   Widget _buildHeader(
     BuildContext context,
     SportBrandPalette palette, {
+    required String sportName,
     required String scopeName,
     required bool canExport,
     required int clubCount,
@@ -256,6 +414,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                           : 'Akses ekspor laporan tidak diizinkan',
                       onPressed: canExport
                           ? () => _copySummary(
+                              sportName: sportName,
                               scopeName: scopeName,
                               clubCount: clubCount,
                               athleteCount: athleteCount,
@@ -275,14 +434,14 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   child: Icon(
-                    sportIcon(widget.sport),
+                    sportIcon(sportName),
                     color: Colors.white,
                     size: 24,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.sport,
+                  sportName,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 19,
@@ -986,8 +1145,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                       color: isComplete
-                                          ? const Color(0xFF16A34A)
-                                          : KokColors.red,
+                                        ? const Color(0xFF16A34A)
+                                        : KokColors.red,
                                     ),
                                   ),
                                 ],
@@ -1099,15 +1258,16 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildStickyBottomBar(
-    int clubCount,
-    int athleteCount,
-    int coachCount,
-    int verifiedCount,
-    SportBrandPalette palette,
-    String scopeName,
-    bool canExport,
-  ) {
+  Widget _buildStickyBottomBar({
+    required String sportName,
+    required int clubCount,
+    required int athleteCount,
+    required int coachCount,
+    required int verifiedCount,
+    required SportBrandPalette palette,
+    required String scopeName,
+    required bool canExport,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
@@ -1120,6 +1280,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
           child: FilledButton.icon(
             onPressed: canExport
                 ? () => _copySummary(
+                    sportName: sportName,
                     scopeName: scopeName,
                     clubCount: clubCount,
                     athleteCount: athleteCount,

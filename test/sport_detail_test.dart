@@ -4,11 +4,140 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:kok_app/core/auth/data/auth_token_storage.dart';
+import 'package:kok_app/core/auth/data/demo_auth_repository.dart';
+import 'package:kok_app/core/auth/data/dto/sicabor_profile_response.dart';
+import 'package:kok_app/core/auth/data/remembered_username_store.dart';
+import 'package:kok_app/core/auth/data/session_metadata_store.dart';
+import 'package:kok_app/core/auth/domain/credential_id_generator.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/models/cabor.dart';
+import 'package:kok_app/data/models/paginated_result.dart';
+import 'package:kok_app/data/models/profile_summary.dart';
+import 'package:kok_app/data/providers/cabor_providers.dart';
+import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/request_cancellation.dart';
+import 'package:kok_app/data/services/cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
+
+class _FakeSecureKeyValStore implements SecureKeyValStore {
+  final Map<String, String> _data = {};
+  @override
+  Future<String?> read({required String key}) async => _data[key];
+  @override
+  Future<void> write({required String key, required String value}) async =>
+      _data[key] = value;
+  @override
+  Future<void> delete({required String key}) async => _data.remove(key);
+  @override
+  Future<bool> containsKey({required String key}) async =>
+      _data.containsKey(key);
+}
+
+class _FakeRemoteCaborService implements CaborService {
+  _FakeRemoteCaborService(this.cabors);
+  final List<Cabor> cabors;
+
+  @override
+  Future<PaginatedResult<Cabor>> fetchCaborList({
+    int limit = 25,
+    int offset = 0,
+    String source = 'all',
+    String sort = 'name',
+    RequestCancellation? cancellation,
+  }) async {
+    final items = cabors.skip(offset).take(limit).toList();
+    return PaginatedResult<Cabor>(
+      items: items,
+      limit: limit,
+      offset: offset,
+      total: cabors.length,
+    );
+  }
+}
+
+class _TestCaborPaginationController extends CaborPaginationController {
+  _TestCaborPaginationController(this._initialState);
+  final CaborPaginationState _initialState;
+
+  @override
+  CaborPaginationState build() => _initialState;
+}
+
+Future<AppComposition> _createTestComposition({
+  DataMode dataMode = DataMode.demo,
+  List<Cabor> remoteCabors = const [],
+}) async {
+  SharedPreferences.setMockInitialValues({});
+  final prefs = await SharedPreferences.getInstance();
+
+  final profile = dataMode == DataMode.demo
+      ? const DeploymentProfile(
+          environment: AppEnv.demo,
+          authMode: AuthMode.demo,
+          dataMode: DataMode.demo,
+        )
+      : const DeploymentProfile(
+          environment: AppEnv.staging,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+        );
+
+  final tokenStorage = SecureAuthTokenStorage(
+    store: _FakeSecureKeyValStore(),
+    key: 'test_token',
+  );
+  final metadataStore = SharedPrefsSessionMetadataStore(
+    prefs: prefs,
+    key: 'test_metadata',
+  );
+  final usernameStore = RememberedUsernameStore(
+    prefs: prefs,
+    key: 'test_username',
+  );
+
+  final demoKokRepo = DemoKokRepository(simulateLatency: false);
+  final profileService = DemoProfileService(
+    demoRepo: demoKokRepo,
+    currentScopeProvider: () => const AccessScope(
+      type: AccessScopeType.district,
+      id: '1728',
+      name: 'Garut Kota',
+    ),
+  );
+  final caborService = dataMode == DataMode.remote
+      ? _FakeRemoteCaborService(remoteCabors)
+      : DemoCaborService(
+          demoRepo: demoKokRepo,
+          currentScopeProvider: () => const AccessScope(
+            type: AccessScopeType.district,
+            id: '1728',
+            name: 'Garut Kota',
+          ),
+        );
+
+  return AppComposition(
+    profile: profile,
+    authTokenStorage: tokenStorage,
+    sessionMetadataStore: metadataStore,
+    rememberedUsernameStore: usernameStore,
+    authRepository: DemoAuthRepository(simulateLatency: false),
+    kokRepository: demoKokRepo,
+    profileService: profileService,
+    caborService: caborService,
+    credentialIdGenerator: UuidCredentialIdGenerator(),
+  );
+}
 
 void main() {
   const garutScope = AccessScope(
@@ -60,9 +189,9 @@ void main() {
                 initialLocation: '/sport/$sport',
                 routes: [
                   GoRoute(
-                    path: '/sport/:name',
+                    path: '/sport/:id',
                     builder: (_, s) => SportDetailPage(
-                      sport: s.pathParameters['name'] ?? sport,
+                      sport: s.pathParameters['id'] ?? sport,
                     ),
                   ),
                   GoRoute(
@@ -98,6 +227,21 @@ void main() {
       expect(find.text('Pelatih'), findsWidgets);
       expect(find.byType(TabBar), findsOneWidget);
     });
+
+    testWidgets(
+      'resolves numeric ID in demo mode',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(buildSubject(sport: '2'));
+        await tester.pumpAndSettle();
+
+        // Sport 2 in sorted list is Bulu Tangkis
+        expect(find.text('Bulu Tangkis'), findsWidgets);
+        expect(find.text('Kecamatan Garut Kota'), findsWidgets);
+      },
+    );
 
     testWidgets(
       'renders analytic fl_chart and toggles between age groups and document status',
@@ -269,6 +413,91 @@ void main() {
 
         expect(find.text('Kecamatan Tarogong Kidul'), findsWidgets);
         expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: renders dynamic cabor details and integration placeholder tabs',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-042',
+          name: 'Arung Jeram',
+          groupName: 'FAJI',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 7,
+          totalAthlete: 64,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        const remoteSummary = ProfileSummary(
+          scope: SicaborScope(
+            subdistrictId: 1728,
+            subdistrictName: 'Kecamatan Garut Kota',
+            districtId: 126,
+            districtName: 'Kabupaten Garut',
+          ),
+          member: SicaborMember(
+            id: 1,
+            username: 'admin',
+            name: 'Pak Asep',
+            type: 'admin',
+            status: 1,
+            statusLabel: 'Aktif',
+          ),
+          totalCabor: 1,
+          totalCaborFromClub: 1,
+          totalCaborFromAthlete: 1,
+          totalClub: 7,
+          totalAthlete: 64,
+          totalAthleteWithoutClub: 0,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              profileSummaryProvider.overrideWith((ref) => remoteSummary),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(
+                    items: [sampleCabor],
+                    total: 1,
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(
+              home: SportDetailPage(sport: '42'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Header shows cabor name and scope name
+        expect(find.text('Arung Jeram'), findsWidgets);
+        expect(find.text('Kecamatan Garut Kota'), findsWidgets);
+
+        // Stats card shows club & athlete counts from remote cabor
+        expect(find.text('7'), findsOneWidget);
+        expect(find.text('64'), findsOneWidget);
+
+        // Tab content displays integration placeholder banner
+        expect(
+          find.text(
+            'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
+          ),
+          findsWidgets,
+        );
       },
     );
   });

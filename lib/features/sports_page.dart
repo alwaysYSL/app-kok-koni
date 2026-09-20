@@ -1,132 +1,178 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../core/auth/presentation/auth_controller.dart';
 import '../core/theme.dart';
-import '../data/models.dart';
+import '../data/models/cabor.dart';
+import '../data/providers/cabor_providers.dart';
+import '../data/providers/profile_providers.dart';
+import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 import 'sport_detail/sport_brand_palette.dart';
 
-class SportsPage extends StatefulWidget {
+class SportsPage extends ConsumerStatefulWidget {
   const SportsPage({super.key});
 
   @override
-  State<SportsPage> createState() => _SportsPageState();
+  ConsumerState<SportsPage> createState() => _SportsPageState();
 }
 
-class _SportsPageState extends State<SportsPage> {
+class _SportsPageState extends ConsumerState<SportsPage> {
   bool _isExpanded = false;
 
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => ref.read(caborPaginationProvider.notifier).loadFirstPage(),
+    );
+  }
+
   String _displaySportName(String sport) {
-    if (sport.toLowerCase() == 'voli') return 'Bola Voli';
-    return sport;
+    final lower = sport.toLowerCase().trim();
+    if (lower == 'voli') return 'Bola Voli';
+    return lower.split(' ').map((word) {
+      if (word.isEmpty) return '';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Cabang Olahraga'),
-      shape: const Border(
-        bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+  Widget build(BuildContext context) {
+    final caborState = ref.watch(caborPaginationProvider);
+    final summaryAsync = ref.watch(profileSummaryProvider);
+    final summary = summaryAsync.asData?.value;
+    final user = ref.watch(currentUserProvider);
+    final contextScope = ref.watch(dataRequestContextProvider)?.scope;
+
+    final scopeName = summary?.scope.subdistrictName ??
+        user?.scope.name ??
+        contextScope?.name ??
+        'KONI Garut';
+
+    final totalSports = caborState.total > 0
+        ? caborState.total
+        : (summary?.totalCabor ?? caborState.items.length);
+
+    final totalAthletes = summary?.totalAthlete ??
+        caborState.items.fold<int>(0, (sum, c) => sum + c.totalAthlete);
+
+    final sortedCabors = List<Cabor>.from(caborState.items)
+      ..sort((a, b) {
+        final cmp = b.totalAthlete.compareTo(a.totalAthlete);
+        if (cmp != 0) return cmp;
+        return a.name.compareTo(b.name);
+      });
+
+    final maxCount = caborState.items.fold<int>(1, (max, c) {
+      return c.totalAthlete > max ? c.totalAthlete : max;
+    });
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cabang Olahraga'),
+        shape: const Border(
+          bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+        ),
       ),
-    ),
-    body: DataView(
-      builder: (data) {
-        final allSports = data.clubs.map((c) => c.sport).toSet().toList()
-          ..sort();
-
-        final athletesPerSport = <String, List<SportPerson>>{};
-        final coachesPerSport = <String, int>{};
-        final clubsPerSport = <String, List<Club>>{};
-
-        final sportByClubId = {for (final c in data.clubs) c.id: c.sport};
-
-        for (final c in data.clubs) {
-          clubsPerSport.putIfAbsent(c.sport, () => []).add(c);
-        }
-
-        for (final p in data.people) {
-          final sport = sportByClubId[p.clubId];
-          if (sport == null) continue;
-          if (p.role == 'Atlet') {
-            athletesPerSport.putIfAbsent(sport, () => []).add(p);
-          } else if (p.role == 'Pelatih') {
-            coachesPerSport[sport] = (coachesPerSport[sport] ?? 0) + 1;
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.pixels >=
+                  notification.metrics.maxScrollExtent - 200 &&
+              caborState.hasMore &&
+              !caborState.isLoading &&
+              !caborState.isLoadingMore) {
+            ref.read(caborPaginationProvider.notifier).loadMore();
           }
-        }
-
-        final totalAthletes = allSports.fold<int>(
-          0,
-          (sum, s) => sum + (athletesPerSport[s]?.length ?? 0),
-        );
-
-        final maxCount = allSports.fold<int>(1, (max, s) {
-          final count = athletesPerSport[s]?.length ?? 0;
-          return count > max ? count : max;
-        });
-
-        final sortedSports = List<String>.from(allSports)
-          ..sort((a, b) {
-            final countA = athletesPerSport[a]?.length ?? 0;
-            final countB = athletesPerSport[b]?.length ?? 0;
-            final cmp = countB.compareTo(countA);
-            if (cmp != 0) return cmp;
-            return a.compareTo(b);
-          });
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // 1. Header Ringkas (Model 1)
-              _buildCompactHeader(
-                allSports.length,
-                totalAthletes,
-                data.scope.name,
-              ),
-              const SizedBox(height: 14),
-
-              // 2. Kartu Sebaran Atlet Horizontal (Format A)
-              _buildHorizontalDistributionCard(
-                context,
-                sortedSports,
-                athletesPerSport,
-                maxCount,
-              ),
-              const SizedBox(height: 16),
-
-              // 3. Direktori Cabor
-              const Text(
-                'Direktori cabor',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: KokColors.cardTitle,
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(profileSummaryProvider);
+            await ref.read(caborPaginationProvider.notifier).refresh();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 1. Header Ringkas
+                _buildCompactHeader(
+                  totalSports: totalSports,
+                  totalAthletes: totalAthletes,
+                  scopeName: scopeName,
                 ),
-              ),
-              const SizedBox(height: 10),
-              if (allSports.isEmpty)
-                const EmptyState(
-                  message: 'Belum ada cabang olahraga terdaftar.',
-                ),
-              ...allSports.map((sport) {
-                final displayName = _displaySportName(sport);
-                final clubs = clubsPerSport[sport] ?? [];
-                final athletes = athletesPerSport[sport] ?? [];
-                final coaches = coachesPerSport[sport] ?? 0;
-                final missingAthletes = athletes
-                    .where((a) => a.missingDocuments.isNotEmpty)
-                    .length;
+                const SizedBox(height: 14),
 
-                return Surface(
-                  padding: const EdgeInsets.all(14),
-                  onTap: () =>
-                      context.push('/sport/${Uri.encodeComponent(sport)}'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                // 2. Kartu Sebaran Atlet Horizontal
+                if (caborState.items.isNotEmpty) ...[
+                  _buildHorizontalDistributionCard(
+                    context,
+                    sortedCabors,
+                    maxCount,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // 3. Direktori Cabor
+                const Text(
+                  'Direktori cabor',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: KokColors.cardTitle,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                if (caborState.isLoading && caborState.items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (caborState.error != null && caborState.items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          SportAvatar(sport),
+                          const Icon(
+                            Icons.cloud_off_outlined,
+                            size: 40,
+                            color: KokColors.muted,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Gagal memuat daftar cabang olahraga.',
+                            style: TextStyle(color: KokColors.muted),
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton(
+                            onPressed: () => ref
+                                .read(caborPaginationProvider.notifier)
+                                .loadFirstPage(),
+                            child: const Text('Coba lagi'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (caborState.items.isEmpty)
+                  const EmptyState(
+                    message: 'Belum ada cabang olahraga terdaftar.',
+                  )
+                else ...[
+                  ...caborState.items.map((cabor) {
+                    final displayName = _displaySportName(cabor.name);
+                    return Surface(
+                      padding: const EdgeInsets.all(14),
+                      onTap: () => context.push('/sport/${cabor.id}'),
+                      child: Row(
+                        children: [
+                          _buildCaborAvatar(cabor),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -140,16 +186,27 @@ class _SportsPageState extends State<SportsPage> {
                                     color: KokColors.cardTitle,
                                   ),
                                 ),
+                                if (cabor.groupName != null &&
+                                    cabor.groupName!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    cabor.groupName!,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: KokColors.bluePrimary,
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(height: 6),
                                 Wrap(
                                   spacing: 6,
                                   runSpacing: 4,
                                   children: [
-                                    _buildMetricChip('${clubs.length} Klub'),
+                                    _buildMetricChip('${cabor.totalClub} Klub'),
                                     _buildMetricChip(
-                                      '${athletes.length} Atlet',
+                                      '${cabor.totalAthlete} Atlet',
                                     ),
-                                    _buildMetricChip('$coaches Pelatih'),
                                   ],
                                 ),
                               ],
@@ -163,56 +220,57 @@ class _SportsPageState extends State<SportsPage> {
                           ),
                         ],
                       ),
-                      if (missingAthletes > 0) ...[
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFEF2F2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.warning_amber_rounded,
-                                size: 14,
-                                color: Color(0xFFDC2626),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  '$missingAthletes atlet berkas kurang',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFFDC2626),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                    );
+                  }),
+                  if (caborState.isLoadingMore)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  if (caborState.loadMoreError != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: OutlinedButton.icon(
+                          onPressed: () => ref
+                              .read(caborPaginationProvider.notifier)
+                              .loadMore(),
+                          icon: const Icon(Icons.refresh, size: 16),
+                          label: const Text('Gagal memuat lagi. Coba lagi'),
                         ),
-                      ],
-                    ],
-                  ),
-                );
-              }),
-            ],
+                      ),
+                    ),
+                ],
+              ],
+            ),
           ),
-        );
-      },
-    ),
-  );
+        ),
+      ),
+    );
+  }
 
-  Widget _buildCompactHeader(
-    int totalSports,
-    int totalAthletes,
-    String scopeName,
-  ) {
+  Widget _buildCaborAvatar(Cabor cabor) {
+    if (cabor.logoUrl != null && cabor.logoUrl!.trim().isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          cabor.logoUrl!,
+          width: 44,
+          height: 44,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              SportAvatar(cabor.name),
+        ),
+      );
+    }
+    return SportAvatar(cabor.name);
+  }
+
+  Widget _buildCompactHeader({
+    required int totalSports,
+    required int totalAthletes,
+    required String scopeName,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Row(
@@ -265,13 +323,12 @@ class _SportsPageState extends State<SportsPage> {
 
   Widget _buildHorizontalDistributionCard(
     BuildContext context,
-    List<String> sortedSports,
-    Map<String, List<SportPerson>> athletesPerSport,
+    List<Cabor> sortedCabors,
     int maxCount,
   ) {
-    final displayedSports = _isExpanded
-        ? sortedSports
-        : sortedSports.take(5).toList();
+    final displayedCabors = _isExpanded
+        ? sortedCabors
+        : sortedCabors.take(5).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -300,15 +357,15 @@ class _SportsPageState extends State<SportsPage> {
             ),
           ),
           const SizedBox(height: 14),
-          ...displayedSports.map((sport) {
-            final count = athletesPerSport[sport]?.length ?? 0;
-            final palette = SportBrandPaletteResolver.resolve(sport);
+          ...displayedCabors.map((cabor) {
+            final count = cabor.totalAthlete;
+            final palette = SportBrandPaletteResolver.resolve(cabor.name);
             final ratio = maxCount > 0
                 ? (count / maxCount).clamp(0.0, 1.0)
                 : 0.0;
 
             return InkWell(
-              onTap: () => context.push('/sport/${Uri.encodeComponent(sport)}'),
+              onTap: () => context.push('/sport/${cabor.id}'),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
@@ -317,7 +374,7 @@ class _SportsPageState extends State<SportsPage> {
                     SizedBox(
                       width: 92,
                       child: Text(
-                        _displaySportName(sport),
+                        _displaySportName(cabor.name),
                         style: const TextStyle(
                           fontSize: 13.5,
                           fontWeight: FontWeight.w600,
@@ -371,7 +428,7 @@ class _SportsPageState extends State<SportsPage> {
               ),
             );
           }),
-          if (sortedSports.length > 5) ...[
+          if (sortedCabors.length > 5) ...[
             const SizedBox(height: 8),
             InkWell(
               onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -382,7 +439,7 @@ class _SportsPageState extends State<SportsPage> {
                   child: Text(
                     _isExpanded
                         ? 'Sembunyikan ▴'
-                        : 'Tampilkan ${sortedSports.length - 5} cabor lainnya ▾',
+                        : 'Tampilkan ${sortedCabors.length - 5} cabor lainnya ▾',
                     style: const TextStyle(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
