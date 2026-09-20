@@ -8,7 +8,7 @@ import '../services/profile_service.dart';
 
 final profileServiceProvider = Provider<ProfileService>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  return (composition as dynamic).profileService as ProfileService;
+  return composition.profileService;
 });
 
 final profileSummaryProvider = FutureProvider<ProfileSummary>((ref) async {

@@ -13,7 +13,15 @@ import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/remote_kok_repository.dart';
+import 'package:kok_app/data/providers/cabor_providers.dart';
+import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
+import 'package:kok_app/data/services/cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_profile_service.dart';
+import 'package:kok_app/data/services/profile_service.dart';
+import 'package:kok_app/data/services/remote/remote_cabor_service.dart';
+import 'package:kok_app/data/services/remote/remote_profile_service.dart';
 
 class _FakeSecureKeyValStore implements SecureKeyValStore {
   final Map<String, String> data = {};
@@ -287,6 +295,8 @@ void main() {
       );
       expect(composition.authRepository, isA<DemoAuthRepository>());
       expect(composition.kokRepository, isA<DemoKokRepository>());
+      expect(composition.profileService, isA<DemoProfileService>());
+      expect(composition.caborService, isA<DemoCaborService>());
       expect(
         composition.credentialIdGenerator,
         isA<UuidCredentialIdGenerator>(),
@@ -311,6 +321,8 @@ void main() {
         );
         expect(stagingComposition.authRepository, isA<RemoteAuthRepository>());
         expect(stagingComposition.kokRepository, isA<DemoKokRepository>());
+        expect(stagingComposition.profileService, isA<DemoProfileService>());
+        expect(stagingComposition.caborService, isA<DemoCaborService>());
         expect(stagingComposition.apiClient, isNotNull);
 
         const prodRemoteAuth = DeploymentProfile(
@@ -330,6 +342,14 @@ void main() {
           isA<RemoteAuthRepository>(),
         );
         expect(productionComposition.kokRepository, isA<RemoteKokRepository>());
+        expect(
+          productionComposition.profileService,
+          isA<RemoteProfileService>(),
+        );
+        expect(
+          productionComposition.caborService,
+          isA<RemoteCaborService>(),
+        );
         expect(productionComposition.apiClient, isNotNull);
       },
     );
@@ -524,6 +544,14 @@ void main() {
           container.read(repositoryProvider),
           same(composition.kokRepository),
         );
+        expect(
+          container.read(profileServiceProvider),
+          same(composition.profileService),
+        );
+        expect(
+          container.read(caborServiceProvider),
+          same(composition.caborService),
+        );
       },
     );
 
@@ -555,6 +583,8 @@ void main() {
       );
       expectMissingComposition(() => container.read(authRepositoryProvider));
       expectMissingComposition(() => container.read(repositoryProvider));
+      expectMissingComposition(() => container.read(profileServiceProvider));
+      expectMissingComposition(() => container.read(caborServiceProvider));
     });
   });
 

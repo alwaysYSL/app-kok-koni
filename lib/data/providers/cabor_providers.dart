@@ -10,7 +10,7 @@ import '../services/cabor_service.dart';
 
 final caborServiceProvider = Provider<CaborService>((ref) {
   final composition = ref.watch(appCompositionProvider);
-  return (composition as dynamic).caborService as CaborService;
+  return composition.caborService;
 });
 
 typedef CaborListParams = ({
