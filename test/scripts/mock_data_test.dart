@@ -3,58 +3,66 @@ import '../../scripts/mock_server/mock_data.dart';
 
 void main() {
   group('MockData Accounts', () {
-    test('contains valid accounts for garut kota, limbangan, and tarogong kidul', () {
-      final garut = MockData.findAccountByUsername('kt.garutkota');
-      expect(garut, isNotNull);
-      expect(garut?.id, equals(578));
-      expect(garut?.name, equals('ADMIN KONTINGEN GARUT KOTA'));
-      expect(garut?.type, equals('admin_kok'));
-      expect(garut?.status, equals(1));
-      expect(garut?.statusLabel, equals('Aktif'));
-      expect(garut?.subdistrictId, equals(1728));
-      expect(garut?.subdistrictName, equals('Garut Kota'));
-      expect(garut?.districtId, equals(126));
-      expect(garut?.districtName, equals('Garut'));
+    test(
+      'contains valid accounts for garut kota, limbangan, and tarogong kidul',
+      () {
+        final garut = MockData.findAccountByUsername('kt.garutkota');
+        expect(garut, isNotNull);
+        expect(garut?.id, equals(578));
+        expect(garut?.name, equals('ADMIN KONTINGEN GARUT KOTA'));
+        expect(garut?.type, equals('admin_kok'));
+        expect(garut?.status, equals(1));
+        expect(garut?.statusLabel, equals('Aktif'));
+        expect(garut?.subdistrictId, equals(1728));
+        expect(garut?.subdistrictName, equals('Garut Kota'));
+        expect(garut?.districtId, equals(126));
+        expect(garut?.districtName, equals('Garut'));
 
-      final limbangan = MockData.findAccountByUsername('kt.bllimbangan');
-      expect(limbangan, isNotNull);
-      expect(limbangan?.id, equals(560));
-      expect(limbangan?.name, equals('ADMIN KONTINGEN BL.LIMBANGAN'));
-      expect(limbangan?.type, equals('admin_kok'));
-      expect(limbangan?.status, equals(1));
-      expect(limbangan?.subdistrictId, equals(1714));
-      expect(limbangan?.subdistrictName, equals('Blubur Limbangan'));
-      expect(limbangan?.kontingen?['id'], equals(3));
-      expect(limbangan?.kontingen?['code'], equals('KGPK-0044'));
-      expect(limbangan?.kontingen?['name'], equals('Balubur Limbangan'));
+        final limbangan = MockData.findAccountByUsername('kt.bllimbangan');
+        expect(limbangan, isNotNull);
+        expect(limbangan?.id, equals(560));
+        expect(limbangan?.name, equals('ADMIN KONTINGEN BL.LIMBANGAN'));
+        expect(limbangan?.type, equals('admin_kok'));
+        expect(limbangan?.status, equals(1));
+        expect(limbangan?.subdistrictId, equals(1714));
+        expect(limbangan?.subdistrictName, equals('Blubur Limbangan'));
+        expect(limbangan?.kontingen?['id'], equals(3));
+        expect(limbangan?.kontingen?['code'], equals('KGPK-0044'));
+        expect(limbangan?.kontingen?['name'], equals('Balubur Limbangan'));
 
-      final tarogong = MockData.findAccountByUsername('kt.tarogongkidul');
-      expect(tarogong, isNotNull);
-      expect(tarogong?.id, equals(561));
-      expect(tarogong?.name, equals('ADMIN KONTINGEN TAROGONG KIDUL'));
-      expect(tarogong?.type, equals('admin_kok'));
-      expect(tarogong?.status, equals(1));
-      expect(tarogong?.subdistrictId, equals(1729));
-      expect(tarogong?.subdistrictName, equals('Tarogong Kidul'));
-      expect(tarogong?.kontingen?['id'], equals(4));
-    });
+        final tarogong = MockData.findAccountByUsername('kt.tarogongkidul');
+        expect(tarogong, isNotNull);
+        expect(tarogong?.id, equals(561));
+        expect(tarogong?.name, equals('ADMIN KONTINGEN TAROGONG KIDUL'));
+        expect(tarogong?.type, equals('admin_kok'));
+        expect(tarogong?.status, equals(1));
+        expect(tarogong?.subdistrictId, equals(1729));
+        expect(tarogong?.subdistrictName, equals('Tarogong Kidul'));
+        expect(tarogong?.kontingen?['id'], equals(4));
+      },
+    );
 
-    test('contains edge case accounts: bukan_kok, non_aktif, and tanpa_kecamatan', () {
-      final bukanKok = MockData.findAccountByUsername('bukan_kok');
-      expect(bukanKok, isNotNull);
-      expect(bukanKok?.type, equals('cabor'));
-      expect(bukanKok?.isKok, isFalse);
+    test(
+      'contains edge case accounts: bukan_kok, non_aktif, and tanpa_kecamatan',
+      () {
+        final bukanKok = MockData.findAccountByUsername('bukan_kok');
+        expect(bukanKok, isNotNull);
+        expect(bukanKok?.type, equals('cabor'));
+        expect(bukanKok?.isKok, isFalse);
 
-      final nonAktif = MockData.findAccountByUsername('non_aktif');
-      expect(nonAktif, isNotNull);
-      expect(nonAktif?.status, equals(0));
-      expect(nonAktif?.isActive, isFalse);
+        final nonAktif = MockData.findAccountByUsername('non_aktif');
+        expect(nonAktif, isNotNull);
+        expect(nonAktif?.status, equals(0));
+        expect(nonAktif?.isActive, isFalse);
 
-      final tanpaKecamatan = MockData.findAccountByUsername('tanpa_kecamatan');
-      expect(tanpaKecamatan, isNotNull);
-      expect(tanpaKecamatan?.subdistrictId, isNull);
-      expect(tanpaKecamatan?.hasSubdistrict, isFalse);
-    });
+        final tanpaKecamatan = MockData.findAccountByUsername(
+          'tanpa_kecamatan',
+        );
+        expect(tanpaKecamatan, isNotNull);
+        expect(tanpaKecamatan?.subdistrictId, isNull);
+        expect(tanpaKecamatan?.hasSubdistrict, isFalse);
+      },
+    );
 
     test('returns null for unknown username', () {
       expect(MockData.findAccountByUsername('non_existent_user'), isNull);
@@ -118,7 +126,10 @@ void main() {
 
     test('buildCaborListJson filters and computes counts correctly', () {
       // Garut Kota
-      final garutCabor = MockData.buildCaborListJson(garutAccount, source: 'all');
+      final garutCabor = MockData.buildCaborListJson(
+        garutAccount,
+        source: 'all',
+      );
       expect(garutCabor['success'], isTrue);
       expect(garutCabor['scope']['subdistrict_id'], equals(1728));
       expect(garutCabor['meta']['source'], equals('all'));
@@ -128,14 +139,23 @@ void main() {
       expect(garutList.length, lessThanOrEqualTo(25));
 
       // Blubur Limbangan: 0 cabor from club, 17 from athlete, union 17
-      final limbanganAll = MockData.buildCaborListJson(limbanganAccount, source: 'all');
+      final limbanganAll = MockData.buildCaborListJson(
+        limbanganAccount,
+        source: 'all',
+      );
       expect(limbanganAll['meta']['total'], equals(17));
 
-      final limbanganClub = MockData.buildCaborListJson(limbanganAccount, source: 'club');
+      final limbanganClub = MockData.buildCaborListJson(
+        limbanganAccount,
+        source: 'club',
+      );
       expect(limbanganClub['meta']['total'], equals(0));
       expect((limbanganClub['data'] as List), isEmpty);
 
-      final limbanganAthlete = MockData.buildCaborListJson(limbanganAccount, source: 'athlete');
+      final limbanganAthlete = MockData.buildCaborListJson(
+        limbanganAccount,
+        source: 'athlete',
+      );
       expect(limbanganAthlete['meta']['total'], equals(17));
     });
 
@@ -161,7 +181,10 @@ void main() {
       expect(detailData['management']['partial'], isTrue);
 
       // Detail with account scoping: limbangan has 0 clubs so clubId should return null
-      final crossDetail = MockData.buildClubDetailJson(clubId, account: limbanganAccount);
+      final crossDetail = MockData.buildClubDetailJson(
+        clubId,
+        account: limbanganAccount,
+      );
       expect(crossDetail, isNull);
     });
 
@@ -209,26 +232,50 @@ void main() {
       expect(detailData.containsKey('weight'), isTrue);
 
       // Filtering by idClub includes filter_warning
-      final filteredByClub = MockData.buildAthleteListJson(garutAccount, idClub: 29);
+      final filteredByClub = MockData.buildAthleteListJson(
+        garutAccount,
+        idClub: 29,
+      );
       expect(filteredByClub['meta']['filter_warning'], isNotNull);
-      expect(filteredByClub['meta']['filter_warning']['code'], equals('CLUB_MEMBERSHIP_SPARSE'));
+      expect(
+        filteredByClub['meta']['filter_warning']['code'],
+        equals('CLUB_MEMBERSHIP_SPARSE'),
+      );
 
       // Detail with account scoping
-      final crossAthlete = MockData.buildAthleteDetailJson(athleteId, account: limbanganAccount);
+      final crossAthlete = MockData.buildAthleteDetailJson(
+        athleteId,
+        account: limbanganAccount,
+      );
       expect(crossAthlete, isNull);
     });
 
-    test('handles clamping of limit and offset for cabor, club, and athlete', () {
-      final caborClamped = MockData.buildCaborListJson(garutAccount, limit: 9999, offset: -5);
-      expect(caborClamped['meta']['limit'], equals(100));
-      expect(caborClamped['meta']['offset'], equals(0));
+    test(
+      'handles clamping of limit and offset for cabor, club, and athlete',
+      () {
+        final caborClamped = MockData.buildCaborListJson(
+          garutAccount,
+          limit: 9999,
+          offset: -5,
+        );
+        expect(caborClamped['meta']['limit'], equals(100));
+        expect(caborClamped['meta']['offset'], equals(0));
 
-      final clubClamped = MockData.buildClubListJson(garutAccount, limit: -10, offset: 0);
-      expect(clubClamped['meta']['limit'], equals(25));
+        final clubClamped = MockData.buildClubListJson(
+          garutAccount,
+          limit: -10,
+          offset: 0,
+        );
+        expect(clubClamped['meta']['limit'], equals(25));
 
-      final athleteClamped = MockData.buildAthleteListJson(garutAccount, limit: 0, offset: -1);
-      expect(athleteClamped['meta']['limit'], equals(25));
-      expect(athleteClamped['meta']['offset'], equals(0));
-    });
+        final athleteClamped = MockData.buildAthleteListJson(
+          garutAccount,
+          limit: 0,
+          offset: -1,
+        );
+        expect(athleteClamped['meta']['limit'], equals(25));
+        expect(athleteClamped['meta']['offset'], equals(0));
+      },
+    );
   });
 }

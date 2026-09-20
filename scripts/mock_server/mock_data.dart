@@ -121,72 +121,68 @@ class MockClub {
   });
 
   Map<String, dynamic> toListJson() => {
-        'id': id,
-        'code': code,
-        'name': name,
-        'logo': logo,
-        'cabor': {
-          'id': caborId,
-          'code': caborCode,
-          'name': caborName,
-        },
-        'head_name': headName,
-        'phone': phone,
-        'email': email,
-        'since': since,
-        'no_sk': noSk,
-        'status': status,
-        'status_label': statusLabel,
-        'secretariat': {
-          'address': secretariatAddress,
-          'subdistrict_id': secretariatSubdistrictId,
-          'subdistrict_name': secretariatSubdistrictName,
-          'district_id': secretariatDistrictId,
-          'district_name': secretariatDistrictName,
-        },
-        'total_athlete_in_club': totalAthleteInClub,
-      };
+    'id': id,
+    'code': code,
+    'name': name,
+    'logo': logo,
+    'cabor': {'id': caborId, 'code': caborCode, 'name': caborName},
+    'head_name': headName,
+    'phone': phone,
+    'email': email,
+    'since': since,
+    'no_sk': noSk,
+    'status': status,
+    'status_label': statusLabel,
+    'secretariat': {
+      'address': secretariatAddress,
+      'subdistrict_id': secretariatSubdistrictId,
+      'subdistrict_name': secretariatSubdistrictName,
+      'district_id': secretariatDistrictId,
+      'district_name': secretariatDistrictName,
+    },
+    'total_athlete_in_club': totalAthleteInClub,
+  };
 
   Map<String, dynamic> toDetailJson() => {
-        ...toListJson(),
-        'training': {
-          'address': trainingAddress,
-          'subdistrict_id': trainingSubdistrictId,
-          'subdistrict_name': trainingSubdistrictName,
-          'district_id': trainingDistrictId,
-          'district_name': trainingDistrictName,
-        },
-        'file_sk': fileSk,
-        'officials': {
-          'data_available': false,
-          'reason': 'NOT_RECORDED_IN_SYSTEM',
-          'total': 0,
-          'data': [],
-        },
-        'coaches': {
-          'data_available': false,
-          'reason': 'NOT_RECORDED_IN_SYSTEM',
-          'total': 0,
-          'data': [],
-        },
-        'management': {
-          'data_available': true,
-          'partial': true,
+    ...toListJson(),
+    'training': {
+      'address': trainingAddress,
+      'subdistrict_id': trainingSubdistrictId,
+      'subdistrict_name': trainingSubdistrictName,
+      'district_id': trainingDistrictId,
+      'district_name': trainingDistrictName,
+    },
+    'file_sk': fileSk,
+    'officials': {
+      'data_available': false,
+      'reason': 'NOT_RECORDED_IN_SYSTEM',
+      'total': 0,
+      'data': [],
+    },
+    'coaches': {
+      'data_available': false,
+      'reason': 'NOT_RECORDED_IN_SYSTEM',
+      'total': 0,
+      'data': [],
+    },
+    'management': {
+      'data_available': true,
+      'partial': true,
+      'source': 'club.head_name',
+      'total': 1,
+      'data': [
+        {
+          'id': null,
+          'name': headName,
+          'role': 'Ketua',
+          'phone': phone,
+          'email': email,
+          'photo': null,
           'source': 'club.head_name',
-          'total': 1,
-          'data': [
-            {
-              'id': null,
-              'name': headName,
-              'role': 'Ketua',
-              'phone': phone,
-              'email': email,
-              'photo': null,
-              'source': 'club.head_name',
-            }
-          ],
         },
-      };
+      ],
+    },
+  };
 }
 
 /// Representation of an athlete.
@@ -256,47 +252,39 @@ class MockAthlete {
   });
 
   Map<String, dynamic> toListJson() => {
-        'id': id,
-        'code': code,
-        'name': name,
-        'sex': sex,
-        'sex_label': sexLabel,
-        'pob': pob,
-        'dob': dob,
-        'age': age,
-        'photo': photo,
-        'status': status,
-        'status_label': statusLabel,
-        'cabor': {
-          'id': caborId,
-          'code': caborCode,
-          'name': caborName,
-        },
-        'club': clubId == null
-            ? null
-            : {
-                'id': clubId,
-                'code': clubCode,
-                'name': clubName,
-              },
-        'domicile': {
-          'subdistrict_id': domicileSubdistrictId,
-          'subdistrict_name': domicileSubdistrictName,
-          'district_id': domicileDistrictId,
-          'district_name': domicileDistrictName,
-          'village': domicileVillage,
-        },
-      };
+    'id': id,
+    'code': code,
+    'name': name,
+    'sex': sex,
+    'sex_label': sexLabel,
+    'pob': pob,
+    'dob': dob,
+    'age': age,
+    'photo': photo,
+    'status': status,
+    'status_label': statusLabel,
+    'cabor': {'id': caborId, 'code': caborCode, 'name': caborName},
+    'club': clubId == null
+        ? null
+        : {'id': clubId, 'code': clubCode, 'name': clubName},
+    'domicile': {
+      'subdistrict_id': domicileSubdistrictId,
+      'subdistrict_name': domicileSubdistrictName,
+      'district_id': domicileDistrictId,
+      'district_name': domicileDistrictName,
+      'village': domicileVillage,
+    },
+  };
 
   Map<String, dynamic> toDetailJson() => {
-        ...toListJson(),
-        'phone': phone,
-        'email': email,
-        'height': height,
-        'weight': weight,
-        'blood_type': bloodType,
-        'address': address,
-      };
+    ...toListJson(),
+    'phone': phone,
+    'email': email,
+    'height': height,
+    'weight': weight,
+    'blood_type': bloodType,
+    'address': address,
+  };
 }
 
 /// In-memory Mock Data Store & Response Builder for SICABOR.
@@ -382,11 +370,7 @@ class MockData {
       subdistrictName: 'Tarogong Kidul',
       districtId: 126,
       districtName: 'Garut',
-      kontingen: const {
-        'id': 4,
-        'code': 'KGPK-0045',
-        'name': 'Tarogong Kidul',
-      },
+      kontingen: const {'id': 4, 'code': 'KGPK-0045', 'name': 'Tarogong Kidul'},
       summary: const {
         'total_cabor': 28,
         'total_cabor_from_club': 8,
@@ -452,40 +436,200 @@ class MockData {
 
   /// Master list of Cabang Olahraga.
   static final List<MockCabor> cabors = [
-    const MockCabor(id: 1, code: 'KGCB-0001', name: 'ATLETIK', groupName: 'PASI'),
-    const MockCabor(id: 2, code: 'KGCB-0002', name: 'BOLA BASKET', groupName: 'PERBASI'),
-    const MockCabor(id: 3, code: 'KGCB-0003', name: 'BOLA VOLI', groupName: 'PBVSI'),
-    const MockCabor(id: 4, code: 'KGCB-0004', name: 'BULU TANGKIS', groupName: 'PBSI'),
-    const MockCabor(id: 5, code: 'KGCB-0005', name: 'CATUR', groupName: 'PERCASI'),
-    const MockCabor(id: 6, code: 'KGCB-0006', name: 'DAYUNG', groupName: 'PODSI'),
+    const MockCabor(
+      id: 1,
+      code: 'KGCB-0001',
+      name: 'ATLETIK',
+      groupName: 'PASI',
+    ),
+    const MockCabor(
+      id: 2,
+      code: 'KGCB-0002',
+      name: 'BOLA BASKET',
+      groupName: 'PERBASI',
+    ),
+    const MockCabor(
+      id: 3,
+      code: 'KGCB-0003',
+      name: 'BOLA VOLI',
+      groupName: 'PBVSI',
+    ),
+    const MockCabor(
+      id: 4,
+      code: 'KGCB-0004',
+      name: 'BULU TANGKIS',
+      groupName: 'PBSI',
+    ),
+    const MockCabor(
+      id: 5,
+      code: 'KGCB-0005',
+      name: 'CATUR',
+      groupName: 'PERCASI',
+    ),
+    const MockCabor(
+      id: 6,
+      code: 'KGCB-0006',
+      name: 'DAYUNG',
+      groupName: 'PODSI',
+    ),
     const MockCabor(id: 7, code: 'KGCB-0007', name: 'GULAT', groupName: 'PGSI'),
     const MockCabor(id: 8, code: 'KGCB-0008', name: 'JUDO', groupName: 'PJSI'),
-    const MockCabor(id: 9, code: 'KGCB-0010', name: 'ARUNG JERAM', groupName: 'FAJI'),
-    const MockCabor(id: 10, code: 'KGCB-0011', name: 'KARATE', groupName: 'FORKI'),
-    const MockCabor(id: 11, code: 'KGCB-0012', name: 'MENEMBAK', groupName: 'PERBAKIN'),
-    const MockCabor(id: 12, code: 'KGCB-0013', name: 'PANAHAN', groupName: 'PERPANI'),
-    const MockCabor(id: 13, code: 'KGCB-0014', name: 'PANJAT TEBING', groupName: 'FPTI'),
-    const MockCabor(id: 14, code: 'KGCB-0015', name: 'PENCAK SILAT', groupName: 'IPSI'),
-    const MockCabor(id: 15, code: 'KGCB-0016', name: 'RENANG', groupName: 'PRSI'),
-    const MockCabor(id: 16, code: 'KGCB-0017', name: 'SEPAK BOLA', groupName: 'PSSI'),
-    const MockCabor(id: 17, code: 'KGCB-0018', name: 'SEPAK TAKRAW', groupName: 'PSTI'),
-    const MockCabor(id: 18, code: 'KGCB-0019', name: 'TAEKWONDO', groupName: 'TI'),
-    const MockCabor(id: 19, code: 'KGCB-0020', name: 'TARUNG DERAJAT', groupName: 'KODRAT'),
-    const MockCabor(id: 20, code: 'KGCB-0021', name: 'TENIS LAPANGAN', groupName: 'PELTI'),
-    const MockCabor(id: 21, code: 'KGCB-0022', name: 'TENIS MEJA', groupName: 'PTMSI'),
-    const MockCabor(id: 22, code: 'KGCB-0023', name: 'MUAYTHAI', groupName: 'MI'),
-    const MockCabor(id: 23, code: 'KGCB-0024', name: 'TINJU', groupName: 'PERTINA'),
-    const MockCabor(id: 24, code: 'KGCB-0025', name: 'BALAP SEPEDA', groupName: 'ISSI'),
-    const MockCabor(id: 25, code: 'KGCB-0026', name: 'BINARAGA', groupName: 'PBFI'),
-    const MockCabor(id: 26, code: 'KGCB-0027', name: 'SENAM', groupName: 'PERSANI'),
-    const MockCabor(id: 27, code: 'KGCB-0028', name: 'GATEBALL', groupName: 'PERGATSI'),
-    const MockCabor(id: 28, code: 'KGCB-0029', name: 'PETANQUE', groupName: 'FOPI'),
-    const MockCabor(id: 29, code: 'KGCB-0030', name: 'E-SPORT', groupName: 'ESI'),
-    const MockCabor(id: 30, code: 'KGCB-0031', name: 'BRIDGE', groupName: 'GABSI'),
-    const MockCabor(id: 31, code: 'KGCB-0032', name: 'WOODBALL', groupName: 'IWbA'),
-    const MockCabor(id: 32, code: 'KGCB-0033', name: 'KICKBOXING', groupName: 'KBI'),
-    const MockCabor(id: 33, code: 'KGCB-0034', name: 'PICKLEBALL', groupName: 'IPF'),
-    const MockCabor(id: 34, code: 'KGCB-0035', name: 'BILIARD', groupName: 'POBSI'),
+    const MockCabor(
+      id: 9,
+      code: 'KGCB-0010',
+      name: 'ARUNG JERAM',
+      groupName: 'FAJI',
+    ),
+    const MockCabor(
+      id: 10,
+      code: 'KGCB-0011',
+      name: 'KARATE',
+      groupName: 'FORKI',
+    ),
+    const MockCabor(
+      id: 11,
+      code: 'KGCB-0012',
+      name: 'MENEMBAK',
+      groupName: 'PERBAKIN',
+    ),
+    const MockCabor(
+      id: 12,
+      code: 'KGCB-0013',
+      name: 'PANAHAN',
+      groupName: 'PERPANI',
+    ),
+    const MockCabor(
+      id: 13,
+      code: 'KGCB-0014',
+      name: 'PANJAT TEBING',
+      groupName: 'FPTI',
+    ),
+    const MockCabor(
+      id: 14,
+      code: 'KGCB-0015',
+      name: 'PENCAK SILAT',
+      groupName: 'IPSI',
+    ),
+    const MockCabor(
+      id: 15,
+      code: 'KGCB-0016',
+      name: 'RENANG',
+      groupName: 'PRSI',
+    ),
+    const MockCabor(
+      id: 16,
+      code: 'KGCB-0017',
+      name: 'SEPAK BOLA',
+      groupName: 'PSSI',
+    ),
+    const MockCabor(
+      id: 17,
+      code: 'KGCB-0018',
+      name: 'SEPAK TAKRAW',
+      groupName: 'PSTI',
+    ),
+    const MockCabor(
+      id: 18,
+      code: 'KGCB-0019',
+      name: 'TAEKWONDO',
+      groupName: 'TI',
+    ),
+    const MockCabor(
+      id: 19,
+      code: 'KGCB-0020',
+      name: 'TARUNG DERAJAT',
+      groupName: 'KODRAT',
+    ),
+    const MockCabor(
+      id: 20,
+      code: 'KGCB-0021',
+      name: 'TENIS LAPANGAN',
+      groupName: 'PELTI',
+    ),
+    const MockCabor(
+      id: 21,
+      code: 'KGCB-0022',
+      name: 'TENIS MEJA',
+      groupName: 'PTMSI',
+    ),
+    const MockCabor(
+      id: 22,
+      code: 'KGCB-0023',
+      name: 'MUAYTHAI',
+      groupName: 'MI',
+    ),
+    const MockCabor(
+      id: 23,
+      code: 'KGCB-0024',
+      name: 'TINJU',
+      groupName: 'PERTINA',
+    ),
+    const MockCabor(
+      id: 24,
+      code: 'KGCB-0025',
+      name: 'BALAP SEPEDA',
+      groupName: 'ISSI',
+    ),
+    const MockCabor(
+      id: 25,
+      code: 'KGCB-0026',
+      name: 'BINARAGA',
+      groupName: 'PBFI',
+    ),
+    const MockCabor(
+      id: 26,
+      code: 'KGCB-0027',
+      name: 'SENAM',
+      groupName: 'PERSANI',
+    ),
+    const MockCabor(
+      id: 27,
+      code: 'KGCB-0028',
+      name: 'GATEBALL',
+      groupName: 'PERGATSI',
+    ),
+    const MockCabor(
+      id: 28,
+      code: 'KGCB-0029',
+      name: 'PETANQUE',
+      groupName: 'FOPI',
+    ),
+    const MockCabor(
+      id: 29,
+      code: 'KGCB-0030',
+      name: 'E-SPORT',
+      groupName: 'ESI',
+    ),
+    const MockCabor(
+      id: 30,
+      code: 'KGCB-0031',
+      name: 'BRIDGE',
+      groupName: 'GABSI',
+    ),
+    const MockCabor(
+      id: 31,
+      code: 'KGCB-0032',
+      name: 'WOODBALL',
+      groupName: 'IWbA',
+    ),
+    const MockCabor(
+      id: 32,
+      code: 'KGCB-0033',
+      name: 'KICKBOXING',
+      groupName: 'KBI',
+    ),
+    const MockCabor(
+      id: 33,
+      code: 'KGCB-0034',
+      name: 'PICKLEBALL',
+      groupName: 'IPF',
+    ),
+    const MockCabor(
+      id: 34,
+      code: 'KGCB-0035',
+      name: 'BILIARD',
+      groupName: 'POBSI',
+    ),
   ];
 
   /// Master list of clubs.
@@ -495,7 +639,8 @@ class MockData {
       id: 29,
       code: 'KGCL-0029',
       name: 'BAJA FIGHT ACADEMY',
-      logo: 'https://sicabor.test/alassets/upload/logo/baja_fight_academy-logo.png',
+      logo:
+          'https://sicabor.test/alassets/upload/logo/baja_fight_academy-logo.png',
       caborId: 22,
       caborCode: 'KGCB-0023',
       caborName: 'MUAYTHAI',
@@ -972,225 +1117,323 @@ class MockData {
     final list = <MockAthlete>[];
 
     // Explicit representative athletes
-    list.add(const MockAthlete(
-      id: 2375,
-      code: 'KGAT-002281',
-      name: 'Abimanyu Alfathir Kumara',
-      sex: 'l',
-      sexLabel: 'Laki-Laki',
-      pob: 'Garut',
-      dob: '2005-08-03',
-      age: 21,
-      photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-      status: 1,
-      statusLabel: 'Aktif',
-      caborId: 13,
-      caborCode: 'KGCB-0014',
-      caborName: 'PANJAT TEBING',
-      clubId: null,
-      domicileSubdistrictId: 1728,
-      domicileSubdistrictName: 'Garut Kota',
-      domicileVillage: 'MUARA SANDING',
-      phone: '081234567890',
-      email: 'abimanyu@example.com',
-      height: 175,
-      weight: 68,
-      bloodType: 'O',
-      address: 'Jl. Pramuka No. 12, Kel. Muara Sanding',
-      nik: '3205010308050001',
-      dateCreated: '2023-05-10',
-    ));
+    list.add(
+      const MockAthlete(
+        id: 2375,
+        code: 'KGAT-002281',
+        name: 'Abimanyu Alfathir Kumara',
+        sex: 'l',
+        sexLabel: 'Laki-Laki',
+        pob: 'Garut',
+        dob: '2005-08-03',
+        age: 21,
+        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+        status: 1,
+        statusLabel: 'Aktif',
+        caborId: 13,
+        caborCode: 'KGCB-0014',
+        caborName: 'PANJAT TEBING',
+        clubId: null,
+        domicileSubdistrictId: 1728,
+        domicileSubdistrictName: 'Garut Kota',
+        domicileVillage: 'MUARA SANDING',
+        phone: '081234567890',
+        email: 'abimanyu@example.com',
+        height: 175,
+        weight: 68,
+        bloodType: 'O',
+        address: 'Jl. Pramuka No. 12, Kel. Muara Sanding',
+        nik: '3205010308050001',
+        dateCreated: '2023-05-10',
+      ),
+    );
 
-    list.add(const MockAthlete(
-      id: 2376,
-      code: 'KGAT-002282',
-      name: 'Annisa Nurul Hidayah',
-      sex: 'p',
-      sexLabel: 'Perempuan',
-      pob: 'Garut',
-      dob: '2006-02-14',
-      age: 20,
-      photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-      status: 1,
-      statusLabel: 'Aktif',
-      caborId: 14,
-      caborCode: 'KGCB-0015',
-      caborName: 'PENCAK SILAT',
-      clubId: 30,
-      clubCode: 'KGCL-0030',
-      clubName: 'PADEPOKAN PENCAK SILAT GAJAH PUTIH',
-      domicileSubdistrictId: 1728,
-      domicileSubdistrictName: 'Garut Kota',
-      domicileVillage: 'KOTA KULON',
-      phone: '081234567891',
-      email: 'annisa@example.com',
-      height: 162,
-      weight: 52,
-      bloodType: 'A',
-      address: 'Jl. Bratayuda No. 45',
-      nik: '3205011402060002',
-      dateCreated: '2023-06-01',
-    ));
+    list.add(
+      const MockAthlete(
+        id: 2376,
+        code: 'KGAT-002282',
+        name: 'Annisa Nurul Hidayah',
+        sex: 'p',
+        sexLabel: 'Perempuan',
+        pob: 'Garut',
+        dob: '2006-02-14',
+        age: 20,
+        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+        status: 1,
+        statusLabel: 'Aktif',
+        caborId: 14,
+        caborCode: 'KGCB-0015',
+        caborName: 'PENCAK SILAT',
+        clubId: 30,
+        clubCode: 'KGCL-0030',
+        clubName: 'PADEPOKAN PENCAK SILAT GAJAH PUTIH',
+        domicileSubdistrictId: 1728,
+        domicileSubdistrictName: 'Garut Kota',
+        domicileVillage: 'KOTA KULON',
+        phone: '081234567891',
+        email: 'annisa@example.com',
+        height: 162,
+        weight: 52,
+        bloodType: 'A',
+        address: 'Jl. Bratayuda No. 45',
+        nik: '3205011402060002',
+        dateCreated: '2023-06-01',
+      ),
+    );
 
-    list.add(const MockAthlete(
-      id: 2377,
-      code: 'KGAT-002283',
-      name: 'Bagus Pratama Putra',
-      sex: 'l',
-      sexLabel: 'Laki-Laki',
-      pob: 'Garut',
-      dob: '2004-11-20',
-      age: 22,
-      photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-      status: 1,
-      statusLabel: 'Aktif',
-      caborId: 18,
-      caborCode: 'KGCB-0019',
-      caborName: 'TAEKWONDO',
-      clubId: 31,
-      clubCode: 'KGCL-0031',
-      clubName: 'GARUT TAEKWONDO CENTER',
-      domicileSubdistrictId: 1728,
-      domicileSubdistrictName: 'Garut Kota',
-      domicileVillage: 'REGOL',
-      phone: '081234567892',
-      email: 'bagus@example.com',
-      height: 178,
-      weight: 70,
-      bloodType: 'B',
-      address: 'Jl. Papandayan No. 120',
-      nik: '3205012011040003',
-      dateCreated: '2023-06-15',
-    ));
+    list.add(
+      const MockAthlete(
+        id: 2377,
+        code: 'KGAT-002283',
+        name: 'Bagus Pratama Putra',
+        sex: 'l',
+        sexLabel: 'Laki-Laki',
+        pob: 'Garut',
+        dob: '2004-11-20',
+        age: 22,
+        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+        status: 1,
+        statusLabel: 'Aktif',
+        caborId: 18,
+        caborCode: 'KGCB-0019',
+        caborName: 'TAEKWONDO',
+        clubId: 31,
+        clubCode: 'KGCL-0031',
+        clubName: 'GARUT TAEKWONDO CENTER',
+        domicileSubdistrictId: 1728,
+        domicileSubdistrictName: 'Garut Kota',
+        domicileVillage: 'REGOL',
+        phone: '081234567892',
+        email: 'bagus@example.com',
+        height: 178,
+        weight: 70,
+        bloodType: 'B',
+        address: 'Jl. Papandayan No. 120',
+        nik: '3205012011040003',
+        dateCreated: '2023-06-15',
+      ),
+    );
 
     // 31 athlete cabors for Garut Kota (cabors 1..32 excluding cabor 22 MUAYTHAI, so Muaythai has clubs but 0 athletes)
-    final garutAthleteCabors = cabors.where((c) => c.id != 22 && c.id <= 32).toList();
-    final garutVillages = ['KOTA KULON', 'KOTA WETAN', 'REGOL', 'PAKUWON', 'MUARA SANDING', 'SUKAMAJU', 'MARGAWATI', 'SINDANGRATU', 'SINDANGSARI', 'CIMUNCANG'];
-    final namesMale = ['Ahmad', 'Bayu', 'Candra', 'Diki', 'Eko', 'Fajar', 'Galih', 'Hadi', 'Ilham', 'Joko', 'Kurniawan', 'Lukman', 'Maulana', 'Naufal', 'Oki', 'Prasetyo', 'Rian', 'Surya', 'Taufik', 'Wahyu'];
-    final namesFemale = ['Aulia', 'Bella', 'Citra', 'Dewi', 'Erna', 'Fitri', 'Gita', 'Hani', 'Indah', 'Jasmine', 'Kartika', 'Lestari', 'Maya', 'Nadia', 'Putri', 'Ratna', 'Siti', 'Triana', 'Vina', 'Wulandari'];
+    final garutAthleteCabors = cabors
+        .where((c) => c.id != 22 && c.id <= 32)
+        .toList();
+    final garutVillages = [
+      'KOTA KULON',
+      'KOTA WETAN',
+      'REGOL',
+      'PAKUWON',
+      'MUARA SANDING',
+      'SUKAMAJU',
+      'MARGAWATI',
+      'SINDANGRATU',
+      'SINDANGSARI',
+      'CIMUNCANG',
+    ];
+    final namesMale = [
+      'Ahmad',
+      'Bayu',
+      'Candra',
+      'Diki',
+      'Eko',
+      'Fajar',
+      'Galih',
+      'Hadi',
+      'Ilham',
+      'Joko',
+      'Kurniawan',
+      'Lukman',
+      'Maulana',
+      'Naufal',
+      'Oki',
+      'Prasetyo',
+      'Rian',
+      'Surya',
+      'Taufik',
+      'Wahyu',
+    ];
+    final namesFemale = [
+      'Aulia',
+      'Bella',
+      'Citra',
+      'Dewi',
+      'Erna',
+      'Fitri',
+      'Gita',
+      'Hani',
+      'Indah',
+      'Jasmine',
+      'Kartika',
+      'Lestari',
+      'Maya',
+      'Nadia',
+      'Putri',
+      'Ratna',
+      'Siti',
+      'Triana',
+      'Vina',
+      'Wulandari',
+    ];
 
     var athleteId = 2378;
     // 3 athletes already added for Garut Kota (total 361 needed, so 358 more)
     for (var i = 0; i < 358; i++) {
       final isMale = i % 2 == 0;
-      final firstName = isMale ? namesMale[i % namesMale.length] : namesFemale[i % namesFemale.length];
+      final firstName = isMale
+          ? namesMale[i % namesMale.length]
+          : namesFemale[i % namesFemale.length];
       final lastName = namesMale[(i + 3) % namesMale.length];
       final cabor = garutAthleteCabors[i % garutAthleteCabors.length];
       final village = garutVillages[i % garutVillages.length];
       final codeNum = (athleteId - 100).toString().padLeft(6, '0');
 
-      list.add(MockAthlete(
-        id: athleteId,
-        code: 'KGAT-$codeNum',
-        name: '$firstName $lastName ${i + 1}',
-        sex: isMale ? 'l' : 'p',
-        sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
-        pob: 'Garut',
-        dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-15',
-        age: 18 + (i % 8),
-        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-        status: 1,
-        statusLabel: 'Aktif',
-        caborId: cabor.id,
-        caborCode: cabor.code,
-        caborName: cabor.name,
-        clubId: null,
-        domicileSubdistrictId: 1728,
-        domicileSubdistrictName: 'Garut Kota',
-        domicileVillage: village,
-        phone: '08123456${(1000 + i).toString().substring(1)}',
-        email: 'atlet$athleteId@example.com',
-        height: 160 + (i % 25),
-        weight: 50 + (i % 30),
-        bloodType: ['A', 'B', 'AB', 'O'][i % 4],
-        address: 'Kp. $village No. ${(i % 50) + 1}',
-        nik: '32050115010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
-        dateCreated: '2023-01-10',
-      ));
+      list.add(
+        MockAthlete(
+          id: athleteId,
+          code: 'KGAT-$codeNum',
+          name: '$firstName $lastName ${i + 1}',
+          sex: isMale ? 'l' : 'p',
+          sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
+          pob: 'Garut',
+          dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-15',
+          age: 18 + (i % 8),
+          photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+          status: 1,
+          statusLabel: 'Aktif',
+          caborId: cabor.id,
+          caborCode: cabor.code,
+          caborName: cabor.name,
+          clubId: null,
+          domicileSubdistrictId: 1728,
+          domicileSubdistrictName: 'Garut Kota',
+          domicileVillage: village,
+          phone: '08123456${(1000 + i).toString().substring(1)}',
+          email: 'atlet$athleteId@example.com',
+          height: 160 + (i % 25),
+          weight: 50 + (i % 30),
+          bloodType: ['A', 'B', 'AB', 'O'][i % 4],
+          address: 'Kp. $village No. ${(i % 50) + 1}',
+          nik: '32050115010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
+          dateCreated: '2023-01-10',
+        ),
+      );
       athleteId++;
     }
 
     // Limbangan Athletes: 159 athletes across 17 cabors (cabors 0..16), 0 clubs
-    final limbanganVillages = ['BALUBUR LIMBANGAN', 'CIWANGI', 'DUNGUSWIKU', 'LIMBANGAN BARAT', 'LIMBANGAN TENGAH', 'LIMBANGAN TIMUR', 'NEGLASARI', 'PANGEUREUNAN', 'PASIRWARU', 'SIMPEN KALER', 'SIMPEN KIDUL', 'SURABUNAYA', 'SUREN', 'TALAGAJAYA'];
+    final limbanganVillages = [
+      'BALUBUR LIMBANGAN',
+      'CIWANGI',
+      'DUNGUSWIKU',
+      'LIMBANGAN BARAT',
+      'LIMBANGAN TENGAH',
+      'LIMBANGAN TIMUR',
+      'NEGLASARI',
+      'PANGEUREUNAN',
+      'PASIRWARU',
+      'SIMPEN KALER',
+      'SIMPEN KIDUL',
+      'SURABUNAYA',
+      'SUREN',
+      'TALAGAJAYA',
+    ];
     for (var i = 0; i < 159; i++) {
       final isMale = i % 2 == 0;
-      final firstName = isMale ? namesMale[(i + 5) % namesMale.length] : namesFemale[(i + 5) % namesFemale.length];
+      final firstName = isMale
+          ? namesMale[(i + 5) % namesMale.length]
+          : namesFemale[(i + 5) % namesFemale.length];
       final lastName = namesMale[(i + 7) % namesMale.length];
       final caborIndex = i % 17;
       final cabor = cabors[caborIndex];
       final village = limbanganVillages[i % limbanganVillages.length];
       final codeNum = (athleteId - 100).toString().padLeft(6, '0');
 
-      list.add(MockAthlete(
-        id: athleteId,
-        code: 'KGAT-$codeNum',
-        name: '$firstName $lastName $i',
-        sex: isMale ? 'l' : 'p',
-        sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
-        pob: 'Garut',
-        dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-10',
-        age: 18 + (i % 8),
-        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-        status: 1,
-        statusLabel: 'Aktif',
-        caborId: cabor.id,
-        caborCode: cabor.code,
-        caborName: cabor.name,
-        clubId: null,
-        domicileSubdistrictId: 1714,
-        domicileSubdistrictName: 'Blubur Limbangan',
-        domicileVillage: village,
-        phone: '08523456${(1000 + i).toString().substring(1)}',
-        email: 'atlet$athleteId@example.com',
-        height: 160 + (i % 25),
-        weight: 50 + (i % 30),
-        bloodType: ['A', 'B', 'AB', 'O'][i % 4],
-        address: 'Kp. $village No. ${(i % 50) + 1}',
-        nik: '32050210010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
-        dateCreated: '2023-02-15',
-      ));
+      list.add(
+        MockAthlete(
+          id: athleteId,
+          code: 'KGAT-$codeNum',
+          name: '$firstName $lastName $i',
+          sex: isMale ? 'l' : 'p',
+          sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
+          pob: 'Garut',
+          dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-10',
+          age: 18 + (i % 8),
+          photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+          status: 1,
+          statusLabel: 'Aktif',
+          caborId: cabor.id,
+          caborCode: cabor.code,
+          caborName: cabor.name,
+          clubId: null,
+          domicileSubdistrictId: 1714,
+          domicileSubdistrictName: 'Blubur Limbangan',
+          domicileVillage: village,
+          phone: '08523456${(1000 + i).toString().substring(1)}',
+          email: 'atlet$athleteId@example.com',
+          height: 160 + (i % 25),
+          weight: 50 + (i % 30),
+          bloodType: ['A', 'B', 'AB', 'O'][i % 4],
+          address: 'Kp. $village No. ${(i % 50) + 1}',
+          nik: '32050210010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
+          dateCreated: '2023-02-15',
+        ),
+      );
       athleteId++;
     }
 
     // Tarogong Kidul Athletes: 290 athletes across 26 cabors (cabors 0..25)
-    final tarogongVillages = ['SUKAGALIH', 'SUKABAKTI', 'PATRIOT', 'HAURPANGGUNG', 'JAYARAGA', 'JAYASUKMA', 'MEKARGALIH', 'KERKOF', 'TAROGONG'];
+    final tarogongVillages = [
+      'SUKAGALIH',
+      'SUKABAKTI',
+      'PATRIOT',
+      'HAURPANGGUNG',
+      'JAYARAGA',
+      'JAYASUKMA',
+      'MEKARGALIH',
+      'KERKOF',
+      'TAROGONG',
+    ];
     for (var i = 0; i < 290; i++) {
       final isMale = i % 2 == 0;
-      final firstName = isMale ? namesMale[(i + 2) % namesMale.length] : namesFemale[(i + 2) % namesFemale.length];
+      final firstName = isMale
+          ? namesMale[(i + 2) % namesMale.length]
+          : namesFemale[(i + 2) % namesFemale.length];
       final lastName = namesMale[(i + 8) % namesMale.length];
       final caborIndex = i % 26;
       final cabor = cabors[caborIndex];
       final village = tarogongVillages[i % tarogongVillages.length];
       final codeNum = (athleteId - 100).toString().padLeft(6, '0');
 
-      list.add(MockAthlete(
-        id: athleteId,
-        code: 'KGAT-$codeNum',
-        name: '$firstName $lastName $i',
-        sex: isMale ? 'l' : 'p',
-        sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
-        pob: 'Garut',
-        dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-20',
-        age: 18 + (i % 8),
-        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
-        status: 1,
-        statusLabel: 'Aktif',
-        caborId: cabor.id,
-        caborCode: cabor.code,
-        caborName: cabor.name,
-        clubId: null,
-        domicileSubdistrictId: 1729,
-        domicileSubdistrictName: 'Tarogong Kidul',
-        domicileVillage: village,
-        phone: '08773456${(1000 + i).toString().substring(1)}',
-        email: 'atlet$athleteId@example.com',
-        height: 160 + (i % 25),
-        weight: 50 + (i % 30),
-        bloodType: ['A', 'B', 'AB', 'O'][i % 4],
-        address: 'Kp. $village No. ${(i % 50) + 1}',
-        nik: '32050320010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
-        dateCreated: '2023-03-20',
-      ));
+      list.add(
+        MockAthlete(
+          id: athleteId,
+          code: 'KGAT-$codeNum',
+          name: '$firstName $lastName $i',
+          sex: isMale ? 'l' : 'p',
+          sexLabel: isMale ? 'Laki-Laki' : 'Perempuan',
+          pob: 'Garut',
+          dob: '200${(i % 8) + 1}-0${(i % 9) + 1}-20',
+          age: 18 + (i % 8),
+          photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+          status: 1,
+          statusLabel: 'Aktif',
+          caborId: cabor.id,
+          caborCode: cabor.code,
+          caborName: cabor.name,
+          clubId: null,
+          domicileSubdistrictId: 1729,
+          domicileSubdistrictName: 'Tarogong Kidul',
+          domicileVillage: village,
+          phone: '08773456${(1000 + i).toString().substring(1)}',
+          email: 'atlet$athleteId@example.com',
+          height: 160 + (i % 25),
+          weight: 50 + (i % 30),
+          bloodType: ['A', 'B', 'AB', 'O'][i % 4],
+          address: 'Kp. $village No. ${(i % 50) + 1}',
+          nik: '32050320010${(i % 9) + 1}${(1000 + i).toString().substring(1)}',
+          dateCreated: '2023-03-20',
+        ),
+      );
       athleteId++;
     }
 
@@ -1227,7 +1470,8 @@ class MockData {
 
   /// Generates a valid bearer token for an account and records it in active sessions.
   static String generateToken(MockAccount account) {
-    final token = 'sicabor-mock-token-${account.username}-${_tokenCounter++}-${DateTime.now().millisecondsSinceEpoch}';
+    final token =
+        'sicabor-mock-token-${account.username}-${_tokenCounter++}-${DateTime.now().millisecondsSinceEpoch}';
     _activeTokens[token] = account;
     return token;
   }
@@ -1239,7 +1483,8 @@ class MockData {
       return _activeTokens[cleanToken];
     }
     // Fallback: decode username if token matches standard mock pattern
-    if (cleanToken.startsWith('sicabor-mock-token-') || cleanToken.startsWith('mock-token-')) {
+    if (cleanToken.startsWith('sicabor-mock-token-') ||
+        cleanToken.startsWith('mock-token-')) {
       final parts = cleanToken.split('-');
       if (parts.length >= 4) {
         final username = parts[3];
@@ -1292,13 +1537,21 @@ class MockData {
     final caborItems = <Map<String, dynamic>>[];
 
     for (final cabor in cabors) {
-      final totalClubsInSubdistrict = clubs.where((c) =>
-          c.caborId == cabor.id &&
-          c.secretariatSubdistrictId == subdistrictId).length;
+      final totalClubsInSubdistrict = clubs
+          .where(
+            (c) =>
+                c.caborId == cabor.id &&
+                c.secretariatSubdistrictId == subdistrictId,
+          )
+          .length;
 
-      final totalAthletesInSubdistrict = athletes.where((a) =>
-          a.caborId == cabor.id &&
-          a.domicileSubdistrictId == subdistrictId).length;
+      final totalAthletesInSubdistrict = athletes
+          .where(
+            (a) =>
+                a.caborId == cabor.id &&
+                a.domicileSubdistrictId == subdistrictId,
+          )
+          .length;
 
       final shouldInclude = switch (source) {
         'club' => totalClubsInSubdistrict > 0,
@@ -1323,18 +1576,29 @@ class MockData {
 
     // Sort items
     if (sort == 'code') {
-      caborItems.sort((a, b) => (a['code'] as String).compareTo(b['code'] as String));
+      caborItems.sort(
+        (a, b) => (a['code'] as String).compareTo(b['code'] as String),
+      );
     } else if (sort == 'athlete') {
-      caborItems.sort((a, b) => (b['total_athlete'] as int).compareTo(a['total_athlete'] as int));
+      caborItems.sort(
+        (a, b) =>
+            (b['total_athlete'] as int).compareTo(a['total_athlete'] as int),
+      );
     } else if (sort == 'club') {
-      caborItems.sort((a, b) => (b['total_club'] as int).compareTo(a['total_club'] as int));
+      caborItems.sort(
+        (a, b) => (b['total_club'] as int).compareTo(a['total_club'] as int),
+      );
     } else {
-      caborItems.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+      caborItems.sort(
+        (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+      );
     }
 
     final total = caborItems.length;
     final end = min(clampedOffset + clampedLimit, total);
-    final paged = clampedOffset >= total ? <Map<String, dynamic>>[] : caborItems.sublist(clampedOffset, end);
+    final paged = clampedOffset >= total
+        ? <Map<String, dynamic>>[]
+        : caborItems.sublist(clampedOffset, end);
 
     return {
       'success': true,
@@ -1351,7 +1615,8 @@ class MockData {
         'total': total,
         'source': source,
         'derived_from': 'club_or_athlete',
-        'note': 'Cabor tidak memiliki data kecamatan sendiri; daftar ini diturunkan dari cabor yang memiliki club atau atlet di kecamatan ini.',
+        'note':
+            'Cabor tidak memiliki data kecamatan sendiri; daftar ini diturunkan dari cabor yang memiliki club atau atlet di kecamatan ini.',
       },
       'data': paged,
     };
@@ -1399,7 +1664,10 @@ class MockData {
     final end = min(clampedOffset + clampedLimit, total);
     final paged = clampedOffset >= total
         ? <Map<String, dynamic>>[]
-        : filtered.sublist(clampedOffset, end).map((c) => c.toListJson()).toList();
+        : filtered
+              .sublist(clampedOffset, end)
+              .map((c) => c.toListJson())
+              .toList();
 
     return {
       'success': true,
@@ -1410,17 +1678,16 @@ class MockData {
         'district_id': account.districtId,
         'district_name': account.districtName,
       },
-      'meta': {
-        'limit': clampedLimit,
-        'offset': clampedOffset,
-        'total': total,
-      },
+      'meta': {'limit': clampedLimit, 'offset': clampedOffset, 'total': total},
       'data': paged,
     };
   }
 
   /// Builds club detail response JSON for GET /api/v1/kok/club/detail/{id}.
-  static Map<String, dynamic>? buildClubDetailJson(int id, {MockAccount? account}) {
+  static Map<String, dynamic>? buildClubDetailJson(
+    int id, {
+    MockAccount? account,
+  }) {
     MockClub? found;
     for (final club in clubs) {
       if (club.id == id) {
@@ -1450,7 +1717,10 @@ class MockData {
   }
 
   /// Builds club official response JSON for GET /api/v1/kok/club/official/{id}.
-  static Map<String, dynamic> buildClubOfficialJson(int id, {MockAccount? account}) {
+  static Map<String, dynamic> buildClubOfficialJson(
+    int id, {
+    MockAccount? account,
+  }) {
     return {
       'success': true,
       'message': 'Data official club belum tercatat di sistem.',
@@ -1466,7 +1736,10 @@ class MockData {
   }
 
   /// Builds club coach response JSON for GET /api/v1/kok/club/coach/{id}.
-  static Map<String, dynamic> buildClubCoachJson(int id, {MockAccount? account}) {
+  static Map<String, dynamic> buildClubCoachJson(
+    int id, {
+    MockAccount? account,
+  }) {
     return {
       'success': true,
       'message': 'Data pelatih club belum tercatat di sistem.',
@@ -1482,7 +1755,10 @@ class MockData {
   }
 
   /// Builds club management response JSON for GET /api/v1/kok/club/management/{id}.
-  static Map<String, dynamic>? buildClubManagementJson(int id, {MockAccount? account}) {
+  static Map<String, dynamic>? buildClubManagementJson(
+    int id, {
+    MockAccount? account,
+  }) {
     MockClub? found;
     for (final club in clubs) {
       if (club.id == id) {
@@ -1516,7 +1792,7 @@ class MockData {
           'email': found.email,
           'photo': null,
           'source': 'club.head_name',
-        }
+        },
       ],
     };
   }
@@ -1568,7 +1844,10 @@ class MockData {
     final end = min(clampedOffset + clampedLimit, total);
     final paged = clampedOffset >= total
         ? <Map<String, dynamic>>[]
-        : filtered.sublist(clampedOffset, end).map((a) => a.toListJson()).toList();
+        : filtered
+              .sublist(clampedOffset, end)
+              .map((a) => a.toListJson())
+              .toList();
 
     final meta = <String, dynamic>{
       'limit': clampedLimit,
@@ -1581,7 +1860,8 @@ class MockData {
     if (idClub != null) {
       meta['filter_warning'] = {
         'code': 'CLUB_MEMBERSHIP_SPARSE',
-        'message': 'Keanggotaan club pada data atlet belum lengkap. Hasil pencarian hanya menampilkan atlet yang berdomisili di kecamatan ini.',
+        'message':
+            'Keanggotaan club pada data atlet belum lengkap. Hasil pencarian hanya menampilkan atlet yang berdomisili di kecamatan ini.',
       };
     }
 
@@ -1600,7 +1880,10 @@ class MockData {
   }
 
   /// Builds athlete detail response JSON for GET /api/v1/kok/athlete/detail/{id}.
-  static Map<String, dynamic>? buildAthleteDetailJson(int id, {MockAccount? account}) {
+  static Map<String, dynamic>? buildAthleteDetailJson(
+    int id, {
+    MockAccount? account,
+  }) {
     MockAthlete? found;
     for (final athlete in athletes) {
       if (athlete.id == id) {

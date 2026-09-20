@@ -74,26 +74,18 @@ class SicaborMockServer {
       } else if (path.startsWith('/api/v1/kok') || _isKokPathAlias(path)) {
         await _handleProtectedKok(request, response, path);
       } else {
-        _sendJson(
-          response,
-          HttpStatus.notFound,
-          {
-            'success': false,
-            'message': 'Endpoint tidak ditemukan.',
-            'error_code': 'NOT_FOUND',
-          },
-        );
+        _sendJson(response, HttpStatus.notFound, {
+          'success': false,
+          'message': 'Endpoint tidak ditemukan.',
+          'error_code': 'NOT_FOUND',
+        });
       }
     } catch (e, stack) {
-      _sendJson(
-        response,
-        HttpStatus.internalServerError,
-        {
-          'success': false,
-          'message': 'Terjadi kesalahan internal pada mock server.',
-          'error': e.toString(),
-        },
-      );
+      _sendJson(response, HttpStatus.internalServerError, {
+        'success': false,
+        'message': 'Terjadi kesalahan internal pada mock server.',
+        'error': e.toString(),
+      });
       if (_verbose) {
         stderr.writeln('${_Ansi.red}[ERROR] $e\n$stack${_Ansi.reset}');
       }
@@ -133,14 +125,10 @@ class SicaborMockServer {
   /// Handles POST /api/auth.
   Future<void> _handleAuth(HttpRequest request, HttpResponse response) async {
     if (request.method.toUpperCase() != 'POST') {
-      _sendJson(
-        response,
-        HttpStatus.methodNotAllowed,
-        {
-          'status': false,
-          'message': 'Metode HTTP tidak diizinkan. Gunakan POST.',
-        },
-      );
+      _sendJson(response, HttpStatus.methodNotAllowed, {
+        'status': false,
+        'message': 'Metode HTTP tidak diizinkan. Gunakan POST.',
+      });
       return;
     }
 
@@ -164,47 +152,35 @@ class SicaborMockServer {
     }
 
     if (username.isEmpty || password.isEmpty) {
-      _sendJson(
-        response,
-        HttpStatus.unauthorized,
-        {
-          'status': false,
-          'message': 'Username dan password wajib diisi.',
-        },
-      );
+      _sendJson(response, HttpStatus.unauthorized, {
+        'status': false,
+        'message': 'Username dan password wajib diisi.',
+      });
       return;
     }
 
     final account = MockData.findAccountByUsername(username);
     if (account == null || !MockData.verifyPassword(account, password)) {
-      _sendJson(
-        response,
-        HttpStatus.unauthorized,
-        {
-          'status': false,
-          'message': 'Username atau password salah.',
-        },
-      );
+      _sendJson(response, HttpStatus.unauthorized, {
+        'status': false,
+        'message': 'Username atau password salah.',
+      });
       return;
     }
 
     final token = MockData.generateToken(account);
-    _sendJson(
-      response,
-      HttpStatus.ok,
-      {
-        'status': true,
-        'message': 'LOGIN SUCCESSFULLY',
-        'data': {
-          'id': account.id.toString(),
-          'username': account.username,
-          'name': account.name,
-          'email': account.email,
-          'type': account.type,
-        },
-        'token': token,
+    _sendJson(response, HttpStatus.ok, {
+      'status': true,
+      'message': 'LOGIN SUCCESSFULLY',
+      'data': {
+        'id': account.id.toString(),
+        'username': account.username,
+        'name': account.name,
+        'email': account.email,
+        'type': account.type,
       },
-    );
+      'token': token,
+    });
   }
 
   /// Authenticates and routes protected `/api/v1/kok/*` requests.
@@ -216,15 +192,11 @@ class SicaborMockServer {
     // 1. Check Authorization header
     final authHeader = request.headers.value(HttpHeaders.authorizationHeader);
     if (authHeader == null || !authHeader.startsWith('Bearer ')) {
-      _sendJson(
-        response,
-        HttpStatus.unauthorized,
-        {
-          'success': false,
-          'message': 'Token tidak valid atau kedaluwarsa.',
-          'error_code': 'INVALID_TOKEN',
-        },
-      );
+      _sendJson(response, HttpStatus.unauthorized, {
+        'success': false,
+        'message': 'Token tidak valid atau kedaluwarsa.',
+        'error_code': 'INVALID_TOKEN',
+      });
       return;
     }
 
@@ -232,70 +204,51 @@ class SicaborMockServer {
     final account = MockData.findAccountByToken(token);
 
     if (account == null) {
-      _sendJson(
-        response,
-        HttpStatus.forbidden,
-        {
-          'success': false,
-          'message': 'Akun pemilik token tidak ditemukan.',
-          'error_code': 'MEMBER_NOT_FOUND',
-        },
-      );
+      _sendJson(response, HttpStatus.forbidden, {
+        'success': false,
+        'message': 'Akun pemilik token tidak ditemukan.',
+        'error_code': 'MEMBER_NOT_FOUND',
+      });
       return;
     }
 
     // 2. Check account status (active)
     if (!account.isActive) {
-      _sendJson(
-        response,
-        HttpStatus.forbidden,
-        {
-          'success': false,
-          'message': 'Akun Anda telah dinonaktifkan.',
-          'error_code': 'MEMBER_INACTIVE',
-        },
-      );
+      _sendJson(response, HttpStatus.forbidden, {
+        'success': false,
+        'message': 'Akun Anda telah dinonaktifkan.',
+        'error_code': 'MEMBER_INACTIVE',
+      });
       return;
     }
 
     // 3. Check account type (admin_kok)
     if (!account.isKok) {
-      _sendJson(
-        response,
-        HttpStatus.forbidden,
-        {
-          'success': false,
-          'message': 'Endpoint ini hanya dapat diakses oleh akun KOK.',
-          'error_code': 'NOT_KOK',
-        },
-      );
+      _sendJson(response, HttpStatus.forbidden, {
+        'success': false,
+        'message': 'Endpoint ini hanya dapat diakses oleh akun KOK.',
+        'error_code': 'NOT_KOK',
+      });
       return;
     }
 
     // 4. Check subdistrict assignment
     if (!account.hasSubdistrict) {
-      _sendJson(
-        response,
-        HttpStatus.forbidden,
-        {
-          'success': false,
-          'message': 'Akun KOK belum memiliki wilayah kecamatan.',
-          'error_code': 'NO_SUBDISTRICT',
-        },
-      );
+      _sendJson(response, HttpStatus.forbidden, {
+        'success': false,
+        'message': 'Akun KOK belum memiliki wilayah kecamatan.',
+        'error_code': 'NO_SUBDISTRICT',
+      });
       return;
     }
 
     // 5. Check HTTP Method
     if (request.method.toUpperCase() != 'GET') {
-      _sendJson(
-        response,
-        HttpStatus.methodNotAllowed,
-        {
-          'success': false,
-          'message': 'Metode HTTP tidak diizinkan. Semua endpoint KOK adalah GET.',
-        },
-      );
+      _sendJson(response, HttpStatus.methodNotAllowed, {
+        'success': false,
+        'message':
+            'Metode HTTP tidak diizinkan. Semua endpoint KOK adalah GET.',
+      });
       return;
     }
 
@@ -458,15 +411,11 @@ class SicaborMockServer {
     }
 
     // Unknown KOK subroute
-    _sendJson(
-      response,
-      HttpStatus.notFound,
-      {
-        'success': false,
-        'message': 'Endpoint KOK tidak ditemukan.',
-        'error_code': 'NOT_FOUND',
-      },
-    );
+    _sendJson(response, HttpStatus.notFound, {
+      'success': false,
+      'message': 'Endpoint KOK tidak ditemukan.',
+      'error_code': 'NOT_FOUND',
+    });
   }
 
   bool _isClubInSubdistrict(int clubId, int? subdistrictId) {
@@ -480,32 +429,32 @@ class SicaborMockServer {
   }
 
   void _sendClubNotFound(HttpResponse response) {
-    _sendJson(
-      response,
-      HttpStatus.notFound,
-      {
-        'success': false,
-        'message': 'Data club tidak ditemukan.',
-        'error_code': 'CLUB_NOT_FOUND',
-      },
-    );
+    _sendJson(response, HttpStatus.notFound, {
+      'success': false,
+      'message': 'Data club tidak ditemukan.',
+      'error_code': 'CLUB_NOT_FOUND',
+    });
   }
 
   void _sendAthleteNotFound(HttpResponse response) {
-    _sendJson(
-      response,
-      HttpStatus.notFound,
-      {
-        'success': false,
-        'message': 'Data atlet tidak ditemukan.',
-        'error_code': 'ATHLETE_NOT_FOUND',
-      },
-    );
+    _sendJson(response, HttpStatus.notFound, {
+      'success': false,
+      'message': 'Data atlet tidak ditemukan.',
+      'error_code': 'ATHLETE_NOT_FOUND',
+    });
   }
 
-  void _sendJson(HttpResponse response, int statusCode, Map<String, dynamic> body) {
+  void _sendJson(
+    HttpResponse response,
+    int statusCode,
+    Map<String, dynamic> body,
+  ) {
     response.statusCode = statusCode;
-    response.headers.contentType = ContentType('application', 'json', charset: 'utf-8');
+    response.headers.contentType = ContentType(
+      'application',
+      'json',
+      charset: 'utf-8',
+    );
     response.write(jsonEncode(body));
   }
 
@@ -550,10 +499,16 @@ void main(List<String> args) async {
       verbose = false;
     } else if (arg == '--help') {
       stdout.writeln('SICABOR Mock Server');
-      stdout.writeln('Usage: dart run scripts/mock_server/sicabor_mock_server.dart [options]');
+      stdout.writeln(
+        'Usage: dart run scripts/mock_server/sicabor_mock_server.dart [options]',
+      );
       stdout.writeln('Options:');
-      stdout.writeln('  --port=<port>       Set port to listen on (default: 8080)');
-      stdout.writeln('  --host=<host>       Set host address (default: 0.0.0.0)');
+      stdout.writeln(
+        '  --port=<port>       Set port to listen on (default: 8080)',
+      );
+      stdout.writeln(
+        '  --host=<host>       Set host address (default: 0.0.0.0)',
+      );
       stdout.writeln('  --quiet, -q         Disable request logging');
       stdout.writeln('  --help              Display this help message');
       exit(0);
@@ -595,7 +550,9 @@ ${_Ansi.cyan}===================================================================
 
   // Handle graceful exit on Ctrl+C / SIGINT
   ProcessSignal.sigint.watch().listen((_) async {
-    stdout.writeln('\n${_Ansi.yellow}Stopping SICABOR Mock Server...${_Ansi.reset}');
+    stdout.writeln(
+      '\n${_Ansi.yellow}Stopping SICABOR Mock Server...${_Ansi.reset}',
+    );
     await server.stop();
     stdout.writeln('${_Ansi.green}Mock server stopped. Goodbye!${_Ansi.reset}');
     exit(0);
