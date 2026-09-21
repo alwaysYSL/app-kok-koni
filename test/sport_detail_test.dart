@@ -19,10 +19,12 @@ import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/athlete.dart';
 import 'package:kok_app/data/models/cabor.dart';
+import 'package:kok_app/data/models/club.dart' as domain;
 import 'package:kok_app/data/models/paginated_result.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
 import 'package:kok_app/data/providers/athlete_providers.dart';
 import 'package:kok_app/data/providers/cabor_providers.dart';
+import 'package:kok_app/data/providers/club_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
@@ -102,6 +104,38 @@ class _TestAthletePaginationController extends AthletePaginationController {
   @override
   void updateSexFilter(String? sex) {
     state = state.copyWith(sex: sex);
+  }
+}
+
+class _TestClubPaginationController extends ClubPaginationController {
+  _TestClubPaginationController(
+    super.idCabor, [
+    this._initialState = const ClubPaginationState(),
+  ]);
+
+  final ClubPaginationState _initialState;
+
+  @override
+  ClubPaginationState build() => _initialState;
+
+  @override
+  Future<void> loadFirstPage() async {}
+
+  @override
+  Future<void> loadMore() async {}
+
+  @override
+  void updateSearch(String? query) {
+    state = query == null
+        ? state.copyWith(clearSearch: true)
+        : state.copyWith(search: query);
+  }
+
+  @override
+  void updateStatusFilter(int? status) {
+    state = status == null
+        ? state.copyWith(clearStatus: true)
+        : state.copyWith(status: status);
   }
 }
 
@@ -533,7 +567,10 @@ void main() {
         expect(find.text('7'), findsOneWidget);
         expect(find.text('64'), findsOneWidget);
 
-        // Tab content displays integration placeholder banner on Tab Klub (index 0)
+        // Tab content displays integration placeholder banner on Tab Pelatih (index 2)
+        await tester.tap(find.text('Pelatih').first);
+        await tester.pumpAndSettle();
+
         expect(
           find.text(
             'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
@@ -803,5 +840,437 @@ void main() {
         expect(find.text('Coba Lagi'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'DataMode.remote: renders remote clubs list with club cards, name, status, cabor badge, and member count',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 2,
+          totalAthlete: 12,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        final club1 = domain.Club(
+          id: 1,
+          code: 'KLUB-001',
+          name: 'PB Garuda Perkasa',
+          headName: 'Bambang Sudirman',
+          cabor: const domain.ClubCabor(
+            id: 42,
+            code: 'CB-42',
+            name: 'Arung Jeram',
+          ),
+          status: 1,
+          statusLabel: 'Aktif',
+          secretariat: const domain.ClubAddress(
+            address: 'Jl. Ahmad Yani No. 45',
+            subdistrictId: 1728,
+            subdistrictName: 'Garut Kota',
+            districtId: 126,
+            districtName: 'Kabupaten Garut',
+          ),
+          totalAthleteInClub: 12,
+        );
+
+        final club2 = domain.Club(
+          id: 2,
+          code: 'KLUB-002',
+          name: 'Klub Cimanuk Bahari',
+          cabor: const domain.ClubCabor(
+            id: 42,
+            code: 'CB-42',
+            name: 'Arung Jeram',
+          ),
+          status: 0,
+          statusLabel: 'Belum Aktif',
+          secretariat: const domain.ClubAddress(
+            subdistrictId: 1728,
+            subdistrictName: 'Garut Kota',
+            districtId: 126,
+            districtName: 'Kabupaten Garut',
+          ),
+          totalAthleteInClub: 0,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(
+                () => _TestClubPaginationController(
+                  42,
+                  ClubPaginationState(
+                    items: [club1, club2],
+                    total: 2,
+                    filterWarning: const {
+                      'message':
+                          'Menampilkan klub terdaftar di wilayah Garut Kota.',
+                    },
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Search bar is present
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Cari nama klub...'), findsOneWidget);
+
+        // Status filter chips are present
+        expect(find.widgetWithText(FilterChip, 'Semua'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Aktif'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Belum Aktif'), findsOneWidget);
+
+        // Filter warning banner is displayed
+        expect(
+          find.text('Menampilkan klub terdaftar di wilayah Garut Kota.'),
+          findsOneWidget,
+        );
+
+        // Club 1 card details
+        expect(find.text('PB Garuda Perkasa'), findsOneWidget);
+        expect(find.text('Ketua: Bambang Sudirman'), findsOneWidget);
+        expect(find.text('Jl. Ahmad Yani No. 45'), findsOneWidget);
+        expect(find.text('12 Atlet'), findsOneWidget);
+
+        // Club 2 card details
+        expect(find.text('Klub Cimanuk Bahari'), findsOneWidget);
+        expect(find.text('Kec. Garut Kota'), findsOneWidget);
+        expect(find.text('0 Atlet'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Klub filters by status when chip tapped',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        final controller = _TestClubPaginationController(
+          42,
+          const ClubPaginationState(items: [], total: 0),
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(() => controller),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(controller.state.status, isNull);
+
+        await tester.tap(find.widgetWithText(FilterChip, 'Aktif'));
+        await tester.pumpAndSettle();
+        expect(controller.state.status, 1);
+
+        await tester.tap(find.widgetWithText(FilterChip, 'Belum Aktif'));
+        await tester.pumpAndSettle();
+        expect(controller.state.status, 0);
+
+        await tester.tap(find.widgetWithText(FilterChip, 'Semua'));
+        await tester.pumpAndSettle();
+        expect(controller.state.status, isNull);
+      },
+    );
+
+    testWidgets('DataMode.remote: Tab Klub searches clubs with debounce', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const sampleCabor = Cabor(
+        id: 42,
+        code: 'CB-42',
+        name: 'Arung Jeram',
+        status: 1,
+        statusLabel: 'Aktif',
+        totalClub: 1,
+        totalAthlete: 10,
+      );
+
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+        remoteCabors: [sampleCabor],
+      );
+
+      final controller = _TestClubPaginationController(
+        42,
+        const ClubPaginationState(items: [], total: 0),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            currentUserProvider.overrideWithValue(userWithExport),
+            caborPaginationProvider.overrideWith(
+              () => _TestCaborPaginationController(
+                const CaborPaginationState(items: [sampleCabor], total: 1),
+              ),
+            ),
+            clubPaginationProvider(42).overrideWith(() => controller),
+          ],
+          child: const MaterialApp(home: SportDetailPage(sport: '42')),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Garuda');
+      expect(controller.state.search, isNull);
+
+      // Advance debounce timer (500ms)
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(controller.state.search, 'Garuda');
+    });
+
+    testWidgets(
+      'DataMode.remote: Tab Klub shows empty state when club list is empty',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 0,
+          totalAthlete: 0,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(
+                () => _TestClubPaginationController(
+                  42,
+                  const ClubPaginationState(items: [], total: 0),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Tidak ada klub yang sesuai dengan filter.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Klub shows error view when error occurs',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(
+                () => _TestClubPaginationController(
+                  42,
+                  const ClubPaginationState(
+                    items: [],
+                    total: 0,
+                    error: 'Koneksi ke server terputus',
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data klub'), findsOneWidget);
+        expect(find.text('Koneksi ke server terputus'), findsOneWidget);
+        expect(find.text('Coba Lagi'), findsOneWidget);
+      },
+    );
+
+    testWidgets('DataMode.remote: tapping club card navigates to /club/:id', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const sampleCabor = Cabor(
+        id: 42,
+        code: 'CB-42',
+        name: 'Arung Jeram',
+        status: 1,
+        statusLabel: 'Aktif',
+        totalClub: 1,
+        totalAthlete: 10,
+      );
+
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+        remoteCabors: [sampleCabor],
+      );
+
+      final club = domain.Club(
+        id: 88,
+        code: 'KLUB-088',
+        name: 'PB Garuda Perkasa',
+        cabor: const domain.ClubCabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+        ),
+        status: 1,
+        statusLabel: 'Aktif',
+        secretariat: const domain.ClubAddress(
+          address: 'Jl. Ahmad Yani No. 45',
+          subdistrictId: 1728,
+          subdistrictName: 'Garut Kota',
+          districtId: 126,
+          districtName: 'Kabupaten Garut',
+        ),
+        totalAthleteInClub: 12,
+      );
+
+      String? pushedRoute;
+      final router = GoRouter(
+        initialLocation: '/sport/42',
+        routes: [
+          GoRoute(
+            path: '/sport/:id',
+            builder: (context, state) => const SportDetailPage(sport: '42'),
+          ),
+          GoRoute(
+            path: '/club/:id',
+            builder: (context, state) {
+              pushedRoute = state.uri.toString();
+              return Scaffold(body: Text('Club ${state.pathParameters['id']}'));
+            },
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            currentUserProvider.overrideWithValue(userWithExport),
+            caborPaginationProvider.overrideWith(
+              () => _TestCaborPaginationController(
+                const CaborPaginationState(items: [sampleCabor], total: 1),
+              ),
+            ),
+            clubPaginationProvider(42).overrideWith(
+              () => _TestClubPaginationController(
+                42,
+                ClubPaginationState(items: [club], total: 1),
+              ),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('PB Garuda Perkasa'));
+      await tester.pumpAndSettle();
+      expect(pushedRoute, '/club/88');
+    });
   });
 }

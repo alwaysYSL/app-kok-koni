@@ -12,8 +12,10 @@ import '../../core/config/deployment_profile.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/models/athlete.dart';
+import '../../data/models/club.dart' as domain;
 import '../../data/providers/athlete_providers.dart';
 import '../../data/providers/cabor_providers.dart';
+import '../../data/providers/club_providers.dart';
 import '../../data/providers/profile_providers.dart';
 import '../../shared/widgets.dart';
 import '../dashboard_decorations.dart';
@@ -224,7 +226,7 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
           body: TabBarView(
             controller: _tabController,
             children: [
-              _buildIntegrationPlaceholder(),
+              _RemoteClubsTab(caborId: cabor?.id, palette: palette),
               _RemoteAthletesTab(caborId: cabor?.id, palette: palette),
               _buildIntegrationPlaceholder(),
             ],
@@ -1698,6 +1700,442 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
                         ),
                         child: Text(
                           athlete.sexLabel,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: KokColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: KokColors.muted, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteClubsTab extends ConsumerStatefulWidget {
+  const _RemoteClubsTab({required this.caborId, required this.palette});
+
+  final int? caborId;
+  final SportBrandPalette palette;
+
+  @override
+  ConsumerState<_RemoteClubsTab> createState() => _RemoteClubsTabState();
+}
+
+class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  Timer? _debounceTimer;
+
+  static const _statusFilterOptions = [
+    (label: 'Semua', value: null),
+    (label: 'Aktif', value: 1),
+    (label: 'Belum Aktif', value: 0),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref
+            .read(clubPaginationProvider(widget.caborId).notifier)
+            .loadFirstPage();
+      }
+    });
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      ref.read(clubPaginationProvider(widget.caborId).notifier).loadMore();
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        ref
+            .read(clubPaginationProvider(widget.caborId).notifier)
+            .updateSearch(query);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(clubPaginationProvider(widget.caborId));
+    final controller = ref.read(
+      clubPaginationProvider(widget.caborId).notifier,
+    );
+
+    return Column(
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Cari nama klub...',
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: KokColors.muted,
+              ),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        controller.updateSearch(null);
+                      },
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+              ),
+            ),
+          ),
+        ),
+
+        // Filter chips (Status)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: _statusFilterOptions.map((opt) {
+              final isSelected = state.status == opt.value;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: Text(opt.label),
+                  selected: isSelected,
+                  onSelected: (_) => controller.updateStatusFilter(opt.value),
+                  selectedColor: widget.palette.softAccent,
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? widget.palette.chartColor
+                        : KokColors.cardTitle,
+                  ),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isSelected
+                          ? widget.palette.chartColor
+                          : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // Filter Warning Banner (if present)
+        if (state.hasFilterWarning)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF2563EB),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.filterWarningMessage ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1E40AF),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 6),
+
+        // Content
+        Expanded(child: _buildBody(state, controller)),
+      ],
+    );
+  }
+
+  Widget _buildBody(
+    ClubPaginationState state,
+    ClubPaginationController controller,
+  ) {
+    if (state.isLoading && state.items.isEmpty) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
+
+    if (state.error != null && state.items.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: KokColors.red),
+              const SizedBox(height: 12),
+              const Text(
+                'Gagal memuat data klub',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${state.error}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: KokColors.muted),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => controller.loadFirstPage(),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Coba Lagi'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (state.items.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(message: 'Tidak ada klub yang sesuai dengan filter.'),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => controller.refresh(),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount:
+            state.items.length +
+            (state.isLoadingMore || state.loadMoreError != null ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == state.items.length) {
+            if (state.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator.adaptive()),
+              );
+            }
+            if (state.loadMoreError != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Gagal memuat klub berikutnya',
+                      style: TextStyle(fontSize: 12, color: KokColors.muted),
+                    ),
+                    TextButton(
+                      onPressed: () => controller.loadMore(),
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }
+
+          final club = state.items[index];
+          return _buildClubCard(club);
+        },
+      ),
+    );
+  }
+
+  Widget _buildClubCard(domain.Club club) {
+    return InkWell(
+      onTap: () => context.push('/club/${club.id}'),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: widget.palette.softAccent,
+              backgroundImage:
+                  (club.logoUrl != null && club.logoUrl!.isNotEmpty)
+                  ? NetworkImage(club.logoUrl!)
+                  : null,
+              child: (club.logoUrl == null || club.logoUrl!.isEmpty)
+                  ? Text(
+                      club.name.isNotEmpty ? club.name[0] : 'K',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: widget.palette.chartColor,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    club.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: KokColors.cardTitle,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (club.headName != null && club.headName!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Ketua: ${club.headName}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: KokColors.muted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  if (club.secretariat.address != null &&
+                      club.secretariat.address!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      club.secretariat.address!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: KokColors.muted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ] else if (club.secretariat.subdistrictName.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      'Kec. ${club.secretariat.subdistrictName}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: KokColors.muted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.palette.softAccent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          club.cabor.name,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: widget.palette.chartColor,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: club.status == 1
+                              ? const Color(0xFFDCFCE7)
+                              : const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          club.statusLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: club.status == 1
+                                ? const Color(0xFF16A34A)
+                                : KokColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${club.totalAthleteInClub} Atlet',
                           style: const TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
