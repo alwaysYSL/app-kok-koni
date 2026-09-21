@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../data/models.dart';
+import '../../core/composition/app_composition.dart';
+import '../../core/config/deployment_profile.dart';
+import '../../core/network/api_exceptions.dart';
+import '../../core/theme.dart';
 import '../../data/club_filters.dart';
+import '../../data/kok_repository.dart';
+import '../../data/models.dart';
+import '../../data/models/club_detail.dart' as domain_detail;
+import '../../data/providers/club_providers.dart';
 import '../../shared/widgets.dart';
+import '../dashboard_decorations.dart';
 import '../detail_pages.dart';
 import 'club_brand_palette.dart';
 import 'club_detail_header.dart';
@@ -13,92 +22,177 @@ import 'club_document_tab.dart';
 import 'club_people_filter.dart';
 import 'club_people_tab.dart';
 
-class ClubDetailPage extends StatelessWidget {
+bool _isRemoteMode(WidgetRef ref) {
+  try {
+    return ref.watch(appCompositionProvider).profile.dataMode ==
+        DataMode.remote;
+  } catch (_) {
+    return false;
+  }
+}
+
+class ClubDetailPage extends ConsumerWidget {
   const ClubDetailPage({super.key, required this.id});
 
   final String id;
 
   @override
-  Widget build(BuildContext context) => DataView(
-    builder: (data) {
-      final matches = data.clubs.where((club) => club.id == id);
-      if (matches.isEmpty) return const MissingPage();
-      final club = matches.first;
-      final allPeople = clubPeople(data, id);
-      final athletes = allPeople.where((p) => p.role == 'Atlet').toList();
-      final coaches = allPeople.where((p) => p.role == 'Pelatih').toList();
-      final officials = allPeople.where((p) => p.role == 'Official').toList();
-      final missingCount = allPeople.where(personNeedsAttention).length;
-      final palette = ClubBrandPaletteResolver.resolve(club);
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (_isRemoteMode(ref)) {
+      final clubId = int.tryParse(id);
+      if (clubId == null) {
+        return const MissingPage(message: 'Data klub tidak ditemukan.');
+      }
 
-      return DefaultTabController(
-        length: 4,
-        child: Scaffold(
-          backgroundColor: const Color(0xFFF4F6FA),
-          body: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverOverlapAbsorber(
-                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                  context,
+      final asyncDetail = ref.watch(clubDetailProvider(clubId));
+      return asyncDetail.when(
+        data: (detail) => _RemoteClubDetailContent(detail: detail),
+        loading: () => const Scaffold(
+          backgroundColor: Color(0xFFF4F6FA),
+          body: Center(child: CircularProgressIndicator.adaptive()),
+        ),
+        error: (e, _) {
+          if (e is NotFoundException ||
+              e is KokResourceNotFoundException ||
+              e.toString().toLowerCase().contains('404') ||
+              e.toString().toLowerCase().contains('not found') ||
+              e.toString().toLowerCase().contains('tidak ditemukan')) {
+            return const MissingPage(message: 'Data klub tidak ditemukan.');
+          }
+          return Scaffold(
+            backgroundColor: const Color(0xFFF4F6FA),
+            appBar: AppBar(
+              title: const Text('Detail Klub'),
+              leading: IconButton(
+                icon: const Icon(Icons.chevron_left, size: 28),
+                onPressed: () => _goBack(context),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: KokColors.red,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Gagal memuat detail klub',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: KokColors.cardTitle,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '$e',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: KokColors.muted,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.refresh(clubDetailProvider(clubId)),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
                 ),
-                sliver: SliverAppBar(
-                  automaticallyImplyLeading: false,
-                  pinned: true,
-                  expandedHeight: 420,
-                  toolbarHeight: 64,
-                  backgroundColor: palette.headerEnd,
-                  flexibleSpace: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final titleOpacity =
-                          ((420 - constraints.biggest.height) / 200).clamp(
-                            0.0,
-                            1.0,
-                          );
-                      return Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          FlexibleSpaceBar(
-                            collapseMode: CollapseMode.parallax,
-                            background: OverflowBox(
-                              alignment: Alignment.topCenter,
-                              maxHeight: double.infinity,
-                              child: ClubDetailHeader(
-                                club: club,
-                                palette: palette,
-                                athleteCount: athletes.length,
-                                coachCount: coaches.length,
-                                officialCount: officials.length,
-                                missingFileCount: missingCount,
-                                onBack: () => _goBack(context),
-                                onShare: () => _shareClub(context, club),
-                                excludeClubNameSemantics: titleOpacity > 0,
+              ),
+            ),
+          );
+        },
+      );
+    }
+
+    return DataView(
+      builder: (data) {
+        final matches = data.clubs.where((club) => club.id == id);
+        if (matches.isEmpty) return const MissingPage();
+        final club = matches.first;
+        final allPeople = clubPeople(data, id);
+        final athletes = allPeople.where((p) => p.role == 'Atlet').toList();
+        final coaches = allPeople.where((p) => p.role == 'Pelatih').toList();
+        final officials = allPeople.where((p) => p.role == 'Official').toList();
+        final missingCount = allPeople.where(personNeedsAttention).length;
+        final palette = ClubBrandPaletteResolver.resolve(club);
+
+        return DefaultTabController(
+          length: 4,
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF4F6FA),
+            body: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverOverlapAbsorber(
+                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                    context,
+                  ),
+                  sliver: SliverAppBar(
+                    automaticallyImplyLeading: false,
+                    pinned: true,
+                    expandedHeight: 420,
+                    toolbarHeight: 64,
+                    backgroundColor: palette.headerEnd,
+                    flexibleSpace: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final titleOpacity =
+                            ((420 - constraints.biggest.height) / 200).clamp(
+                              0.0,
+                              1.0,
+                            );
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            FlexibleSpaceBar(
+                              collapseMode: CollapseMode.parallax,
+                              background: OverflowBox(
+                                alignment: Alignment.topCenter,
+                                maxHeight: double.infinity,
+                                child: ClubDetailHeader(
+                                  club: club,
+                                  palette: palette,
+                                  athleteCount: athletes.length,
+                                  coachCount: coaches.length,
+                                  officialCount: officials.length,
+                                  missingFileCount: missingCount,
+                                  onBack: () => _goBack(context),
+                                  onShare: () => _shareClub(context, club),
+                                  excludeClubNameSemantics: titleOpacity > 0,
+                                ),
                               ),
                             ),
-                          ),
-                          if (titleOpacity > 0)
-                            IgnorePointer(
-                              child: Opacity(
-                                opacity: titleOpacity,
-                                child: Align(
-                                  alignment: Alignment.topCenter,
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      64,
-                                      20,
-                                      64,
-                                      0,
-                                    ),
-                                    child: Semantics(
-                                      container: true,
-                                      label: club.name,
-                                      child: ExcludeSemantics(
-                                        child: Text(
-                                          club.name,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: palette.foreground,
-                                            fontWeight: FontWeight.w700,
+                            if (titleOpacity > 0)
+                              IgnorePointer(
+                                child: Opacity(
+                                  opacity: titleOpacity,
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        64,
+                                        20,
+                                        64,
+                                        0,
+                                      ),
+                                      child: Semantics(
+                                        container: true,
+                                        label: club.name,
+                                        child: ExcludeSemantics(
+                                          child: Text(
+                                            club.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: palette.foreground,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -106,122 +200,1129 @@ class ClubDetailPage extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ),
-                          if (titleOpacity == 1)
-                            Positioned(
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              child: SafeArea(
-                                bottom: false,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  child: SizedBox(
-                                    height: 48,
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        IconButton(
-                                          onPressed: () => _goBack(context),
-                                          tooltip: 'Kembali',
-                                          color: palette.foreground,
-                                          icon: const Icon(
-                                            Icons.chevron_left,
-                                            size: 28,
+                            if (titleOpacity == 1)
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                child: SafeArea(
+                                  bottom: false,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    child: SizedBox(
+                                      height: 48,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          IconButton(
+                                            onPressed: () => _goBack(context),
+                                            tooltip: 'Kembali',
+                                            color: palette.foreground,
+                                            icon: const Icon(
+                                              Icons.chevron_left,
+                                              size: 28,
+                                            ),
                                           ),
-                                        ),
-                                        IconButton(
-                                          onPressed: () =>
-                                              _shareClub(context, club),
-                                          tooltip: 'Bagikan info klub',
-                                          color: palette.foreground,
-                                          icon: const Icon(
-                                            Icons.share_outlined,
-                                            size: 24,
+                                          IconButton(
+                                            onPressed: () =>
+                                                _shareClub(context, club),
+                                            tooltip: 'Bagikan info klub',
+                                            color: palette.foreground,
+                                            icon: const Icon(
+                                              Icons.share_outlined,
+                                              size: 24,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
-                      );
-                    },
-                  ),
-                  bottom: PreferredSize(
-                    preferredSize: const Size.fromHeight(88),
-                    child: DecoratedBox(
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF4F6FA),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(28),
+                          ],
+                        );
+                      },
+                    ),
+                    bottom: PreferredSize(
+                      preferredSize: const Size.fromHeight(88),
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF4F6FA),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(28),
+                          ),
                         ),
+                        child: ClubDetailTabBar(palette: palette),
                       ),
-                      child: ClubDetailTabBar(palette: palette),
                     ),
                   ),
                 ),
-              ),
-            ],
-            // The absorbed pinned toolbar and tab panel have a fixed extent.
-            body: Padding(
-              padding: const EdgeInsets.only(top: 64 + 88),
-              child: TabBarView(
-                children: [
-                  ClubPeopleTab(
-                    role: 'Atlet',
-                    people: athletes,
-                    palette: palette,
-                    onPersonTap: (person) =>
-                        context.push('/person/${person.id}'),
-                  ),
-                  ClubPeopleTab(
-                    role: 'Pelatih',
-                    people: coaches,
-                    palette: palette,
-                    onPersonTap: (person) =>
-                        context.push('/person/${person.id}'),
-                  ),
-                  ClubPeopleTab(
-                    role: 'Official',
-                    people: officials,
-                    palette: palette,
-                    onPersonTap: (person) =>
-                        context.push('/person/${person.id}'),
-                  ),
-                  ClubDocumentTab(club: club),
-                ],
+              ],
+              body: Padding(
+                padding: const EdgeInsets.only(top: 64 + 88),
+                child: TabBarView(
+                  children: [
+                    ClubPeopleTab(
+                      role: 'Atlet',
+                      people: athletes,
+                      palette: palette,
+                      onPersonTap: (person) =>
+                          context.push('/person/${person.id}'),
+                    ),
+                    ClubPeopleTab(
+                      role: 'Pelatih',
+                      people: coaches,
+                      palette: palette,
+                      onPersonTap: (person) =>
+                          context.push('/person/${person.id}'),
+                    ),
+                    ClubPeopleTab(
+                      role: 'Official',
+                      people: officials,
+                      palette: palette,
+                      onPersonTap: (person) =>
+                          context.push('/person/${person.id}'),
+                    ),
+                    ClubDocumentTab(club: club),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
+  }
 
-  Future<void> _shareClub(BuildContext context, Club club) async {
-    await Clipboard.setData(
+  static void _shareClub(BuildContext context, Club club) {
+    Clipboard.setData(
       ClipboardData(
         text: '${club.name} · ${club.sport} · Kel. ${club.village}',
       ),
     );
-    if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Info klub disalin')));
   }
 
-  void _goBack(BuildContext context) {
+  static void _shareRemoteClub(
+    BuildContext context,
+    domain_detail.ClubDetail detail,
+  ) {
+    Clipboard.setData(
+      ClipboardData(
+        text:
+            '${detail.name} · ${detail.cabor.name} · ${detail.secretariat.districtName}',
+      ),
+    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Info klub disalin')));
+  }
+
+  static void _goBack(BuildContext context) {
     if (context.canPop()) {
       context.pop();
     } else {
       context.go('/clubs');
     }
   }
+}
+
+class _RemoteClubDetailContent extends StatelessWidget {
+  const _RemoteClubDetailContent({required this.detail});
+
+  final domain_detail.ClubDetail detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = ClubBrandPaletteResolver.resolveFromSport(
+      detail.cabor.name,
+    );
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF4F6FA),
+        body: NestedScrollView(
+          headerSliverBuilder: (sliverContext, innerBoxIsScrolled) {
+            return [
+              SliverToBoxAdapter(
+                child: _RemoteClubDetailHeader(
+                  detail: detail,
+                  palette: palette,
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabBarDelegate(
+                  ClubDetailRemoteTabBar(palette: palette),
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: [
+              _RemoteClubInfoTab(detail: detail, palette: palette),
+              _RemoteClubPengurusTab(detail: detail, palette: palette),
+              _RemoteClubAtletTab(palette: palette),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RemoteClubDetailHeader extends StatelessWidget {
+  const _RemoteClubDetailHeader({required this.detail, required this.palette});
+
+  final domain_detail.ClubDetail detail;
+  final ClubBrandPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [palette.headerStart, palette.headerEnd],
+        ),
+      ),
+      child: CustomPaint(
+        painter: const BrandHeaderPatternPainter(),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: SizedBox(
+                  height: 48,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        onPressed: () => ClubDetailPage._goBack(context),
+                        tooltip: 'Kembali',
+                        color: palette.foreground,
+                        icon: const Icon(Icons.chevron_left, size: 28),
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            ClubDetailPage._shareRemoteClub(context, detail),
+                        tooltip: 'Bagikan info klub',
+                        color: palette.foreground,
+                        icon: const Icon(Icons.share_outlined, size: 24),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(height: 88, child: Center(child: _buildLogo())),
+                    const SizedBox(height: 8),
+                    Semantics(
+                      container: true,
+                      label: detail.name,
+                      child: Text(
+                        detail.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: palette.foreground,
+                          fontSize: 22,
+                          height: 1.15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _RemoteHeaderBadge(
+                          label: detail.code,
+                          background: palette.foreground.withValues(
+                            alpha: 0.18,
+                          ),
+                          foreground: palette.foreground,
+                        ),
+                        _RemoteHeaderBadge(
+                          label: detail.cabor.name,
+                          background: palette.foreground.withValues(
+                            alpha: 0.18,
+                          ),
+                          foreground: palette.foreground,
+                        ),
+                        _RemoteHeaderBadge(
+                          label: detail.statusLabel.toUpperCase(),
+                          background: detail.status == 1
+                              ? const Color(0xFFDDF6E6)
+                              : const Color(0xFFE9ECF2),
+                          foreground: detail.status == 1
+                              ? const Color(0xFF176B38)
+                              : const Color(0xFF4B5563),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: palette.foreground.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.baseline,
+                            textBaseline: TextBaseline.alphabetic,
+                            children: [
+                              Text(
+                                '${detail.totalAthleteInClub}',
+                                style: TextStyle(
+                                  color: palette.foreground,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'TOTAL ANGGOTA',
+                                style: TextStyle(
+                                  color: palette.foreground.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Termasuk atlet dari kecamatan lain',
+                            style: TextStyle(
+                              color: palette.foreground.withValues(alpha: 0.75),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    final logoUrl = detail.logoUrl?.trim();
+    if (logoUrl == null || logoUrl.isEmpty) return _fallbackLogo();
+
+    return Semantics(
+      label: 'Logo ${detail.name}',
+      image: true,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Image.network(
+          logoUrl,
+          width: 88,
+          height: 88,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => _fallbackLogo(),
+        ),
+      ),
+    );
+  }
+
+  Widget _fallbackLogo() => Semantics(
+    label: 'Logo fallback ${detail.name}',
+    image: true,
+    child: ExcludeSemantics(
+      child: Container(
+        width: 88,
+        height: 88,
+        decoration: BoxDecoration(
+          color: palette.fallbackAvatar,
+          shape: BoxShape.circle,
+          border: Border.all(color: palette.foreground.withValues(alpha: 0.28)),
+        ),
+        child: Icon(
+          sportIcon(detail.cabor.name),
+          size: 44,
+          color: palette.foreground,
+        ),
+      ),
+    ),
+  );
+}
+
+class _RemoteHeaderBadge extends StatelessWidget {
+  const _RemoteHeaderBadge({
+    required this.label,
+    required this.background,
+    required this.foreground,
+  });
+
+  final String label;
+  final Color background;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: foreground,
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
+}
+
+class _RemoteClubInfoTab extends StatelessWidget {
+  const _RemoteClubInfoTab({required this.detail, required this.palette});
+
+  final domain_detail.ClubDetail detail;
+  final ClubBrandPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildCard(
+            title: 'Identitas Klub',
+            icon: Icons.badge_outlined,
+            children: [
+              _InfoRow(label: 'Nama Klub', value: detail.name),
+              _InfoRow(label: 'Kode Klub', value: detail.code),
+              _InfoRow(
+                label: 'Cabang Olahraga',
+                value: '${detail.cabor.name} (${detail.cabor.code})',
+              ),
+              _InfoRow(
+                label: 'Ketua / Pimpinan',
+                value: detail.headName ?? '-',
+              ),
+              _InfoRow(
+                label: 'Tahun Berdiri',
+                value: detail.since != null && detail.since!.isNotEmpty
+                    ? detail.since!
+                    : '-',
+              ),
+              _InfoRow(label: 'Status', value: detail.statusLabel),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildCard(
+            title: 'Surat Keputusan (SK)',
+            icon: Icons.description_outlined,
+            children: [
+              _InfoRow(
+                label: 'Nomor SK',
+                value: detail.noSk != null && detail.noSk!.isNotEmpty
+                    ? detail.noSk!
+                    : 'SK belum tersedia',
+              ),
+              _InfoRow(
+                label: 'Berkas SK',
+                value: detail.fileSkUrl != null && detail.fileSkUrl!.isNotEmpty
+                    ? 'Berkas tersedia'
+                    : 'Berkas belum tersedia',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildCard(
+            title: 'Kontak',
+            icon: Icons.contact_phone_outlined,
+            children: [
+              _InfoRow(
+                label: 'Telepon / WhatsApp',
+                value: detail.phone != null && detail.phone!.isNotEmpty
+                    ? detail.phone!
+                    : '-',
+              ),
+              _InfoRow(
+                label: 'Email',
+                value: detail.email != null && detail.email!.isNotEmpty
+                    ? detail.email!
+                    : '-',
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildCard(
+            title: 'Alamat & Lokasi',
+            icon: Icons.location_on_outlined,
+            children: [
+              const Text(
+                'Sekretariat',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _InfoRow(
+                label: 'Alamat',
+                value:
+                    detail.secretariat.address != null &&
+                        detail.secretariat.address!.isNotEmpty
+                    ? detail.secretariat.address!
+                    : '-',
+              ),
+              _InfoRow(
+                label: 'Kelurahan / Desa',
+                value: detail.secretariat.subdistrictName,
+              ),
+              _InfoRow(
+                label: 'Kecamatan',
+                value: detail.secretariat.districtName,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(height: 1, color: Color(0xFFE5E7EB)),
+              ),
+              const Text(
+                'Tempat Latihan',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+              const SizedBox(height: 4),
+              if (detail.training != null) ...[
+                _InfoRow(
+                  label: 'Alamat',
+                  value:
+                      detail.training!.address != null &&
+                          detail.training!.address!.isNotEmpty
+                      ? detail.training!.address!
+                      : '-',
+                ),
+                _InfoRow(
+                  label: 'Kelurahan / Desa',
+                  value: detail.training!.subdistrictName,
+                ),
+                _InfoRow(
+                  label: 'Kecamatan',
+                  value: detail.training!.districtName,
+                ),
+              ] else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Text(
+                    'Belum ada data tempat latihan',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: KokColors.muted,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildCard(
+            title: 'Total Anggota',
+            icon: Icons.groups_outlined,
+            children: [
+              Text(
+                '${detail.totalAthleteInClub} Atlet',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Termasuk atlet dari kecamatan lain',
+                style: TextStyle(fontSize: 12, color: KokColors.muted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: KokColors.ink),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KokColors.muted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KokColors.cardTitle,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RemoteClubPengurusTab extends StatelessWidget {
+  const _RemoteClubPengurusTab({required this.detail, required this.palette});
+
+  final domain_detail.ClubDetail detail;
+  final ClubBrandPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildManagementSection(context),
+          const SizedBox(height: 16),
+          _buildOfficialsSection(context),
+          const SizedBox(height: 16),
+          _buildCoachesSection(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildManagementSection(BuildContext context) {
+    final mgmt = detail.management;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.corporate_fare_outlined,
+                size: 18,
+                color: KokColors.ink,
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Struktur Kepengurusan',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: KokColors.cardTitle,
+                  ),
+                ),
+              ),
+              if (mgmt.partial)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: const Text(
+                    'Data Parsial',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF92400E),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (mgmt.partial) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFDE68A)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Color(0xFFB45309)),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Data kepengurusan ini bersifat parsial atau terbatas dari SICABOR.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF92400E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          if (mgmt.items.isEmpty)
+            const Text(
+              'Belum ada data kepengurusan.',
+              style: TextStyle(
+                fontSize: 13,
+                color: KokColors.muted,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            ...mgmt.items.map(
+              (item) => _PersonnelItemTile(item: item, palette: palette),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfficialsSection(BuildContext context) {
+    final officials = detail.officials;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.assignment_ind_outlined,
+                size: 18,
+                color: KokColors.ink,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Official',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!officials.dataAvailable)
+            _UnavailableNotice(
+              message:
+                  officials.reason ??
+                  'Data official belum tersedia atau tidak dipublikasikan.',
+            )
+          else if (officials.items.isEmpty)
+            const Text(
+              'Belum ada data official.',
+              style: TextStyle(
+                fontSize: 13,
+                color: KokColors.muted,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            ...officials.items.map(
+              (item) => _PersonnelItemTile(item: item, palette: palette),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoachesSection(BuildContext context) {
+    final coaches = detail.coaches;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.sports_outlined, size: 18, color: KokColors.ink),
+              SizedBox(width: 8),
+              Text(
+                'Pelatih',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (!coaches.dataAvailable)
+            _UnavailableNotice(
+              message:
+                  coaches.reason ??
+                  'Data pelatih belum tersedia atau tidak dipublikasikan.',
+            )
+          else if (coaches.items.isEmpty)
+            const Text(
+              'Belum ada data pelatih.',
+              style: TextStyle(
+                fontSize: 13,
+                color: KokColors.muted,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            ...coaches.items.map(
+              (item) => _PersonnelItemTile(item: item, palette: palette),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UnavailableNotice extends StatelessWidget {
+  const _UnavailableNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: KokColors.muted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                color: KokColors.muted,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PersonnelItemTile extends StatelessWidget {
+  const _PersonnelItemTile({required this.item, required this.palette});
+
+  final domain_detail.ClubPersonnelItem item;
+  final ClubBrandPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: palette.softAccent,
+            backgroundImage: item.photoUrl != null && item.photoUrl!.isNotEmpty
+                ? NetworkImage(item.photoUrl!)
+                : null,
+            child: item.photoUrl == null || item.photoUrl!.isEmpty
+                ? Text(
+                    item.name.isNotEmpty ? item.name[0].toUpperCase() : '?',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: palette.selectedTab,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: KokColors.cardTitle,
+                  ),
+                ),
+                if (item.role != null && item.role!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.role!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: KokColors.muted,
+                    ),
+                  ),
+                ],
+                if (item.phone != null && item.phone!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    item.phone!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: KokColors.muted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (item.id != null)
+            const Icon(Icons.chevron_right, size: 20, color: KokColors.muted),
+        ],
+      ),
+    );
+
+    if (item.id != null) {
+      return InkWell(
+        onTap: () => context.push('/person/${item.id}'),
+        borderRadius: BorderRadius.circular(8),
+        child: content,
+      );
+    }
+
+    return content;
+  }
+}
+
+class _RemoteClubAtletTab extends StatelessWidget {
+  const _RemoteClubAtletTab({required this.palette});
+
+  final ClubBrandPalette palette;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  color: KokColors.pale,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.sync_outlined,
+                  size: 32,
+                  color: KokColors.bluePrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Daftar atlet klub sedang dalam tahap integrasi.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: KokColors.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  _SliverTabBarDelegate(this.widget);
+
+  final PreferredSizeWidget widget;
+
+  @override
+  double get minExtent => widget.preferredSize.height;
+  @override
+  double get maxExtent => widget.preferredSize.height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: const Color(0xFFF4F6FA), child: widget);
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) =>
+      widget != oldDelegate.widget;
 }

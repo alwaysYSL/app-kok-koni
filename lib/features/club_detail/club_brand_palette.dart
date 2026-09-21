@@ -66,6 +66,28 @@ abstract final class ClubBrandPaletteResolver {
     );
   }
 
+  static ClubBrandPalette resolveFromSport(String sport) {
+    final fallback = _sportPalette(sport);
+    final start = _opaque(fallback.$1);
+    final end = _opaque(fallback.$2);
+    final safePair = _ensureHeaderPair(start, end);
+    final selectedTab = _ensureContrast(safePair.$2, safePair.$3);
+    return ClubBrandPalette(
+      headerStart: safePair.$1,
+      headerEnd: safePair.$2,
+      foreground: safePair.$3,
+      selectedTab: selectedTab,
+      softAccent: Color.alphaBlend(
+        safePair.$1.withValues(alpha: .12),
+        Colors.white,
+      ),
+      fallbackAvatar: Color.alphaBlend(
+        safePair.$3.withValues(alpha: .16),
+        safePair.$1,
+      ),
+    );
+  }
+
   static (Color, Color) _sportPalette(String sport) => switch (sport) {
     'Sepak Bola' => (const Color(0xFF315A91), const Color(0xFF17345C)),
     'Bulu Tangkis' => (const Color(0xFF51478A), const Color(0xFF2F285D)),
