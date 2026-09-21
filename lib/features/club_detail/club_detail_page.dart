@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +12,9 @@ import '../../core/theme.dart';
 import '../../data/club_filters.dart';
 import '../../data/kok_repository.dart';
 import '../../data/models.dart';
+import '../../data/models/athlete.dart';
 import '../../data/models/club_detail.dart' as domain_detail;
+import '../../data/providers/athlete_providers.dart';
 import '../../data/providers/club_providers.dart';
 import '../../shared/widgets.dart';
 import '../dashboard_decorations.dart';
@@ -369,7 +373,7 @@ class _RemoteClubDetailContent extends StatelessWidget {
             children: [
               _RemoteClubInfoTab(detail: detail, palette: palette),
               _RemoteClubPengurusTab(detail: detail, palette: palette),
-              _RemoteClubAtletTab(palette: palette),
+              _RemoteClubAthletesTab(club: detail, palette: palette),
             ],
           ),
         ),
@@ -1244,59 +1248,429 @@ class _PersonnelItemTile extends StatelessWidget {
   }
 }
 
-class _RemoteClubAtletTab extends StatelessWidget {
-  const _RemoteClubAtletTab({required this.palette});
+class _RemoteClubAthletesTab extends ConsumerStatefulWidget {
+  const _RemoteClubAthletesTab({required this.club, required this.palette});
 
+  final domain_detail.ClubDetail club;
   final ClubBrandPalette palette;
 
   @override
+  ConsumerState<_RemoteClubAthletesTab> createState() =>
+      _RemoteClubAthletesTabState();
+}
+
+class _RemoteClubAthletesTabState
+    extends ConsumerState<_RemoteClubAthletesTab> {
+  final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  Timer? _debounceTimer;
+
+  static const _sexFilterOptions = [
+    (label: 'Semua', value: null),
+    (label: 'Laki-Laki', value: 'l'),
+    (label: 'Perempuan', value: 'p'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      if (mounted) {
+        ref
+            .read(
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: widget.club.id,
+              )).notifier,
+            )
+            .loadFirstPage();
+      }
+    });
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients &&
+        _scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200) {
+      ref
+          .read(
+            athletePaginationProvider((
+              idCabor: null,
+              idClub: widget.club.id,
+            )).notifier,
+          )
+          .loadMore();
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        ref
+            .read(
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: widget.club.id,
+              )).notifier,
+            )
+            .updateSearch(query);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0A000000),
-                blurRadius: 8,
-                offset: Offset(0, 2),
+    final state = ref.watch(
+      athletePaginationProvider((idCabor: null, idClub: widget.club.id)),
+    );
+    final controller = ref.read(
+      athletePaginationProvider((
+        idCabor: null,
+        idClub: widget.club.id,
+      )).notifier,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Cari nama atlet...',
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: KokColors.muted,
               ),
-            ],
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        _searchController.clear();
+                        controller.updateSearch(null);
+                      },
+                    )
+                  : null,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+              ),
+            ),
           ),
+        ),
+
+        // Filter chips (Jenis Kelamin)
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: _sexFilterOptions.map((opt) {
+              final isSelected = state.sex == opt.value;
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: FilterChip(
+                  label: Text(opt.label),
+                  selected: isSelected,
+                  onSelected: (_) => controller.updateSexFilter(opt.value),
+                  selectedColor: widget.palette.softAccent,
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? widget.palette.selectedTab
+                        : KokColors.cardTitle,
+                  ),
+                  backgroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(
+                      color: isSelected
+                          ? widget.palette.selectedTab
+                          : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // Filter Warning Banner (if present)
+        if (state.hasFilterWarning)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF2563EB),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.filterWarningMessage ?? '',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF1E40AF),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Reconciliation info / note if widget.club.totalAthleteInClub > state.total
+        if (widget.club.totalAthleteInClub > state.total)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Menampilkan ${state.total} atlet dari wilayah Anda (Total ${widget.club.totalAthleteInClub} atlet terdaftar di klub)',
+              style: const TextStyle(
+                fontSize: 12,
+                color: KokColors.muted,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 6),
+
+        // Content
+        Expanded(child: _buildBody(state, controller)),
+      ],
+    );
+  }
+
+  Widget _buildBody(
+    AthletePaginationState state,
+    AthletePaginationController controller,
+  ) {
+    if (state.isLoading && state.items.isEmpty) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
+
+    if (state.error != null && state.items.isEmpty) {
+      return Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  color: KokColors.pale,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.sync_outlined,
-                  size: 32,
-                  color: KokColors.bluePrimary,
+              const Icon(Icons.error_outline, size: 48, color: KokColors.red),
+              const SizedBox(height: 12),
+              const Text(
+                'Gagal memuat data atlet',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: KokColors.cardTitle,
                 ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                'Daftar atlet klub sedang dalam tahap integrasi.',
+              const SizedBox(height: 6),
+              Text(
+                '${state.error}',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: KokColors.textSecondary,
-                  height: 1.4,
-                ),
+                style: const TextStyle(fontSize: 13, color: KokColors.muted),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => controller.loadFirstPage(),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Coba Lagi'),
               ),
             ],
           ),
+        ),
+      );
+    }
+
+    if (state.items.isEmpty) {
+      return const SingleChildScrollView(
+        child: EmptyState(
+          message:
+              'Tidak ada atlet dari kecamatan ini yang tercatat di klub ini.',
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => controller.refresh(),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount:
+            state.items.length +
+            (state.isLoadingMore || state.loadMoreError != null ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == state.items.length) {
+            if (state.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator.adaptive()),
+              );
+            }
+            if (state.loadMoreError != null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Gagal memuat atlet berikutnya',
+                      style: TextStyle(fontSize: 12, color: KokColors.muted),
+                    ),
+                    TextButton(
+                      onPressed: () => controller.loadMore(),
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }
+
+          final athlete = state.items[index];
+          return _buildAthleteCard(athlete);
+        },
+      ),
+    );
+  }
+
+  Widget _buildAthleteCard(Athlete athlete) {
+    return InkWell(
+      onTap: () => context.push('/person/${athlete.id}'),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: widget.palette.softAccent,
+              backgroundImage: athlete.photoUrl.isNotEmpty
+                  ? NetworkImage(athlete.photoUrl)
+                  : null,
+              child: athlete.photoUrl.isEmpty
+                  ? Text(
+                      athlete.name.isNotEmpty
+                          ? athlete.name[0].toUpperCase()
+                          : 'A',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: widget.palette.selectedTab,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    athlete.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: KokColors.cardTitle,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    athlete.club?.name ?? 'Belum terdaftar di klub',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: KokColors.muted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: widget.palette.softAccent,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          athlete.cabor.name,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: widget.palette.selectedTab,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          athlete.sexLabel,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: KokColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: KokColors.muted),
+          ],
         ),
       ),
     );

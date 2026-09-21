@@ -181,12 +181,14 @@ final class AthletePaginationState {
   );
 }
 
+typedef AthleteFilterScope = ({int? idCabor, int? idClub});
+
 class AthletePaginationController extends Notifier<AthletePaginationState> {
-  AthletePaginationController(this.idCabor);
+  AthletePaginationController(this.scope);
 
   static const int pageSize = 25;
 
-  final int? idCabor;
+  final AthleteFilterScope scope;
 
   @override
   AthletePaginationState build() {
@@ -204,8 +206,8 @@ class AthletePaginationController extends Notifier<AthletePaginationState> {
         athleteListProvider((
           offset: 0,
           limit: pageSize,
-          idCabor: idCabor,
-          idClub: null,
+          idCabor: scope.idCabor,
+          idClub: scope.idClub,
           sex: state.sex,
           status: state.status,
           search: state.search,
@@ -232,8 +234,8 @@ class AthletePaginationController extends Notifier<AthletePaginationState> {
         athleteListProvider((
           offset: state.items.length,
           limit: pageSize,
-          idCabor: idCabor,
-          idClub: null,
+          idCabor: scope.idCabor,
+          idClub: scope.idClub,
           sex: state.sex,
           status: state.status,
           search: state.search,
@@ -293,7 +295,7 @@ final athletePaginationProvider =
     NotifierProvider.family<
       AthletePaginationController,
       AthletePaginationState,
-      int?
+      AthleteFilterScope
     >(AthletePaginationController.new);
 
 final athleteDetailProvider = FutureProvider.family<AthleteDetail, int>((

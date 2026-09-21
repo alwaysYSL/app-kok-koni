@@ -9,8 +9,10 @@ import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/core/theme.dart';
 import 'package:kok_app/data/models.dart';
+import 'package:kok_app/data/models/athlete.dart';
 import 'package:kok_app/data/models/club.dart' as domain_club;
 import 'package:kok_app/data/models/club_detail.dart';
+import 'package:kok_app/data/providers/athlete_providers.dart';
 import 'package:kok_app/data/providers/club_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/club_detail/club_detail_page.dart';
@@ -243,6 +245,76 @@ final sampleRemoteClubDetailComplete = ClubDetail(
   ),
 );
 
+class _TestAthletePaginationController extends AthletePaginationController {
+  _TestAthletePaginationController(
+    super.scope, [
+    this._initialState = const AthletePaginationState(),
+  ]);
+
+  final AthletePaginationState _initialState;
+
+  @override
+  AthletePaginationState build() => _initialState;
+
+  @override
+  Future<void> loadFirstPage() async {}
+
+  @override
+  Future<void> loadMore() async {}
+
+  @override
+  void updateSearch(String? query) {
+    state = query == null
+        ? state.copyWith(clearSearch: true)
+        : state.copyWith(search: query);
+  }
+
+  @override
+  void updateSexFilter(String? sex) {
+    state = sex == null
+        ? state.copyWith(clearSex: true)
+        : state.copyWith(sex: sex);
+  }
+}
+
+const sampleAthlete1 = Athlete(
+  id: 301,
+  code: 'AT-301',
+  name: 'Kevin Sanjaya',
+  sex: 'l',
+  sexLabel: 'Laki-Laki',
+  photoUrl: '',
+  status: 1,
+  statusLabel: 'Aktif',
+  cabor: AthleteCabor(id: 1, code: 'BULUTANGKIS', name: 'Bulu Tangkis'),
+  club: AthleteClub(id: 10, code: 'KLUB-010', name: 'PB Garuda Perkasa'),
+  domicile: AthleteDomicile(
+    subdistrictId: 320501,
+    subdistrictName: 'Kota Kulon',
+    districtId: 3205,
+    districtName: 'Garut Kota',
+  ),
+);
+
+const sampleAthlete2 = Athlete(
+  id: 302,
+  code: 'AT-302',
+  name: 'Greysia Polii',
+  sex: 'p',
+  sexLabel: 'Perempuan',
+  photoUrl: '',
+  status: 1,
+  statusLabel: 'Aktif',
+  cabor: AthleteCabor(id: 1, code: 'BULUTANGKIS', name: 'Bulu Tangkis'),
+  club: AthleteClub(id: 10, code: 'KLUB-010', name: 'PB Garuda Perkasa'),
+  domicile: AthleteDomicile(
+    subdistrictId: 320501,
+    subdistrictName: 'Kota Kulon',
+    districtId: 3205,
+    districtName: 'Garut Kota',
+  ),
+);
+
 void main() {
   setUpAll(() async {
     final font = FontLoader('KokSans')
@@ -452,9 +524,262 @@ void main() {
       },
     );
 
-    testWidgets('Tab 3 (Atlet) renders 4A integration placeholder', (
+    testWidgets(
+      'Tab 3 (Atlet) renders athlete list for club, badges, and navigates to /person/:id on tap',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        var personReached = false;
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(
+                    items: [sampleAthlete1, sampleAthlete2],
+                    total: 2,
+                  ),
+                ),
+              ),
+            ],
+            onPersonReached: () => personReached = true,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        // Athlete names & details
+        expect(find.text('Kevin Sanjaya'), findsOneWidget);
+        expect(find.text('Greysia Polii'), findsOneWidget);
+        expect(find.text('PB Garuda Perkasa'), findsWidgets);
+        expect(find.text('Bulu Tangkis'), findsWidgets);
+        expect(find.text('Laki-Laki'), findsWidgets);
+        expect(find.text('Perempuan'), findsWidgets);
+
+        // Tap athlete -> navigation
+        await tester.tap(find.text('Kevin Sanjaya'));
+        await tester.pumpAndSettle();
+        expect(personReached, isTrue);
+      },
+    );
+
+    testWidgets(
+      'Tab 3 (Atlet) renders warning banner when filterWarning is present',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(
+                    items: [sampleAthlete1],
+                    total: 1,
+                    filterWarning: {
+                      'code': 'CLUB_MEMBERSHIP_SPARSE',
+                      'message':
+                          'Keanggotaan club pada data atlet belum lengkap. Hanya menampilkan atlet dengan riwayat klub tercatat.',
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Keanggotaan club pada data atlet belum lengkap. Hanya menampilkan atlet dengan riwayat klub tercatat.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byIcon(Icons.info_outline), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'Tab 3 (Atlet) displays reconciliation note between total club members vs local athletes',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(
+                    items: [sampleAthlete1, sampleAthlete2],
+                    total: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        // sampleRemoteClubDetail has totalAthleteInClub: 42, state.total: 2
+        expect(
+          find.text(
+            'Menampilkan 2 atlet dari wilayah Anda (Total 42 atlet terdaftar di klub)',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Tab 3 (Atlet) handles gender filter chips and search debounce',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(
+                    items: [sampleAthlete1, sampleAthlete2],
+                    total: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        // Search bar
+        expect(find.byType(TextField), findsOneWidget);
+        expect(find.text('Cari nama atlet...'), findsOneWidget);
+
+        // Filter chips
+        expect(find.widgetWithText(FilterChip, 'Semua'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Laki-Laki'), findsOneWidget);
+        expect(find.widgetWithText(FilterChip, 'Perempuan'), findsOneWidget);
+
+        // Tap chip
+        await tester.tap(find.widgetWithText(FilterChip, 'Perempuan'));
+        await tester.pumpAndSettle();
+
+        // Enter search
+        await tester.enterText(find.byType(TextField), 'Greysia');
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+      },
+    );
+
+    testWidgets(
+      'Tab 3 (Atlet) handles empty state when no athletes found for current subdistrict',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController((
+                  idCabor: null,
+                  idClub: 10,
+                ), const AthletePaginationState(items: [], total: 0)),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Tidak ada atlet dari kecamatan ini yang tercatat di klub ini.',
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('Tab 3 (Atlet) handles error state with retry button', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(
         createRemoteTestApp(
           initialLocation: '/club/10',
@@ -462,6 +787,16 @@ void main() {
             clubDetailProvider(
               10,
             ).overrideWith((ref) async => sampleRemoteClubDetail),
+            athletePaginationProvider((idCabor: null, idClub: 10)).overrideWith(
+              () => _TestAthletePaginationController(
+                (idCabor: null, idClub: 10),
+                const AthletePaginationState(
+                  items: [],
+                  total: 0,
+                  error: 'Koneksi ke server terputus',
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -471,11 +806,9 @@ void main() {
       await tester.tap(find.text('Atlet'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Daftar atlet klub sedang dalam tahap integrasi.'),
-        findsOneWidget,
-      );
-      expect(find.byIcon(Icons.sync_outlined), findsOneWidget);
+      expect(find.text('Gagal memuat data atlet'), findsOneWidget);
+      expect(find.text('Koneksi ke server terputus'), findsOneWidget);
+      expect(find.text('Coba Lagi'), findsOneWidget);
     });
 
     testWidgets('renders MissingPage when non-integer club ID is provided', (

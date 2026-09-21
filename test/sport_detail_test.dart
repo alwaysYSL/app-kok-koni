@@ -81,7 +81,7 @@ class _TestCaborPaginationController extends CaborPaginationController {
 
 class _TestAthletePaginationController extends AthletePaginationController {
   _TestAthletePaginationController(
-    super.idCabor, [
+    super.scope, [
     this._initialState = const AthletePaginationState(),
   ]);
 
@@ -674,9 +674,12 @@ void main() {
                   const CaborPaginationState(items: [sampleCabor], total: 1),
                 ),
               ),
-              athletePaginationProvider(42).overrideWith(
+              athletePaginationProvider((
+                idCabor: 42,
+                idClub: null,
+              )).overrideWith(
                 () => _TestAthletePaginationController(
-                  42,
+                  (idCabor: 42, idClub: null),
                   AthletePaginationState(
                     items: [athlete1, athlete2],
                     total: 2,
@@ -759,11 +762,14 @@ void main() {
                   const CaborPaginationState(items: [sampleCabor], total: 1),
                 ),
               ),
-              athletePaginationProvider(42).overrideWith(
-                () => _TestAthletePaginationController(
-                  42,
-                  const AthletePaginationState(items: [], total: 0),
-                ),
+              athletePaginationProvider((
+                idCabor: 42,
+                idClub: null,
+              )).overrideWith(
+                () => _TestAthletePaginationController((
+                  idCabor: 42,
+                  idClub: null,
+                ), const AthletePaginationState(items: [], total: 0)),
               ),
             ],
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
@@ -815,9 +821,12 @@ void main() {
                   const CaborPaginationState(items: [sampleCabor], total: 1),
                 ),
               ),
-              athletePaginationProvider(42).overrideWith(
+              athletePaginationProvider((
+                idCabor: 42,
+                idClub: null,
+              )).overrideWith(
                 () => _TestAthletePaginationController(
-                  42,
+                  (idCabor: 42, idClub: null),
                   const AthletePaginationState(
                     items: [],
                     total: 0,

@@ -460,6 +460,8 @@ void main() {
   });
 
   group('AthletePaginationController & athletePaginationProvider Tests', () {
+    const defaultScope = (idCabor: 1, idClub: null);
+
     test('initializes with empty state', () {
       final container = ProviderContainer(
         overrides: [
@@ -469,7 +471,7 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final state = container.read(athletePaginationProvider(1));
+      final state = container.read(athletePaginationProvider(defaultScope));
       expect(state.items, isEmpty);
       expect(state.total, 0);
       expect(state.hasMore, isFalse);
@@ -531,16 +533,69 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final controller = container.read(athletePaginationProvider(1).notifier);
+      final controller = container.read(
+        athletePaginationProvider(defaultScope).notifier,
+      );
       await controller.loadFirstPage();
 
-      final state = container.read(athletePaginationProvider(1));
+      final state = container.read(athletePaginationProvider(defaultScope));
       expect(state.items.length, 25);
       expect(state.total, 60);
       expect(state.hasMore, isTrue);
       expect(state.canLoadMore, isTrue);
       expect(state.isLoading, isFalse);
       expect(state.error, isNull);
+    });
+
+    test('loadFirstPage passes idClub when scoped by club', () async {
+      int? capturedIdCabor;
+      int? capturedIdClub;
+
+      final mockService = MockAthleteService(
+        onFetchList:
+            ({
+              int limit = 25,
+              int offset = 0,
+              int? idCabor,
+              int? idClub,
+              String? sex,
+              int? status,
+              String? search,
+              String sort = 'name',
+              RequestCancellation? cancellation,
+            }) async {
+              capturedIdCabor = idCabor;
+              capturedIdClub = idClub;
+              return const PaginatedResult(
+                items: [],
+                limit: 25,
+                offset: 0,
+                total: 0,
+                filterWarning: {'message': 'Keanggotaan club belum lengkap'},
+              );
+            },
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          athleteServiceProvider.overrideWithValue(mockService),
+          dataRequestContextProvider.overrideWithValue(_testContext),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      const clubScope = (idCabor: null, idClub: 10);
+      final controller = container.read(
+        athletePaginationProvider(clubScope).notifier,
+      );
+      await controller.loadFirstPage();
+
+      expect(capturedIdCabor, isNull);
+      expect(capturedIdClub, 10);
+
+      final state = container.read(athletePaginationProvider(clubScope));
+      expect(state.hasFilterWarning, isTrue);
+      expect(state.filterWarningMessage, 'Keanggotaan club belum lengkap');
     });
 
     test('loadMore loads next page and appends items', () async {
@@ -624,15 +679,23 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final controller = container.read(athletePaginationProvider(1).notifier);
+      final controller = container.read(
+        athletePaginationProvider(defaultScope).notifier,
+      );
       await controller.loadFirstPage();
 
-      expect(container.read(athletePaginationProvider(1)).items.length, 25);
-      expect(container.read(athletePaginationProvider(1)).hasMore, isTrue);
+      expect(
+        container.read(athletePaginationProvider(defaultScope)).items.length,
+        25,
+      );
+      expect(
+        container.read(athletePaginationProvider(defaultScope)).hasMore,
+        isTrue,
+      );
 
       await controller.loadMore();
 
-      final state = container.read(athletePaginationProvider(1));
+      final state = container.read(athletePaginationProvider(defaultScope));
       expect(state.items.length, 35);
       expect(state.total, 35);
       expect(state.hasMore, isFalse);
@@ -684,7 +747,7 @@ void main() {
         addTearDown(container.dispose);
 
         final controller = container.read(
-          athletePaginationProvider(1).notifier,
+          athletePaginationProvider(defaultScope).notifier,
         );
 
         controller.updateSearch('Ahmad');
@@ -765,24 +828,26 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final controller = container.read(athletePaginationProvider(1).notifier);
+      final controller = container.read(
+        athletePaginationProvider(defaultScope).notifier,
+      );
       await controller.loadFirstPage();
 
-      var state = container.read(athletePaginationProvider(1));
+      var state = container.read(athletePaginationProvider(defaultScope));
       expect(state.error, isA<ServerErrorException>());
       expect(state.isLoading, isFalse);
 
       // Now succeed on loadFirstPage, but fail on loadMore
       shouldFail = false;
       await controller.loadFirstPage();
-      state = container.read(athletePaginationProvider(1));
+      state = container.read(athletePaginationProvider(defaultScope));
       expect(state.error, isNull);
       expect(state.items.length, 1);
       expect(state.hasMore, isTrue);
 
       shouldFail = true;
       await controller.loadMore();
-      state = container.read(athletePaginationProvider(1));
+      state = container.read(athletePaginationProvider(defaultScope));
       expect(state.loadMoreError, isA<ServerErrorException>());
       expect(state.isLoadingMore, isFalse);
       expect(state.items.length, 1); // retains previous items

@@ -1360,7 +1360,12 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
     Future.microtask(() {
       if (mounted) {
         ref
-            .read(athletePaginationProvider(widget.caborId).notifier)
+            .read(
+              athletePaginationProvider((
+                idCabor: widget.caborId,
+                idClub: null,
+              )).notifier,
+            )
             .loadFirstPage();
       }
     });
@@ -1379,7 +1384,14 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
     if (_scrollController.hasClients &&
         _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200) {
-      ref.read(athletePaginationProvider(widget.caborId).notifier).loadMore();
+      ref
+          .read(
+            athletePaginationProvider((
+              idCabor: widget.caborId,
+              idClub: null,
+            )).notifier,
+          )
+          .loadMore();
     }
   }
 
@@ -1388,7 +1400,12 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
     _debounceTimer = Timer(const Duration(milliseconds: 500), () {
       if (mounted) {
         ref
-            .read(athletePaginationProvider(widget.caborId).notifier)
+            .read(
+              athletePaginationProvider((
+                idCabor: widget.caborId,
+                idClub: null,
+              )).notifier,
+            )
             .updateSearch(query);
       }
     });
@@ -1396,9 +1413,14 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(athletePaginationProvider(widget.caborId));
+    final state = ref.watch(
+      athletePaginationProvider((idCabor: widget.caborId, idClub: null)),
+    );
     final controller = ref.read(
-      athletePaginationProvider(widget.caborId).notifier,
+      athletePaginationProvider((
+        idCabor: widget.caborId,
+        idClub: null,
+      )).notifier,
     );
 
     return Column(
