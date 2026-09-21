@@ -36,7 +36,6 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      final club = await container.read(clubDetailProvider('garuda').future);
       final members = await container.read(
         clubMembersProvider((clubId: 'garuda', role: 'Pelatih')).future,
       );
@@ -46,7 +45,6 @@ void main() {
       final committee = await container.read(committeeProvider.future);
       final helpdesk = await container.read(helpdeskProvider.future);
 
-      expect(club.id, 'garuda');
       expect(members, isNotEmpty);
       expect(members.every((member) => member.role == 'Pelatih'), isTrue);
       expect(person.id, 'garuda-atlet-0');
@@ -59,13 +57,13 @@ void main() {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final subscription = container.listen(
-      clubDetailProvider('garuda'),
+      personDetailProvider('garuda-atlet-0'),
       (_, _) {},
     );
     addTearDown(subscription.close);
 
     await expectLater(
-      container.read(clubDetailProvider('garuda').future),
+      container.read(personDetailProvider('garuda-atlet-0').future),
       throwsA(isA<SessionRequiredException>()),
     );
   });
@@ -81,7 +79,10 @@ void main() {
         ],
       );
 
-      container.listen(clubDetailProvider('garuda'), (previous, next) {});
+      container.listen(
+        personDetailProvider('garuda-atlet-0'),
+        (previous, next) {},
+      );
 
       expect(testRepo.capturedCancellation, isNotNull);
       expect(testRepo.capturedCancellation!.isCancelled, isFalse);
@@ -94,7 +95,7 @@ void main() {
   );
 
   test('granular provider retry policy mengabaikan lifecycle exceptions', () {
-    final retryPolicy = clubDetailProvider('garuda').retry;
+    final retryPolicy = personDetailProvider('garuda-atlet-0').retry;
     expect(retryPolicy, isNotNull);
 
     expect(retryPolicy!(1, const SessionRequiredException()), isNull);
@@ -113,7 +114,7 @@ void main() {
       isNull,
     );
     expect(
-      retryPolicy(1, const KokResourceNotFoundException('club', 'garuda')),
+      retryPolicy(1, const KokResourceNotFoundException('person', 'garuda-0')),
       isNull,
     );
 
@@ -206,6 +207,15 @@ class _CancellableTestRepository implements KokRepository {
   }) {
     capturedCancellation = cancellation;
     return clubCompleter.future;
+  }
+
+  @override
+  Future<SportPerson> fetchPersonDetail(
+    String personId, {
+    RequestCancellation? cancellation,
+  }) {
+    capturedCancellation = cancellation;
+    return Completer<SportPerson>().future;
   }
 
   @override

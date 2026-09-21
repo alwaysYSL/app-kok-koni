@@ -18,6 +18,7 @@ import '../../data/kok_repository.dart';
 import '../../data/remote_kok_repository.dart';
 import '../../data/services/athlete_service.dart';
 import '../../data/services/cabor_service.dart';
+import '../../data/services/club_service.dart';
 import '../../data/services/demo/demo_athlete_service.dart';
 import '../../data/services/demo/demo_cabor_service.dart';
 import '../../data/services/demo/demo_profile_service.dart';
@@ -37,6 +38,7 @@ final class AppComposition {
     required this.profileService,
     required this.caborService,
     required this.athleteService,
+    this.clubService,
     required this.credentialIdGenerator,
     AuthSessionTokens? sessionTokens,
     this.apiClient,
@@ -52,6 +54,7 @@ final class AppComposition {
   final ProfileService profileService;
   final CaborService caborService;
   final AthleteService athleteService;
+  final ClubService? clubService;
   final CredentialIdGenerator credentialIdGenerator;
   final AuthSessionTokens sessionTokens;
   final ApiClient? apiClient;
