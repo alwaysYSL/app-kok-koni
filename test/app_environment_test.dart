@@ -14,13 +14,16 @@ import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/remote_kok_repository.dart';
 import 'package:kok_app/data/providers/cabor_providers.dart';
+import 'package:kok_app/data/providers/club_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_club_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 import 'package:kok_app/data/services/remote/remote_athlete_service.dart';
 import 'package:kok_app/data/services/remote/remote_cabor_service.dart';
+import 'package:kok_app/data/services/remote/remote_club_service.dart';
 import 'package:kok_app/data/services/remote/remote_profile_service.dart';
 
 class _FakeSecureKeyValStore implements SecureKeyValStore {
@@ -298,6 +301,7 @@ void main() {
       expect(composition.profileService, isA<DemoProfileService>());
       expect(composition.caborService, isA<DemoCaborService>());
       expect(composition.athleteService, isA<DemoAthleteService>());
+      expect(composition.clubService, isA<DemoClubService>());
       expect(
         composition.credentialIdGenerator,
         isA<UuidCredentialIdGenerator>(),
@@ -325,6 +329,7 @@ void main() {
         expect(stagingComposition.profileService, isA<DemoProfileService>());
         expect(stagingComposition.caborService, isA<DemoCaborService>());
         expect(stagingComposition.athleteService, isA<DemoAthleteService>());
+        expect(stagingComposition.clubService, isA<DemoClubService>());
         expect(stagingComposition.apiClient, isNotNull);
 
         const prodRemoteAuth = DeploymentProfile(
@@ -353,6 +358,7 @@ void main() {
           productionComposition.athleteService,
           isA<RemoteAthleteService>(),
         );
+        expect(productionComposition.clubService, isA<RemoteClubService>());
         expect(productionComposition.apiClient, isNotNull);
       },
     );
@@ -555,6 +561,10 @@ void main() {
           container.read(caborServiceProvider),
           same(composition.caborService),
         );
+        expect(
+          container.read(clubServiceProvider),
+          same(composition.clubService),
+        );
       },
     );
 
@@ -588,6 +598,7 @@ void main() {
       expectMissingComposition(() => container.read(repositoryProvider));
       expectMissingComposition(() => container.read(profileServiceProvider));
       expectMissingComposition(() => container.read(caborServiceProvider));
+      expectMissingComposition(() => container.read(clubServiceProvider));
     });
   });
 

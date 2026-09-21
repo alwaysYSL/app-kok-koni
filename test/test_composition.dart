@@ -11,6 +11,7 @@ import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_club_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 
 final class _TestAuthTokenStorage implements AuthTokenStorage {
@@ -87,6 +88,14 @@ AppComposition buildTestAppComposition() {
       ),
     ),
     athleteService: DemoAthleteService(
+      demoRepo: demoRepo,
+      currentScopeProvider: () => const AccessScope(
+        type: AccessScopeType.district,
+        id: '1728',
+        name: 'Garut Kota',
+      ),
+    ),
+    clubService: DemoClubService(
       demoRepo: demoRepo,
       currentScopeProvider: () => const AccessScope(
         type: AccessScopeType.district,

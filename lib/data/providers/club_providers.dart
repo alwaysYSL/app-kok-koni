@@ -12,7 +12,6 @@ import '../models/paginated_result.dart';
 import '../request_cancellation.dart';
 import '../services/club_service.dart';
 import '../services/demo/demo_club_service.dart';
-import '../services/remote/remote_club_service.dart';
 import 'snapshot_provider.dart';
 
 final clubServiceProvider = Provider<ClubService>((ref) {
@@ -26,12 +25,7 @@ final clubServiceProvider = Provider<ClubService>((ref) {
       currentScopeProvider: () => context.scope,
     );
   }
-  final service = composition.clubService;
-  if (service != null) return service;
-  if (composition.apiClient != null) {
-    return RemoteClubService(client: composition.apiClient!);
-  }
-  throw StateError('ClubService is not available in current composition.');
+  return composition.clubService;
 });
 
 typedef ClubListParams = ({

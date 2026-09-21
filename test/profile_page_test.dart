@@ -1032,6 +1032,7 @@ void main() {
           profileService: base.profileService,
           caborService: base.caborService,
           athleteService: base.athleteService,
+          clubService: base.clubService,
           credentialIdGenerator: base.credentialIdGenerator,
         );
 

@@ -21,6 +21,7 @@ import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/data/services/athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
 import 'package:kok_app/data/services/demo/demo_cabor_service.dart';
+import 'package:kok_app/data/services/demo/demo_club_service.dart';
 import 'package:kok_app/data/services/demo/demo_profile_service.dart';
 
 class MockAthleteService implements AthleteService {
@@ -223,6 +224,14 @@ AppComposition _createTestComposition({
             name: 'Garut Kota',
           ),
         ),
+    clubService: DemoClubService(
+      demoRepo: demoRepo,
+      currentScopeProvider: () => const AccessScope(
+        type: AccessScopeType.district,
+        id: '1728',
+        name: 'Garut Kota',
+      ),
+    ),
     credentialIdGenerator: _DummyCredentialIdGenerator(),
   );
 }
