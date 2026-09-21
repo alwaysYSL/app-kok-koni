@@ -1,6 +1,6 @@
 # Status proyek
 
-Terakhir diperbarui: 20 September 2026.
+Terakhir diperbarui: 21 September 2026.
 
 ## Ringkasan
 
@@ -55,12 +55,27 @@ Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KO
 - **Pengujian & Verifikasi**:
   - 595 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
 
+### Milestone 4: Integrasi Klub & Kepengurusan (SELESAI)
+- **Milestone 4A: Daftar & Detail Klub (Info + Pengurus Inline)**:
+  - **Domain Models & DTOs**: `Club`, `ClubCabor`, `ClubAddress`, `ClubDetail`, `ClubPersonnelBlock`, `ClubManagementBlock`, `ClubPersonnelItem` (handling nullable `id`). DTOs: `SicaborClubItem`, `SicaborClubDetailItem` dengan mapper data lengkap.
+  - **Service Layer**: Interface `ClubService` dengan `RemoteClubService` (endpoint `/club`, `/club/detail/{id}`) dan `DemoClubService` adapter.
+  - **State Management**: `clubServiceProvider`, `clubListProvider`, `ClubPaginationController` (`clubPaginationProvider(idCabor)`), dan `clubDetailProvider(clubId)`.
+  - **UI Tab Klub di `SportDetailPage`**: `_RemoteClubsTab` dengan search debounce 500ms, filter status chip (`Semua`, `Aktif`, `Belum Aktif`), warning banner, infinite scrolling, empty & error states, dan navigasi detail `/club/:id`.
+  - **UI Halaman Daftar Klub (`ClubsPage`)**: Migrasi ke remote pagination dengan modal sort (`name`, `-name`, `-total_athlete`, `status`), filter chip status, dan search terintegrasi.
+  - **UI Halaman Detail Klub (`ClubDetailPage`)**: Migrasi ke layout 3-tab (`Info`, `Pengurus`, `Atlet`) dengan branding dinamis, single counter total anggota lintas kecamatan, penanganan 404 `NotFoundException`, kartu alamat sekretariat & latihan, serta blok pengurus/official/pelatih inline (`data_available: false` & `partial: true` handling).
+- **Milestone 4B: Tab Atlet Klub & Scope-Extended Pagination**:
+  - Perluasan `AthletePaginationController` dengan family scope `AthleteFilterScope` (`({int? idCabor, int? idClub})`).
+  - Tab 3 (Tab Atlet) di `ClubDetailPage` terhubung ke endpoint `/athlete?id_club={id}`.
+  - Banner peringatan `CLUB_MEMBERSHIP_SPARSE` saat keanggotaan klub bersifat lintas kecamatan.
+  - Rekonsiliasi angka total anggota klub vs total atlet lokal kecamatan user.
+  - Search bar debounce, filter chips jenis kelamin, dan infinite scroll.
+- **Pengujian & Verifikasi**:
+  - 687 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
+
 ### Milestone Berikutnya (In Progress / Backlog)
-- **Milestone 4: Integrasi Klub & Kepengurusan**
-  - Endpoint `/api/v1/kok/club` & `/api/v1/kok/club/detail/{id}`.
-  - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management`.
-  - Migrasi Tab Klub dan Tab Pelatih di `SportDetailPage`.
-  - Halaman `ClubDetailPage` remote dengan data pengurus dan kontak sekretariat.
+- **Milestone 5: Integrasi Pelatih, Official, dan Profil Keolahragaan Lanjutan**
+  - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management` lanjutan.
+  - Tab Pelatih/Official di `SportDetailPage` dan verifikasi berkas person.
 
 ## Gap sebelum Play Store
 
