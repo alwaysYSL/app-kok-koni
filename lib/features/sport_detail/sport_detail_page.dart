@@ -1698,8 +1698,29 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
+                      if (athlete.code.trim().isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            athlete.code.trim(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: KokColors.muted,
+                            ),
+                          ),
+                        ),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -1718,7 +1739,6 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -1737,6 +1757,29 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
                           ),
                         ),
                       ),
+                      if (athlete.statusLabel.trim().isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: athlete.status == 1
+                                ? const Color(0xFFDCFCE7)
+                                : const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            athlete.statusLabel.trim(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: athlete.status == 1
+                                  ? const Color(0xFF16A34A)
+                                  : KokColors.textSecondary,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ],

@@ -190,9 +190,6 @@ class _RemoteAthleteDetailContent extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: detail.club != null
-          ? _RemoteStickyBottomBar(club: detail.club!, palette: palette)
-          : null,
     );
   }
 }
@@ -402,6 +399,13 @@ class _RemoteProfileCard extends StatelessWidget {
                 value: detail.club?.name ?? 'Belum terdaftar di klub',
                 palette: palette,
               ),
+              if (detail.club != null && detail.club!.code.isNotEmpty)
+                _buildDetailRow(
+                  icon: Icons.tag,
+                  label: 'Kode Klub',
+                  value: detail.club!.code,
+                  palette: palette,
+                ),
               _buildDetailRow(
                 icon: Icons.emoji_events_outlined,
                 label: 'Cabor',
@@ -803,136 +807,6 @@ class _RemoteContactAddressSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RemoteStickyBottomBar extends StatelessWidget {
-  const _RemoteStickyBottomBar({required this.club, required this.palette});
-
-  final AthleteClub club;
-  final SportBrandPalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFF1F5F9))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: FilledButton.icon(
-          style: FilledButton.styleFrom(
-            backgroundColor: palette.headerStart,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
-          ),
-          onPressed: () => _showClubContactModal(context, club, palette),
-          icon: const Icon(
-            Icons.chat_bubble_outline,
-            color: Colors.white,
-            size: 20,
-          ),
-          label: const Text(
-            'Hubungi pengurus klub',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static void _showClubContactModal(
-    BuildContext context,
-    AthleteClub club,
-    SportBrandPalette palette,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE5E7EB),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Text(
-                  'Sekretariat Klub',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: KokColors.cardTitle,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  club.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF374151),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Kode Klub: ${club.code}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: palette.headerStart,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  icon: const Icon(Icons.close, color: Colors.white, size: 18),
-                  label: const Text(
-                    'Tutup',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

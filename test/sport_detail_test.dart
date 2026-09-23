@@ -726,12 +726,16 @@ void main() {
           findsOneWidget,
         );
 
-        // Athlete cards are rendered
+        // Athlete cards are rendered with code, name, club, and statusLabel
         expect(find.text('Budi Raharja'), findsOneWidget);
+        expect(find.text('KGAT-001'), findsOneWidget);
         expect(find.text('Klub Cimanuk Rafting'), findsOneWidget);
 
         expect(find.text('Siti Aminah'), findsOneWidget);
+        expect(find.text('KGAT-002'), findsOneWidget);
         expect(find.text('Belum terdaftar di klub'), findsOneWidget);
+
+        expect(find.text('Aktif'), findsWidgets);
 
         // Tap athlete card -> navigates to /person/101
         await tester.tap(find.text('Budi Raharja'));

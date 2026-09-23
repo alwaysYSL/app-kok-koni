@@ -693,6 +693,8 @@ void main() {
         // 3. Detail rows
         expect(find.text('Klub'), findsOneWidget);
         expect(find.text('Voli Bina Muda'), findsOneWidget);
+        expect(find.text('Kode Klub'), findsOneWidget);
+        expect(find.text('KLUB-01'), findsOneWidget);
         expect(find.text('Cabor'), findsOneWidget);
         expect(find.text('Bola Voli'), findsOneWidget);
         expect(find.text('Jenis Kelamin'), findsOneWidget);
@@ -721,19 +723,7 @@ void main() {
         expect(find.text('KELENGKAPAN BERKAS'), findsNothing);
         expect(find.text('RIWAYAT'), findsNothing);
         expect(find.text('terverifikasi'), findsNothing);
-
-        // 7. Bottom Bar & Secretariat Modal
-        expect(find.text('Hubungi pengurus klub'), findsOneWidget);
-        await tester.tap(find.text('Hubungi pengurus klub'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Sekretariat Klub'), findsOneWidget);
-        expect(find.text('Voli Bina Muda'), findsWidgets);
-        expect(find.text('Kode Klub: KLUB-01'), findsOneWidget);
-
-        await tester.tap(find.text('Tutup'));
-        await tester.pumpAndSettle();
-        expect(find.text('Sekretariat Klub'), findsNothing);
+        expect(find.text('Hubungi pengurus klub'), findsNothing);
       },
     );
 
