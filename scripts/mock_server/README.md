@@ -49,19 +49,19 @@ dart run scripts/mock_server/sicabor_mock_server.dart
 
 ## 3. Akun Pengujian & Kredensial
 
-### Master Password Global
-Server menyediakan satu password universal yang dapat digunakan untuk login ke **seluruh akun pengujian**:
+### Password Akun Pengujian
+Seluruh akun pengujian menggunakan password standar berikut:
 ```
-sicabor4K0N1
+password123
 ```
 
 ### Daftar Akun Pengujian
 
 | Username | Password | Kecamatan / Peran | Status | Cakupan Data & Penggunaan |
 | :--- | :--- | :--- | :--- | :--- |
-| `kt.garutkota` | `password123` *(atau master password)* | **Garut Kota** (ID: `1728`) | Aktif | **Akun Utama / Lengkap**: 32 Cabor, 10 Klub, 361 Atlet |
-| `kt.bllimbangan` | `password123` *(atau master password)* | **Balubur Limbangan** (ID: `1714`) | Aktif | 17 Cabor, 0 Klub, 159 Atlet (Kontingen terdaftar) |
-| `kt.tarogongkidul` | `password123` *(atau master password)* | **Tarogong Kidul** (ID: `1729`) | Aktif | 28 Cabor, 12 Klub, 290 Atlet |
+| `kt.garutkota` | `password123` | **Garut Kota** (ID: `1728`) | Aktif | **Akun Utama / Lengkap**: 32 Cabor, 10 Klub, 361 Atlet |
+| `kt.bllimbangan` | `password123` | **Balubur Limbangan** (ID: `1714`) | Aktif | 17 Cabor, 0 Klub, 159 Atlet (Kontingen terdaftar) |
+| `kt.tarogongkidul` | `password123` | **Tarogong Kidul** (ID: `1729`) | Aktif | 28 Cabor, 12 Klub, 290 Atlet |
 
 ### Akun Khusus Pengujian Error (Negative Testing)
 
@@ -75,34 +75,51 @@ sicabor4K0N1
 
 ## 4. Menghubungkan Aplikasi Flutter ke Mock Server
 
-Tentukan URL server sesuai target perangkat atau simulator yang digunakan:
+Tentukan URL server sesuai target perangkat atau simulator yang digunakan. Pastikan menggunakan `--dart-define=DATA_MODE=remote` agar aplikasi mengonsumsi data langsung dari mock API remote (bukan dataset demo lokal).
+
+> **Penting Mengenai Keamanan Jaringan & Cleartext Traffic**:
+> Komunikasi HTTP tanpa enkripsi hanya diizinkan pada lingkungan *debug/staging* dengan mock server lokal. Pengaturan `android:usesCleartextTraffic="true"` telah dikonfigurasi secara eksklusif pada `android/app/src/debug/AndroidManifest.xml`. Pada lingkungan produksi (*release*), aplikasi secara ketat mewajibkan HTTPS dan traffic cleartext otomatis diblokir.
 
 ### A. Android Emulator
-Emulator Android berjalan di dalam virtual router tersendiri. Gunakan alamat IP loopback virtual:
+Emulator Android berjalan di dalam virtual router tersendiri. Gunakan alamat IP loopback virtual (`10.0.2.2`):
 - **Base API URL**: `http://10.0.2.2:8088/api/v1/kok`
 - **Auth URL**: `http://10.0.2.2:8088/api/auth`
 
 ```bash
-flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote --dart-define=DATA_MODE=demo --dart-define=API_BASE_URL=http://10.0.2.2:8088/api/v1/kok
+flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
+  --dart-define=DATA_MODE=remote \
+  --dart-define=API_BASE_URL=http://10.0.2.2:8088/api/v1/kok
 ```
 
 ### B. Smartphone Android Fisik (Kabel USB / Wi-Fi)
 Hubungkan laptop dan smartphone ke jaringan Wi-Fi lokal yang sama:
-1. Temukan alamat IP lokal laptop Anda:
+1. Jalankan mock server dengan bind ke semua interface (default host `0.0.0.0` pada port `8088` atau custom):
+   ```bash
+   dart run scripts/mock_server/sicabor_mock_server.dart --host=0.0.0.0 --port=8088
+   ```
+2. Temukan alamat IP lokal laptop Anda:
    - Windows: Jalankan `ipconfig` di PowerShell/Command Prompt (cari IPv4 pada adapter Wi-Fi, misal `192.168.1.50`).
    - macOS/Linux: Jalankan `ifconfig` atau `ip a`.
-2. Pastikan firewall tidak memblokir port `8088`.
-3. Konfigurasikan URL aplikasi:
+3. Pastikan firewall tidak memblokir port `8088`.
+4. Konfigurasikan URL aplikasi:
    - **Base API URL**: `http://<IP-Laptop>:8088/api/v1/kok` (Contoh: `http://192.168.1.50:8088/api/v1/kok`)
    - **Auth URL**: `http://<IP-Laptop>:8088/api/auth` (Contoh: `http://192.168.1.50:8088/api/auth`)
 
 ```bash
-flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote --dart-define=DATA_MODE=demo --dart-define=API_BASE_URL=http://192.168.1.50:8088/api/v1/kok
+flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
+  --dart-define=DATA_MODE=remote \
+  --dart-define=API_BASE_URL=http://192.168.1.50:8088/api/v1/kok
 ```
 
 ### C. Flutter Web / Desktop / iOS Simulator
-- **Base API URL**: `http://localhost:8088/api/v1/kok`
+- **Base API URL**: `http://localhost:8088/api/v1/kok` (atau `http://127.0.0.1:8088/api/v1/kok`)
 - **Auth URL**: `http://localhost:8088/api/auth`
+
+```bash
+flutter run -d chrome --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
+  --dart-define=DATA_MODE=remote \
+  --dart-define=API_BASE_URL=http://localhost:8088/api/v1/kok
+```
 
 ---
 
