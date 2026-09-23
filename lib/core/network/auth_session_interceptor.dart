@@ -4,14 +4,29 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import 'auth_session_tokens.dart';
+
 /// Interceptor that inspects responses for HTTP 401 Unauthorized or fatal
 /// HTTP 403 Forbidden errors that indicate an expired or invalid session.
 class AuthSessionInterceptor extends Interceptor {
   AuthSessionInterceptor({
-    void Function({String? errorCode})? onUnauthorizedSession,
-  }) : _onUnauthorizedSession = onUnauthorizedSession;
+    AuthSessionTokens? tokens,
+    int Function()? currentRevisionProvider,
+    void Function({String? errorCode, String? serverMessage})?
+    onUnauthorizedSession,
+  }) : _tokens = tokens,
+       _currentRevisionProvider = currentRevisionProvider,
+       _onUnauthorizedSession = onUnauthorizedSession;
 
-  void Function({String? errorCode})? _onUnauthorizedSession;
+  static const String sessionRevisionExtraKey = 'auth_session_revision';
+
+  final AuthSessionTokens? _tokens;
+  final int Function()? _currentRevisionProvider;
+  void Function({String? errorCode, String? serverMessage})?
+  _onUnauthorizedSession;
+
+  int? get _currentRevision =>
+      _currentRevisionProvider?.call() ?? _tokens?.revision;
 
   /// Error codes that indicate the member or session is permanently invalid.
   static const sessionEndingCodes = {
@@ -21,27 +36,44 @@ class AuthSessionInterceptor extends Interceptor {
   };
 
   /// Attaches or updates the callback invoked when an unauthorized session is detected.
-  void attachUnauthorizedHandler(void Function({String? errorCode}) handler) {
+  void attachUnauthorizedHandler(
+    void Function({String? errorCode, String? serverMessage}) handler,
+  ) {
     _onUnauthorizedSession = handler;
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    final requestRevision = err.requestOptions.extra[sessionRevisionExtraKey];
+    final currentRevision = _currentRevision;
+
+    if (requestRevision != null &&
+        currentRevision != null &&
+        requestRevision != currentRevision) {
+      handler.next(err);
+      return;
+    }
+
     final status = err.response?.statusCode;
+    final body = _extractJson(err.response?.data);
+    final serverMessage = body?['message']?.toString();
+    final errorCode = body?['error_code']?.toString();
 
     if (status == 401) {
-      _onUnauthorizedSession?.call();
+      _onUnauthorizedSession?.call(
+        errorCode: errorCode ?? 'INVALID_TOKEN',
+        serverMessage: serverMessage,
+      );
       handler.next(err);
       return;
     }
 
     if (status == 403) {
-      final body = _extractJson(err.response?.data);
-      if (body != null && body['error_code'] != null) {
-        final errorCode = body['error_code']?.toString();
-        if (errorCode != null && sessionEndingCodes.contains(errorCode)) {
-          _onUnauthorizedSession?.call(errorCode: errorCode);
-        }
+      if (errorCode != null && sessionEndingCodes.contains(errorCode)) {
+        _onUnauthorizedSession?.call(
+          errorCode: errorCode,
+          serverMessage: serverMessage,
+        );
       }
       handler.next(err);
       return;

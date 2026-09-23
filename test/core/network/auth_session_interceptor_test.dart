@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/network/auth_session_interceptor.dart';
+import 'package:kok_app/core/network/auth_session_tokens.dart';
 
 final class _FakeAdapter implements HttpClientAdapter {
   _FakeAdapter(this.handler);
@@ -22,14 +23,58 @@ final class _FakeAdapter implements HttpClientAdapter {
 
 void main() {
   group('AuthSessionInterceptor direct unit tests', () {
-    test('401 triggers callback without error code and forwards error', () {
+    test(
+      '401 triggers callback with INVALID_TOKEN error code and server message',
+      () {
+        var callbackCount = 0;
+        String? receivedErrorCode;
+        String? receivedServerMessage;
+
+        final interceptor = AuthSessionInterceptor(
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
+            callbackCount++;
+            receivedErrorCode = errorCode;
+            receivedServerMessage = serverMessage;
+          },
+        );
+
+        final requestOptions = RequestOptions(path: '/test');
+        final dioException = DioException(
+          requestOptions: requestOptions,
+          response: Response(
+            requestOptions: requestOptions,
+            statusCode: 401,
+            data: {'message': 'Unauthorized token'},
+          ),
+        );
+
+        var nextCalled = false;
+        final handler = _TestErrorInterceptorHandler(
+          onNext: (err) {
+            nextCalled = true;
+            expect(err, same(dioException));
+          },
+        );
+
+        interceptor.onError(dioException, handler);
+
+        expect(callbackCount, 1);
+        expect(receivedErrorCode, 'INVALID_TOKEN');
+        expect(receivedServerMessage, 'Unauthorized token');
+        expect(nextCalled, isTrue);
+      },
+    );
+
+    test('401 with custom error_code in body preserves that error code', () {
       var callbackCount = 0;
       String? receivedErrorCode;
+      String? receivedServerMessage;
 
       final interceptor = AuthSessionInterceptor(
-        onUnauthorizedSession: ({errorCode}) {
+        onUnauthorizedSession: ({errorCode, serverMessage}) {
           callbackCount++;
           receivedErrorCode = errorCode;
+          receivedServerMessage = serverMessage;
         },
       );
 
@@ -39,7 +84,7 @@ void main() {
         response: Response(
           requestOptions: requestOptions,
           statusCode: 401,
-          data: {'message': 'Unauthorized'},
+          data: {'error_code': 'CUSTOM_EXPIRED', 'message': 'Custom expired'},
         ),
       );
 
@@ -54,21 +99,24 @@ void main() {
       interceptor.onError(dioException, handler);
 
       expect(callbackCount, 1);
-      expect(receivedErrorCode, isNull);
+      expect(receivedErrorCode, 'CUSTOM_EXPIRED');
+      expect(receivedServerMessage, 'Custom expired');
       expect(nextCalled, isTrue);
     });
 
     for (final code in ['MEMBER_NOT_FOUND', 'MEMBER_INACTIVE', 'NOT_KOK']) {
       test(
-        '403 with sessionEndingCode $code triggers callback with errorCode',
+        '403 with sessionEndingCode $code triggers callback with errorCode and serverMessage',
         () {
           var callbackCount = 0;
           String? receivedErrorCode;
+          String? receivedServerMessage;
 
           final interceptor = AuthSessionInterceptor(
-            onUnauthorizedSession: ({errorCode}) {
+            onUnauthorizedSession: ({errorCode, serverMessage}) {
               callbackCount++;
               receivedErrorCode = errorCode;
+              receivedServerMessage = serverMessage;
             },
           );
 
@@ -94,6 +142,7 @@ void main() {
 
           expect(callbackCount, 1);
           expect(receivedErrorCode, code);
+          expect(receivedServerMessage, 'Forbidden member status');
           expect(nextCalled, isTrue);
         },
       );
@@ -104,11 +153,13 @@ void main() {
       () {
         var callbackCount = 0;
         String? receivedErrorCode;
+        String? receivedServerMessage;
 
         final interceptor = AuthSessionInterceptor(
-          onUnauthorizedSession: ({errorCode}) {
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
             callbackCount++;
             receivedErrorCode = errorCode;
+            receivedServerMessage = serverMessage;
           },
         );
 
@@ -135,6 +186,7 @@ void main() {
 
         expect(callbackCount, 1);
         expect(receivedErrorCode, 'MEMBER_NOT_FOUND');
+        expect(receivedServerMessage, 'User not found');
         expect(nextCalled, isTrue);
       },
     );
@@ -143,7 +195,7 @@ void main() {
       var callbackCount = 0;
 
       final interceptor = AuthSessionInterceptor(
-        onUnauthorizedSession: ({errorCode}) {
+        onUnauthorizedSession: ({errorCode, serverMessage}) {
           callbackCount++;
         },
       );
@@ -178,7 +230,7 @@ void main() {
         var callbackCount = 0;
 
         final interceptor = AuthSessionInterceptor(
-          onUnauthorizedSession: ({errorCode}) {
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
             callbackCount++;
           },
         );
@@ -244,7 +296,7 @@ void main() {
         var callbackCount = 0;
 
         final interceptor = AuthSessionInterceptor(
-          onUnauthorizedSession: ({errorCode}) {
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
             callbackCount++;
           },
         );
@@ -288,9 +340,11 @@ void main() {
     test('attachUnauthorizedHandler updates the handler successfully', () {
       final interceptor = AuthSessionInterceptor();
       var callbackCount = 0;
+      String? lastCode;
 
-      interceptor.attachUnauthorizedHandler(({errorCode}) {
+      interceptor.attachUnauthorizedHandler(({errorCode, serverMessage}) {
         callbackCount++;
+        lastCode = errorCode;
       });
 
       final requestOptions = RequestOptions(path: '/test');
@@ -305,6 +359,176 @@ void main() {
       );
 
       expect(callbackCount, 1);
+      expect(lastCode, 'INVALID_TOKEN');
+    });
+
+    group('Session revision checks in AuthSessionInterceptor', () {
+      test(
+        'Stale request with older revision does NOT trigger callback on 401 and forwards error',
+        () {
+          var callbackCount = 0;
+          final interceptor = AuthSessionInterceptor(
+            currentRevisionProvider: () => 5,
+            onUnauthorizedSession: ({errorCode, serverMessage}) {
+              callbackCount++;
+            },
+          );
+
+          final requestOptions = RequestOptions(
+            path: '/test',
+            extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 4},
+          );
+          final dioException = DioException(
+            requestOptions: requestOptions,
+            response: Response(
+              requestOptions: requestOptions,
+              statusCode: 401,
+              data: {'message': 'Old session expired'},
+            ),
+          );
+
+          var nextCalled = false;
+          final handler = _TestErrorInterceptorHandler(
+            onNext: (err) {
+              nextCalled = true;
+              expect(err, same(dioException));
+            },
+          );
+
+          interceptor.onError(dioException, handler);
+
+          expect(callbackCount, 0);
+          expect(nextCalled, isTrue);
+        },
+      );
+
+      test(
+        'Stale request with older revision does NOT trigger callback on 403 session-ending error',
+        () {
+          var callbackCount = 0;
+          final interceptor = AuthSessionInterceptor(
+            currentRevisionProvider: () => 3,
+            onUnauthorizedSession: ({errorCode, serverMessage}) {
+              callbackCount++;
+            },
+          );
+
+          final requestOptions = RequestOptions(
+            path: '/test',
+            extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+          );
+          final dioException = DioException(
+            requestOptions: requestOptions,
+            response: Response(
+              requestOptions: requestOptions,
+              statusCode: 403,
+              data: {
+                'error_code': 'MEMBER_INACTIVE',
+                'message': 'Member deactivated',
+              },
+            ),
+          );
+
+          var nextCalled = false;
+          final handler = _TestErrorInterceptorHandler(
+            onNext: (err) {
+              nextCalled = true;
+              expect(err, same(dioException));
+            },
+          );
+
+          interceptor.onError(dioException, handler);
+
+          expect(callbackCount, 0);
+          expect(nextCalled, isTrue);
+        },
+      );
+
+      test('Matching request revision DOES trigger callback on 401', () {
+        var callbackCount = 0;
+        String? receivedCode;
+        final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 3,
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
+            callbackCount++;
+            receivedCode = errorCode;
+          },
+        );
+
+        final requestOptions = RequestOptions(
+          path: '/test',
+          extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 3},
+        );
+        final dioException = DioException(
+          requestOptions: requestOptions,
+          response: Response(
+            requestOptions: requestOptions,
+            statusCode: 401,
+            data: {'message': 'Unauthorized'},
+          ),
+        );
+
+        var nextCalled = false;
+        interceptor.onError(
+          dioException,
+          _TestErrorInterceptorHandler(
+            onNext: (err) {
+              nextCalled = true;
+            },
+          ),
+        );
+
+        expect(callbackCount, 1);
+        expect(receivedCode, 'INVALID_TOKEN');
+        expect(nextCalled, isTrue);
+      });
+
+      test(
+        'Matching request revision with AuthSessionTokens instance DOES trigger callback',
+        () {
+          final tokens = AuthSessionTokens();
+          tokens.replace(accessToken: 'token-1'); // revision = 1
+          tokens.clear(); // revision = 2
+          tokens.replace(accessToken: 'token-2'); // revision = 3
+
+          var callbackCount = 0;
+          String? receivedCode;
+          final interceptor = AuthSessionInterceptor(
+            tokens: tokens,
+            onUnauthorizedSession: ({errorCode, serverMessage}) {
+              callbackCount++;
+              receivedCode = errorCode;
+            },
+          );
+
+          final requestOptions = RequestOptions(
+            path: '/test',
+            extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 3},
+          );
+          final dioException = DioException(
+            requestOptions: requestOptions,
+            response: Response(
+              requestOptions: requestOptions,
+              statusCode: 403,
+              data: {'error_code': 'MEMBER_NOT_FOUND'},
+            ),
+          );
+
+          var nextCalled = false;
+          interceptor.onError(
+            dioException,
+            _TestErrorInterceptorHandler(
+              onNext: (err) {
+                nextCalled = true;
+              },
+            ),
+          );
+
+          expect(callbackCount, 1);
+          expect(receivedCode, 'MEMBER_NOT_FOUND');
+          expect(nextCalled, isTrue);
+        },
+      );
     });
   });
 
@@ -314,7 +538,7 @@ void main() {
       () async {
         var unauthorizedTriggered = false;
         final interceptor = AuthSessionInterceptor(
-          onUnauthorizedSession: ({errorCode}) {
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
             unauthorizedTriggered = true;
           },
         );
@@ -349,7 +573,7 @@ void main() {
     test('Dio request yielding 200 does not trigger callback', () async {
       var unauthorizedTriggered = false;
       final interceptor = AuthSessionInterceptor(
-        onUnauthorizedSession: ({errorCode}) {
+        onUnauthorizedSession: ({errorCode, serverMessage}) {
           unauthorizedTriggered = true;
         },
       );

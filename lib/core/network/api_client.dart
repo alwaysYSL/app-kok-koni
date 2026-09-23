@@ -15,7 +15,12 @@ final class ApiClient {
     AuthSessionInterceptor? sessionInterceptor,
     Dio? dio,
   }) : _tokens = tokens, // ignore: prefer_initializing_formals
-       sessionInterceptor = sessionInterceptor ?? AuthSessionInterceptor(),
+       sessionInterceptor =
+           sessionInterceptor ??
+           AuthSessionInterceptor(
+             tokens: tokens,
+             currentRevisionProvider: () => tokens.revision,
+           ),
        _dio = dio ?? Dio(_optionsFor(profile)) {
     profile.validate();
     if (!_dio.interceptors.contains(this.sessionInterceptor)) {
@@ -27,7 +32,9 @@ final class ApiClient {
   final AuthSessionTokens _tokens;
   final AuthSessionInterceptor sessionInterceptor;
 
-  void attachUnauthorizedHandler(void Function({String? errorCode}) handler) {
+  void attachUnauthorizedHandler(
+    void Function({String? errorCode, String? serverMessage}) handler,
+  ) {
     sessionInterceptor.attachUnauthorizedHandler(handler);
   }
 
@@ -93,15 +100,18 @@ final class ApiClient {
   }) {
     final options = source ?? Options();
     final headers = <String, dynamic>{...?options.headers};
+    final extra = <String, dynamic>{...?options.extra};
     if (!skipAuth) {
       final accessToken = _tokens.accessToken;
       if (accessToken != null && accessToken.isNotEmpty) {
         headers['Authorization'] = 'Bearer $accessToken';
+        extra[AuthSessionInterceptor.sessionRevisionExtraKey] =
+            _tokens.revision;
       }
     } else {
       headers.remove('Authorization');
     }
-    return options.copyWith(method: method, headers: headers);
+    return options.copyWith(method: method, headers: headers, extra: extra);
   }
 
   ApiException _mapException(DioException error) {

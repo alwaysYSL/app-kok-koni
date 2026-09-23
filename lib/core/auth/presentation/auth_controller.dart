@@ -187,8 +187,14 @@ class AuthController extends Notifier<AuthState> {
   AuthState build() {
     try {
       final composition = ref.watch(appCompositionProvider);
-      composition.apiClient?.attachUnauthorizedHandler(({errorCode}) {
-        handleUnauthorizedSession();
+      composition.apiClient?.attachUnauthorizedHandler(({
+        errorCode,
+        serverMessage,
+      }) {
+        handleUnauthorizedSession(
+          errorCode: errorCode,
+          serverMessage: serverMessage,
+        );
       });
     } catch (_) {
       // Allows raw ProviderContainer() in unit tests that do not inject AppComposition.
@@ -743,6 +749,8 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<LogoutResult?> handleUnauthorizedSession({
+    String? errorCode,
+    String? serverMessage,
     Duration revocationTimeout = const Duration(seconds: 5),
   }) async {
     if (state is AuthSignedIn ||
