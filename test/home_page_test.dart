@@ -236,7 +236,12 @@ void main() {
       // Total Cabor
       expect(find.text('14'), findsOneWidget);
       expect(find.text('CABOR'), findsOneWidget);
-      expect(find.text('8 klub · 14 atlet'), findsOneWidget);
+      expect(
+        find.text('8 Cabor dengan klub · 14 Cabor dengan atlet'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Cabor dengan klub'), findsWidgets);
+      expect(find.textContaining('Cabor dengan atlet'), findsWidgets);
 
       // Total Klub
       expect(find.text('22'), findsOneWidget);
@@ -333,6 +338,65 @@ void main() {
       expect(find.text('Lisensi pelatih kedaluwarsa'), findsNothing);
       expect(find.textContaining('MODE DEMO'), findsNothing);
       expect(find.textContaining('terverifikasi'), findsNothing);
+      expect(find.text('Data SICABOR'), findsOneWidget);
+      expect(find.textContaining('Terakhir Dimuat'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'HomePage menampilkan label akurat Cabor dengan klub dan Cabor dengan atlet dalam mode remote',
+    (tester) async {
+      const customSummary = ProfileSummary(
+        scope: SicaborScope(
+          subdistrictId: 1728,
+          subdistrictName: 'Tarogong Kidul',
+          districtId: 126,
+          districtName: 'Kabupaten Garut',
+        ),
+        member: SicaborMember(
+          id: 578,
+          username: 'kt.tarogongkidul',
+          name: 'Pak Cecep',
+          type: 'admin_kok',
+          status: 1,
+          statusLabel: 'Koordinator Aktif',
+        ),
+        totalCabor: 14,
+        totalCaborFromClub: 7,
+        totalCaborFromAthlete: 9,
+        totalClub: 20,
+        totalAthlete: 80,
+        totalAthleteWithoutClub: 5,
+      );
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeHomeAuthController(cecepUser),
+            ),
+            profileSummaryProvider.overrideWith((ref) => customSummary),
+            appCompositionProvider.overrideWithValue(composition),
+          ],
+          child: const MaterialApp(home: HomePage()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Cabor dengan klub'), findsWidgets);
+      expect(find.textContaining('Cabor dengan atlet'), findsWidgets);
+      expect(
+        find.text('7 Cabor dengan klub · 9 Cabor dengan atlet'),
+        findsOneWidget,
+      );
+      expect(find.text('20'), findsOneWidget);
+      expect(find.text('80'), findsOneWidget);
+      expect(find.text('Data SICABOR'), findsOneWidget);
+      expect(find.textContaining('Terakhir Dimuat'), findsNothing);
     },
   );
 
@@ -369,9 +433,9 @@ void main() {
   );
 
   testWidgets(
-    'HomePage menampilkan label Terakhir Dimuat dengan format WIB yang jujur',
+    'HomePage menampilkan label Terakhir Dimuat dengan format WIB yang jujur dalam DataMode.demo',
     (tester) async {
-      final composition = await _createTestComposition();
+      final composition = await _createTestComposition(dataMode: DataMode.demo);
 
       await tester.pumpWidget(
         ProviderScope(

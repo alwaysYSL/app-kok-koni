@@ -117,6 +117,10 @@ class _SportsPageState extends ConsumerState<SportsPage> {
                     context,
                     sortedCabors,
                     maxCount,
+                    loadedCount: caborState.items.length,
+                    totalCount: caborState.total > 0
+                        ? caborState.total
+                        : (summary?.totalCabor ?? caborState.items.length),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -292,7 +296,7 @@ class _SportsPageState extends ConsumerState<SportsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Cabang Olahraga Aktif',
+                  'Cabang Olahraga',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -334,8 +338,10 @@ class _SportsPageState extends ConsumerState<SportsPage> {
   Widget _buildHorizontalDistributionCard(
     BuildContext context,
     List<Cabor> sortedCabors,
-    int maxCount,
-  ) {
+    int maxCount, {
+    required int loadedCount,
+    required int totalCount,
+  }) {
     final displayedCabors = _isExpanded
         ? sortedCabors
         : sortedCabors.take(5).toList();
@@ -364,6 +370,15 @@ class _SportsPageState extends ConsumerState<SportsPage> {
               fontWeight: FontWeight.w700,
               color: KokColors.textSecondary,
               letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Berdasarkan cabor yang sudah dimuat ($loadedCount dari $totalCount)',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: KokColors.textSecondary,
             ),
           ),
           const SizedBox(height: 14),

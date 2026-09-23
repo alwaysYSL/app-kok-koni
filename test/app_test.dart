@@ -391,7 +391,7 @@ void main() {
     expect(find.byType(NavigationDestination), findsNWidgets(5));
     await tester.tap(find.text('Cabor'));
     await tester.pumpAndSettle();
-    expect(find.text('Cabang Olahraga'), findsOneWidget);
+    expect(find.text('Cabang Olahraga'), findsWidgets);
     await tester.tap(find.text('Bulu Tangkis').first);
     await tester.pumpAndSettle();
     expect(find.byType(SportDetailPage), findsOneWidget);
@@ -411,7 +411,7 @@ void main() {
     expect(find.byType(SportDetailPage), findsOneWidget);
     await tester.tap(find.byIcon(Icons.chevron_left));
     await tester.pumpAndSettle();
-    expect(find.text('Cabang Olahraga'), findsOneWidget);
+    expect(find.text('Cabang Olahraga'), findsWidgets);
     container.read(routerProvider).go('/committee');
     await tester.pumpAndSettle();
     expect(find.textContaining('Anggota KOK'), findsOneWidget);

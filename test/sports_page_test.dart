@@ -195,7 +195,8 @@ void main() {
         await tester.pumpWidget(buildSubject());
         await tester.pumpAndSettle();
 
-        expect(find.text('Cabang Olahraga Aktif'), findsOneWidget);
+        expect(find.text('Cabang Olahraga'), findsWidgets);
+        expect(find.text('Cabang Olahraga Aktif'), findsNothing);
         expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
         expect(find.text('5 Cabor · 120 Atlet'), findsOneWidget);
         expect(find.text('DIREKTORI CABANG OLAHRAGA'), findsNothing);
@@ -211,8 +212,13 @@ void main() {
         await tester.pumpWidget(buildSubject());
         await tester.pumpAndSettle();
 
-        // Verify distribution chart header
+        // Verify distribution chart header and loaded scope caption
         expect(find.text('SEBARAN ATLET PER CABANG OLAHRAGA'), findsOneWidget);
+        expect(
+          find.text('Berdasarkan cabor yang sudah dimuat (5 dari 5)'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('5 dari 5'), findsOneWidget);
 
         // Verify full sport names are rendered in the distribution card
         expect(find.text('Pencak Silat'), findsWidgets);
@@ -329,9 +335,41 @@ void main() {
         await tester.pumpWidget(buildSubject(summary: customSummary));
         await tester.pumpAndSettle();
 
-        expect(find.text('Cabang Olahraga Aktif'), findsOneWidget);
+        expect(find.text('Cabang Olahraga'), findsWidgets);
+        expect(find.text('Cabang Olahraga Aktif'), findsNothing);
         expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
         expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'distribution chart displays loaded scope correctly for partial paginated list',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final fortyCabors = List.generate(
+          40,
+          (i) => Cabor(
+            id: i + 1,
+            code: 'CB-${(i + 1).toString().padLeft(3, '0')}',
+            name: 'Cabor ${i + 1}',
+            groupName: 'GROUP ${i + 1}',
+            status: 1,
+            statusLabel: 'Aktif',
+            totalClub: (i % 5) + 1,
+            totalAthlete: (40 - i) * 2,
+          ),
+        );
+
+        await tester.pumpWidget(buildSubject(cabors: fortyCabors));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Berdasarkan cabor yang sudah dimuat (25 dari 40)'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('25 dari 40'), findsOneWidget);
       },
     );
 

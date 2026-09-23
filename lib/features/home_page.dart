@@ -382,7 +382,7 @@ class _SummaryCountersCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Terakhir Dimuat: $timeStr WIB',
+                  isDemo ? 'Terakhir Dimuat: $timeStr WIB' : 'Data SICABOR',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -528,7 +528,7 @@ class _SummaryCountersCard extends StatelessWidget {
                   count: '${summary.totalCabor}',
                   label: 'CABOR',
                   subtext:
-                      '${summary.totalCaborFromClub} klub · ${summary.totalCaborFromAthlete} atlet',
+                      '${summary.totalCaborFromClub} Cabor dengan klub · ${summary.totalCaborFromAthlete} Cabor dengan atlet',
                 ),
               ),
               Expanded(
