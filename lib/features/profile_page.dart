@@ -8,6 +8,8 @@ import '../core/config/deployment_profile.dart';
 import '../core/preferences.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
+import '../data/models/profile_summary.dart';
+import '../data/providers/profile_providers.dart';
 import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 
@@ -49,6 +51,10 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final isDemoData = _isDemoDataMode(ref);
+    final profileSummaryAsync = isDemoData
+        ? null
+        : ref.watch(profileSummaryProvider);
+    final summary = profileSummaryAsync?.asData?.value;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,34 +79,101 @@ class ProfilePage extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _ExecutiveProfileCard(user: user),
-          DataView(
-            builder: (data) => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
-                _SyncStatusCard(data: data),
-                _buildSectionHeader('UTILITAS KOORDINATOR'),
-                _MenuTile(
-                  icon: Icons.summarize_outlined,
-                  iconBg: const Color(0xFFE8F0FE),
-                  iconColor: const Color(0xFF1B4F9E),
-                  title: 'Rekap Data Kecamatan',
-                  subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
-                  enabled: user?.hasPermission('reports:export') ?? false,
-                  onTap: () => _showRekapSheet(context, data, user, ref),
-                ),
-                _MenuTile(
-                  icon: Icons.support_agent_rounded,
-                  iconBg: const Color(0xFFD1FAE5),
-                  iconColor: const Color(0xFF059669),
-                  title: 'Helpdesk KONI Kabupaten',
-                  subtitle: 'Kontak koordinasi data dan administrasi KOK',
-                  onTap: () => _showHelpdeskSheet(context, data.helpdesk),
-                ),
-              ],
-            ),
+          _ExecutiveProfileCard(
+            user: user,
+            kontingenName: summary?.kontingen?.name,
           ),
+          if (isDemoData)
+            DataView(
+              builder: (data) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
+                  _SyncStatusCard(data: data),
+                  _buildSectionHeader('UTILITAS KOORDINATOR'),
+                  _MenuTile(
+                    icon: Icons.summarize_outlined,
+                    iconBg: const Color(0xFFE8F0FE),
+                    iconColor: const Color(0xFF1B4F9E),
+                    title: 'Rekap Data Kecamatan',
+                    subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
+                    enabled: user?.hasPermission('reports:export') ?? false,
+                    onTap: () => _showRekapSheet(context, data, user, ref),
+                  ),
+                  _MenuTile(
+                    icon: Icons.support_agent_rounded,
+                    iconBg: const Color(0xFFD1FAE5),
+                    iconColor: const Color(0xFF059669),
+                    title: 'Helpdesk KONI Kabupaten',
+                    subtitle: 'Kontak koordinasi data dan administrasi KOK',
+                    onTap: () => _showHelpdeskSheet(context, data.helpdesk),
+                  ),
+                ],
+              ),
+            )
+          else ...[
+            _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
+            if (profileSummaryAsync != null)
+              profileSummaryAsync.when(
+                data: (summaryData) =>
+                    _RemoteDataSummaryCard(summary: summaryData),
+                loading: () => Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                error: (err, stack) => Container(
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.cloud_off_outlined,
+                        size: 36,
+                        color: KokColors.muted,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Gagal memuat ringkasan data keolahragaan.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF6B7280),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: () => ref.invalidate(profileSummaryProvider),
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            _buildSectionHeader('UTILITAS KOORDINATOR'),
+            _MenuTile(
+              icon: Icons.summarize_outlined,
+              iconBg: const Color(0xFFE8F0FE),
+              iconColor: const Color(0xFF1B4F9E),
+              title: 'Rekap Data Kecamatan',
+              subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
+              enabled:
+                  (user?.hasPermission('reports:export') ?? false) &&
+                  summary != null,
+              onTap: () => _showRemoteRekapSheet(context, summary, user, ref),
+            ),
+          ],
           _buildSectionHeader('PENGATURAN & APLIKASI'),
           _MenuTile(
             icon: Icons.settings_outlined,
@@ -267,6 +340,157 @@ Total Atlet: $atletCount
 Total Pelatih: $pelatihCount
 Total Berkas Belum Lengkap: $missingCount
 Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
+                    final currentUser = ref.read(currentUserProvider);
+                    if (!(currentUser?.hasPermission('reports:export') ??
+                        false)) {
+                      return;
+                    }
+
+                    try {
+                      await Clipboard.setData(ClipboardData(text: summaryText));
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Teks rekapitulasi gagal disalin ke clipboard',
+                            ),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                      return;
+                    }
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Teks rekapitulasi berhasil disalin ke clipboard',
+                          ),
+                          duration: Duration(seconds: 2),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    }
+                    if (sheetContext.mounted) {
+                      Navigator.pop(sheetContext);
+                    }
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 18),
+                  label: const Text('Salin Teks Rekapitulasi'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRemoteRekapSheet(
+    BuildContext context,
+    ProfileSummary? summary,
+    UserPrincipal? user,
+    WidgetRef ref,
+  ) {
+    if (!(user?.hasPermission('reports:export') ?? false)) return;
+    if (summary == null) return;
+
+    final subdistrictName = summary.scope.subdistrictName.isNotEmpty
+        ? summary.scope.subdistrictName
+        : (user?.scope.name.replaceFirst('Kecamatan ', '') ?? 'Garut');
+    final caborCount = summary.totalCabor;
+    final klubCount = summary.totalClub;
+    final atletCount = summary.totalAthlete;
+    final missingClubCount = summary.totalAthleteWithoutClub;
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Rekapitulasi Data KOK $subdistrictName',
+                style: const TextStyle(
+                  fontFamily: 'KokSans',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0C2464),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Ringkasan data keolahragaan wilayah Kecamatan $subdistrictName.',
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: KokColors.background,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE5E7EB)),
+                ),
+                child: Column(
+                  children: [
+                    _MetricRow(
+                      label: 'Cabang Olahraga',
+                      value: '$caborCount Cabor',
+                      icon: Icons.emoji_events_outlined,
+                      iconColor: KokColors.blue,
+                    ),
+                    const Divider(height: 18, color: Color(0xFFE5E7EB)),
+                    _MetricRow(
+                      label: 'Klub Terdaftar',
+                      value: '$klubCount Klub',
+                      icon: Icons.shield_outlined,
+                      iconColor: const Color(0xFF059669),
+                    ),
+                    const Divider(height: 18, color: Color(0xFFE5E7EB)),
+                    _MetricRow(
+                      label: 'Total Atlet Terdata',
+                      value: '$atletCount Atlet',
+                      icon: Icons.directions_run_rounded,
+                      iconColor: const Color(0xFF4338CA),
+                    ),
+                    const Divider(height: 18, color: Color(0xFFE5E7EB)),
+                    _MetricRow(
+                      label: 'Atlet Belum Ada Klub',
+                      value: '$missingClubCount Atlet',
+                      icon: Icons.person_search_outlined,
+                      iconColor: const Color(0xFFD97706),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final timeStr =
+                        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+                    final summaryText =
+                        '''
+REKAPITULASI DATA KECAMATAN ${subdistrictName.toUpperCase()}
+Waktu: $timeStr WIB
+Total Cabang Olahraga: $caborCount
+Total Klub: $klubCount
+Total Atlet: $atletCount
+Total Atlet Belum Ada Klub: $missingClubCount
+Status: Terdaftar pada Sistem SICABOR Kecamatan $subdistrictName''';
                     final currentUser = ref.read(currentUserProvider);
                     if (!(currentUser?.hasPermission('reports:export') ??
                         false)) {
@@ -668,8 +892,9 @@ Status: Terdaftar pada Sistem KOK ${data.scope.name}''';
 }
 
 class _ExecutiveProfileCard extends StatelessWidget {
-  const _ExecutiveProfileCard({this.user});
+  const _ExecutiveProfileCard({this.user, this.kontingenName});
   final UserPrincipal? user;
+  final String? kontingenName;
 
   @override
   Widget build(BuildContext context) {
@@ -757,30 +982,76 @@ class _ExecutiveProfileCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: const Color(0xFFF59E0B),
-                            width: 1,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: const Color(0xFFF59E0B),
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              user?.scope.type == AccessScopeType.county
+                                  ? 'AKSES KABUPATEN'
+                                  : 'AKSES READ-ONLY',
+                              style: const TextStyle(
+                                color: Color(0xFFFBBF24),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
                           ),
-                        ),
-                        child: Text(
-                          user?.scope.type == AccessScopeType.county
-                              ? 'AKSES KABUPATEN'
-                              : 'AKSES READ-ONLY',
-                          style: const TextStyle(
-                            color: Color(0xFFFBBF24),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                          ),
-                        ),
+                          if (kontingenName != null &&
+                              kontingenName!.trim().isNotEmpty)
+                            Container(
+                              constraints: const BoxConstraints(maxWidth: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.35),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.flag_outlined,
+                                    size: 12,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      kontingenName!,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -789,6 +1060,165 @@ class _ExecutiveProfileCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _RemoteDataSummaryCard extends ConsumerWidget {
+  const _RemoteDataSummaryCard({required this.summary});
+
+  final ProfileSummary summary;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: KokColors.ink.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF10B981),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Data Terhubung SICABOR',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    color: KokColors.cardTitle,
+                  ),
+                ),
+              ),
+              Material(
+                color: const Color(0xFFE8F0FE),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  iconSize: 20,
+                  tooltip: 'Muat ulang data',
+                  onPressed: () async {
+                    ref.invalidate(profileSummaryProvider);
+                    try {
+                      await ref.read(profileSummaryProvider.future);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Data berhasil dimuat ulang'),
+                            duration: Duration(seconds: 2),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    } catch (_) {}
+                  },
+                  icon: const Icon(
+                    Icons.sync_rounded,
+                    color: Color(0xFF1B4F9E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: KokColors.background,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              children: [
+                _MetricRow(
+                  label: 'Total Cabor',
+                  value: '${summary.totalCabor} Cabor',
+                  icon: Icons.emoji_events_outlined,
+                  iconColor: KokColors.blue,
+                ),
+                const Divider(height: 16, color: Color(0xFFE5E7EB)),
+                _MetricRow(
+                  label: 'Total Klub',
+                  value: '${summary.totalClub} Klub',
+                  icon: Icons.shield_outlined,
+                  iconColor: const Color(0xFF059669),
+                ),
+                const Divider(height: 16, color: Color(0xFFE5E7EB)),
+                _MetricRow(
+                  label: 'Total Atlet',
+                  value: '${summary.totalAthlete} Atlet',
+                  icon: Icons.directions_run_rounded,
+                  iconColor: const Color(0xFF4338CA),
+                ),
+                const Divider(height: 16, color: Color(0xFFE5E7EB)),
+                _MetricRow(
+                  label: 'Total Atlet Belum Ada Klub',
+                  value: '${summary.totalAthleteWithoutClub} Atlet',
+                  icon: Icons.person_search_outlined,
+                  iconColor: const Color(0xFFD97706),
+                ),
+              ],
+            ),
+          ),
+          if (summary.dataNotes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (final note in summary.dataNotes)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: Color(0xFFB45309),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        note,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF92400E),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

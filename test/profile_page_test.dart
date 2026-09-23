@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kok_app/core/auth/data/dto/sicabor_profile_response.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
@@ -11,7 +12,9 @@ import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
+import 'package:kok_app/data/models/profile_summary.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -129,9 +132,62 @@ final koniKabUser = UserPrincipal(
   },
 );
 
+final testProfileSummary = ProfileSummary(
+  scope: const SicaborScope(
+    districtId: 1728,
+    districtName: 'Garut Kota',
+    subdistrictId: 172801,
+    subdistrictName: 'Garut Kota',
+  ),
+  member: const SicaborMember(
+    id: 1,
+    username: 'asep_kok',
+    name: 'Pak Asep',
+    type: 'KOK',
+    status: 1,
+    statusLabel: 'Koordinator Kecamatan',
+  ),
+  kontingen: const SicaborKontingen(
+    id: 1,
+    code: 'KGPK-0001',
+    name: 'Kontingen Garut Kota',
+  ),
+  totalCabor: 5,
+  totalCaborFromClub: 4,
+  totalCaborFromAthlete: 5,
+  totalClub: 12,
+  totalAthlete: 48,
+  totalAthleteWithoutClub: 3,
+  dataNotes: ['Data atlet dalam proses verifikasi'],
+);
+
+AppComposition buildRemoteTestComposition({AppComposition? base}) {
+  final baseComp = base ?? buildTestAppComposition();
+  return AppComposition(
+    profile: const DeploymentProfile(
+      environment: AppEnv.staging,
+      authMode: AuthMode.remote,
+      dataMode: DataMode.remote,
+      apiBaseUrl: 'https://staging-api.example.test',
+    ),
+    authTokenStorage: baseComp.authTokenStorage,
+    sessionMetadataStore: baseComp.sessionMetadataStore,
+    rememberedUsernameStore: baseComp.rememberedUsernameStore,
+    authRepository: baseComp.authRepository,
+    kokRepository: baseComp.kokRepository,
+    profileService: baseComp.profileService,
+    caborService: baseComp.caborService,
+    athleteService: baseComp.athleteService,
+    clubService: baseComp.clubService,
+    credentialIdGenerator: baseComp.credentialIdGenerator,
+  );
+}
+
 Widget buildTestableProfileWidget({
   required Widget child,
   KokSnapshot? snapshot,
+  ProfileSummary? profileSummary,
+  Future<ProfileSummary> Function(Ref)? profileSummaryOverride,
   SharedPreferences? preferences,
   GoRouter? router,
   UserPrincipal? user,
@@ -206,6 +262,10 @@ Widget buildTestableProfileWidget({
         appCompositionProvider.overrideWithValue(composition),
       authControllerProvider.overrideWith(() => controller),
       snapshotProvider.overrideWith((_) async => snap),
+      if (profileSummaryOverride != null)
+        profileSummaryProvider.overrideWith(profileSummaryOverride)
+      else if (profileSummary != null)
+        profileSummaryProvider.overrideWith((_) async => profileSummary),
       if (preferences != null)
         preferencesProvider.overrideWithValue(preferences),
     ],
@@ -217,6 +277,8 @@ Future<void> pumpProfilePage(
   WidgetTester tester, {
   Widget child = const ProfilePage(),
   KokSnapshot? snapshot,
+  ProfileSummary? profileSummary,
+  Future<ProfileSummary> Function(Ref)? profileSummaryOverride,
   SharedPreferences? preferences,
   GoRouter? router,
   UserPrincipal? user,
@@ -242,6 +304,8 @@ Future<void> pumpProfilePage(
     buildTestableProfileWidget(
       child: child,
       snapshot: snapshot,
+      profileSummary: profileSummary,
+      profileSummaryOverride: profileSummaryOverride,
       preferences: preferences,
       router: appRouter,
       user: user,
@@ -1011,72 +1075,286 @@ void main() {
         );
       },
     );
+  });
 
+  group('ProfilePage Remote Mode Tests', () {
     testWidgets(
-      'renders connected status and omits Mode Demo when composition dataMode is remote',
+      'renders executive profile card with user info and kontingen name from profileSummaryProvider',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
-        final base = buildTestAppComposition();
-        final remoteComposition = AppComposition(
-          profile: const DeploymentProfile(
-            environment: AppEnv.staging,
-            authMode: AuthMode.remote,
-            dataMode: DataMode.remote,
-            apiBaseUrl: 'https://staging-api.example.test',
-          ),
-          authTokenStorage: base.authTokenStorage,
-          sessionMetadataStore: base.sessionMetadataStore,
-          rememberedUsernameStore: base.rememberedUsernameStore,
-          authRepository: base.authRepository,
-          kokRepository: base.kokRepository,
-          profileService: base.profileService,
-          caborService: base.caborService,
-          athleteService: base.athleteService,
-          clubService: base.clubService,
-          credentialIdGenerator: base.credentialIdGenerator,
-        );
+        final remoteComposition = buildRemoteTestComposition();
 
         await pumpProfilePage(
           tester,
           preferences: prefs,
           composition: remoteComposition,
+          profileSummary: testProfileSummary,
         );
 
-        // Omits (Mode Demo) on sync card
+        expect(find.text('PA'), findsOneWidget);
+        expect(find.text('Pak Asep'), findsOneWidget);
         expect(
-          find.text('Terakhir dimuat: 14:30 · 3 entri data'),
+          find.text('Koordinator Kecamatan · Kec. Garut Kota'),
           findsOneWidget,
         );
-        expect(find.textContaining('(Mode Demo)'), findsNothing);
+        expect(find.text('AKSES READ-ONLY'), findsOneWidget);
+        expect(find.text('Kontingen Garut Kota'), findsOneWidget);
+      },
+    );
 
-        // Connected status
-        expect(
-          find.text('Status koneksi: Terhubung dengan SICABOR.'),
-          findsOneWidget,
+    testWidgets(
+      'renders remote data summary card with total stats and data notes',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final remoteComposition = buildRemoteTestComposition();
+
+        await pumpProfilePage(
+          tester,
+          preferences: prefs,
+          composition: remoteComposition,
+          profileSummary: testProfileSummary,
         );
+
+        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+        expect(find.text('Data Terhubung SICABOR'), findsOneWidget);
+
+        // 4 metric tiles
+        expect(find.text('Total Cabor'), findsOneWidget);
+        expect(find.text('5 Cabor'), findsOneWidget);
+        expect(find.text('Total Klub'), findsOneWidget);
+        expect(find.text('12 Klub'), findsOneWidget);
+        expect(find.text('Total Atlet'), findsOneWidget);
+        expect(find.text('48 Atlet'), findsOneWidget);
+        expect(find.text('Total Atlet Belum Ada Klub'), findsOneWidget);
+        expect(find.text('3 Atlet'), findsOneWidget);
+
+        // Data note
+        expect(find.text('Data atlet dalam proses verifikasi'), findsOneWidget);
+      },
+    );
+
+    testWidgets('hides helpdesk and sync status card in remote mode', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final remoteComposition = buildRemoteTestComposition();
+
+      await pumpProfilePage(
+        tester,
+        preferences: prefs,
+        composition: remoteComposition,
+        profileSummary: testProfileSummary,
+      );
+
+      // Helpdesk must be hidden
+      expect(find.text('Helpdesk KONI Kabupaten'), findsNothing);
+      expect(
+        find.text('Kontak koordinasi data dan administrasi KOK'),
+        findsNothing,
+      );
+
+      // Sync card must be hidden
+      expect(find.textContaining('entri data'), findsNothing);
+      expect(find.textContaining('(Mode Demo)'), findsNothing);
+
+      // Remote footer note without demo claim
+      await tester.scrollUntilVisible(
+        find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
+        200,
+      );
+      expect(
+        find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Data demo lokal—belum terhubung dengan SICABOR.'),
+        findsNothing,
+      );
+    });
+
+    testWidgets(
+      'opens remote rekap sheet and copies rekapitulasi text to clipboard for user with reports:export',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final remoteComposition = buildRemoteTestComposition();
+
+        String? copiedText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copiedText =
+                  (call.arguments as Map<Object?, Object?>)['text'] as String?;
+            }
+            return null;
+          },
+        );
+        addTearDown(() {
+          tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          );
+        });
+
+        await pumpProfilePage(
+          tester,
+          preferences: prefs,
+          composition: remoteComposition,
+          profileSummary: testProfileSummary,
+        );
+
+        expect(find.text('UTILITAS KOORDINATOR'), findsOneWidget);
+        expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
+
+        // Tap Rekap Data Kecamatan
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+
+        // Modal should be displayed
+        expect(find.text('Rekapitulasi Data KOK Garut Kota'), findsOneWidget);
         expect(
           find.text(
-            'Status koneksi: Data demo lokal—belum terhubung dengan SICABOR.',
+            'Ringkasan data keolahragaan wilayah Kecamatan Garut Kota.',
           ),
-          findsNothing,
-        );
-
-        // Remote footer note without demo claim
-        await tester.scrollUntilVisible(
-          find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
-          200,
-        );
-        expect(
-          find.text('Hubungi admin kabupaten untuk koordinasi akun.'),
           findsOneWidget,
         );
+        expect(find.text('5 Cabor'), findsNWidgets(2));
+        expect(find.text('12 Klub'), findsNWidgets(2));
+        expect(find.text('48 Atlet'), findsNWidgets(2));
+        expect(find.text('3 Atlet'), findsNWidgets(2));
+
+        // Copy button in modal
+        expect(find.text('Salin Teks Rekapitulasi'), findsOneWidget);
+        await tester.tap(find.text('Salin Teks Rekapitulasi'));
+        await tester.pumpAndSettle();
+
         expect(
-          find.textContaining(
-            'Data demo lokal—belum terhubung dengan SICABOR.',
+          find.text('Teks rekapitulasi berhasil disalin ke clipboard'),
+          findsOneWidget,
+        );
+        expect(copiedText, isNotNull);
+        expect(copiedText, contains('REKAPITULASI DATA KECAMATAN GARUT KOTA'));
+        expect(copiedText, contains('Total Cabang Olahraga: 5'));
+        expect(copiedText, contains('Total Klub: 12'));
+        expect(copiedText, contains('Total Atlet: 48'));
+        expect(copiedText, contains('Total Atlet Belum Ada Klub: 3'));
+        expect(
+          copiedText,
+          contains(
+            'Status: Terdaftar pada Sistem SICABOR Kecamatan Garut Kota',
           ),
-          findsNothing,
         );
       },
     );
+
+    testWidgets(
+      'remote rekap sheet respects reports:export permission for disabled user',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final remoteComposition = buildRemoteTestComposition();
+
+        await pumpProfilePage(
+          tester,
+          user: cecepUser,
+          preferences: prefs,
+          composition: remoteComposition,
+          profileSummary: testProfileSummary,
+        );
+
+        expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
+        expect(
+          find.text('Fitur tidak tersedia untuk peran ini'),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.text('Rekap Data Kecamatan'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Rekapitulasi Data KOK Garut Kota'), findsNothing);
+        expect(find.text('Salin Teks Rekapitulasi'), findsNothing);
+      },
+    );
+
+    testWidgets('settings modal and logout dialog work in remote mode', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final remoteComposition = buildRemoteTestComposition();
+
+      await pumpProfilePage(
+        tester,
+        preferences: prefs,
+        composition: remoteComposition,
+        profileSummary: testProfileSummary,
+      );
+
+      // Test settings sheet
+      expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
+      await tester.tap(find.text('Pengaturan Aplikasi'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pengaturan Aplikasi'), findsWidgets);
+      expect(find.textContaining('Nomor SK diingat'), findsOneWidget);
+      expect(find.text('Hapus nomor SK tersimpan'), findsOneWidget);
+
+      await tester.tap(find.text('Hapus nomor SK tersimpan'));
+      await tester.pumpAndSettle();
+      expect(prefs.containsKey('remembered_sk'), isFalse);
+
+      // Dismiss settings sheet
+      await tester.tapAt(const Offset(20, 20));
+      await tester.pumpAndSettle();
+
+      // Test sign out dialog
+      await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+      await tester.tap(find.text('Keluar dari Akun'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Keluar dari Akun?'), findsOneWidget);
+      await tester.tap(find.text('Batal'));
+      await tester.pumpAndSettle();
+      expect(find.text('Keluar dari Akun?'), findsNothing);
+    });
+
+    testWidgets('remote mode handles loading state', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final remoteComposition = buildRemoteTestComposition();
+      final completer = Completer<ProfileSummary>();
+
+      await tester.pumpWidget(
+        buildTestableProfileWidget(
+          child: const ProfilePage(),
+          preferences: prefs,
+          composition: remoteComposition,
+          profileSummaryOverride: (_) => completer.future,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('remote mode handles error state with retry', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
+      final remoteComposition = buildRemoteTestComposition();
+
+      await tester.pumpWidget(
+        buildTestableProfileWidget(
+          child: const ProfilePage(),
+          preferences: prefs,
+          composition: remoteComposition,
+          profileSummaryOverride: (_) =>
+              Future.error(Exception('Network error')),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.text('Gagal memuat ringkasan data keolahragaan.'),
+        findsOneWidget,
+      );
+      expect(find.text('Coba Lagi'), findsOneWidget);
+    });
   });
 }
