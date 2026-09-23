@@ -205,6 +205,9 @@ class AthletePaginationController extends Notifier<AthletePaginationState> {
     final expectedGen = _generation;
 
     state = state.copyWith(
+      items: const [],
+      total: 0,
+      hasMore: false,
       isLoading: true,
       error: null,
       clearFilterWarning: true,
@@ -240,7 +243,13 @@ class AthletePaginationController extends Notifier<AthletePaginationState> {
           expectedGen != _generation) {
         return;
       }
-      state = state.copyWith(isLoading: false, error: e);
+      state = state.copyWith(
+        isLoading: false,
+        error: e,
+        items: const [],
+        total: 0,
+        hasMore: false,
+      );
     }
   }
 

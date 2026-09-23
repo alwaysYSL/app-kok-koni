@@ -454,6 +454,64 @@ void main() {
       expect(lastSearch, isNull);
     });
 
+    testWidgets(
+      'Fast typing followed by clear (< 500ms) cancels debounce and does not execute discarded query',
+      (tester) async {
+        final executedSearches = <String?>[];
+
+        final mockService = MockClubService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                executedSearches.add(search);
+                return const PaginatedResult(
+                  items: [],
+                  limit: 25,
+                  offset: 0,
+                  total: 0,
+                );
+              },
+        );
+
+        final composition = _createTestComposition(
+          dataMode: DataMode.remote,
+          clubService: mockService,
+        );
+
+        await tester.pumpWidget(
+          _buildTestApp(
+            child: const ClubsPage(),
+            composition: composition,
+            clubService: mockService,
+          ),
+        );
+        await tester.pumpAndSettle();
+        executedSearches.clear();
+
+        // 1. Enter query
+        await tester.enterText(find.byType(TextField), 'DiscardedQuery');
+        await tester.pump(const Duration(milliseconds: 200));
+
+        // 2. Clear within 500ms
+        await tester.tap(find.byTooltip('Hapus pencarian'));
+        await tester.pumpAndSettle();
+
+        // 3. Advance past the original debounce duration
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+
+        // 'DiscardedQuery' must never have been requested
+        expect(executedSearches.contains('DiscardedQuery'), isFalse);
+      },
+    );
+
     testWidgets('Opening sort modal and selecting option updates sort', (
       tester,
     ) async {

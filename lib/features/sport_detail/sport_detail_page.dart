@@ -1430,7 +1430,10 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: TextField(
             controller: _searchController,
-            onChanged: _onSearchChanged,
+            onChanged: (val) {
+              setState(() {});
+              _onSearchChanged(val);
+            },
             decoration: InputDecoration(
               hintText: 'Cari nama atlet...',
               prefixIcon: const Icon(
@@ -1442,8 +1445,10 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
                       onPressed: () {
+                        _debounceTimer?.cancel();
                         _searchController.clear();
                         controller.updateSearch(null);
+                        setState(() {});
                       },
                     )
                   : null,
@@ -1821,7 +1826,10 @@ class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: TextField(
             controller: _searchController,
-            onChanged: _onSearchChanged,
+            onChanged: (val) {
+              setState(() {});
+              _onSearchChanged(val);
+            },
             decoration: InputDecoration(
               hintText: 'Cari nama klub...',
               prefixIcon: const Icon(
@@ -1833,8 +1841,10 @@ class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
                       onPressed: () {
+                        _debounceTimer?.cancel();
                         _searchController.clear();
                         controller.updateSearch(null);
+                        setState(() {});
                       },
                     )
                   : null,

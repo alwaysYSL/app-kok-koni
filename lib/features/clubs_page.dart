@@ -397,6 +397,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                         : IconButton(
                             tooltip: 'Hapus pencarian',
                             onPressed: () {
+                              _remoteDebounceTimer?.cancel();
                               _remoteSearch.clear();
                               controller.updateSearch(null);
                               setState(() {});
@@ -782,6 +783,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
           child: EmptyState(
             message: 'Tidak ada klub yang sesuai dengan filter.',
             onReset: () {
+              _remoteDebounceTimer?.cancel();
               _remoteSearch.clear();
               controller.updateSearch(null);
               controller.updateStatusFilter(null);

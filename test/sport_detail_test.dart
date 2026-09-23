@@ -84,9 +84,11 @@ class _TestAthletePaginationController extends AthletePaginationController {
   _TestAthletePaginationController(
     super.scope, [
     this._initialState = const AthletePaginationState(),
+    this.onSearchUpdated,
   ]);
 
   final AthletePaginationState _initialState;
+  final void Function(String?)? onSearchUpdated;
 
   @override
   AthletePaginationState build() => _initialState;
@@ -99,12 +101,17 @@ class _TestAthletePaginationController extends AthletePaginationController {
 
   @override
   void updateSearch(String? query) {
-    state = state.copyWith(search: query);
+    onSearchUpdated?.call(query);
+    state = query == null
+        ? state.copyWith(clearSearch: true)
+        : state.copyWith(search: query);
   }
 
   @override
   void updateSexFilter(String? sex) {
-    state = state.copyWith(sex: sex);
+    state = sex == null
+        ? state.copyWith(clearSex: true)
+        : state.copyWith(sex: sex);
   }
 }
 
@@ -112,9 +119,11 @@ class _TestClubPaginationController extends ClubPaginationController {
   _TestClubPaginationController(
     super.idCabor, [
     this._initialState = const ClubPaginationState(),
+    this.onSearchUpdated,
   ]);
 
   final ClubPaginationState _initialState;
+  final void Function(String?)? onSearchUpdated;
 
   @override
   ClubPaginationState build() => _initialState;
@@ -127,6 +136,7 @@ class _TestClubPaginationController extends ClubPaginationController {
 
   @override
   void updateSearch(String? query) {
+    onSearchUpdated?.call(query);
     state = query == null
         ? state.copyWith(clearSearch: true)
         : state.copyWith(search: query);
@@ -1407,5 +1417,136 @@ void main() {
       await tester.pumpAndSettle();
       expect(pushedRoute, '/club/88');
     });
+
+    testWidgets(
+      'DataMode.remote: fast typing followed by clear (< 500ms) in clubs tab cancels debounce',
+      (tester) async {
+        final executedSearches = <String?>[];
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(
+                () => _TestClubPaginationController(
+                  42,
+                  const ClubPaginationState(items: [], total: 0),
+                  (q) => executedSearches.add(q),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+        executedSearches.clear();
+
+        // 1. Enter text in search bar of Clubs tab
+        await tester.enterText(
+          find.byType(TextField).first,
+          'DiscardedClubQuery',
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+
+        // 2. Tap clear button (< 500ms)
+        await tester.tap(find.byIcon(Icons.clear));
+        await tester.pumpAndSettle();
+
+        // 3. Advance past original 500ms debounce
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+
+        expect(executedSearches.contains('DiscardedClubQuery'), isFalse);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: fast typing followed by clear (< 500ms) in athletes tab cancels debounce',
+      (tester) async {
+        final executedSearches = <String?>[];
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              athletePaginationProvider((
+                idCabor: 42,
+                idClub: null,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: 42, idClub: null),
+                  const AthletePaginationState(items: [], total: 0),
+                  (q) => executedSearches.add(q),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Athletes tab (Tab index 1)
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
+        executedSearches.clear();
+
+        // 1. Enter text in search bar of Athletes tab
+        await tester.enterText(
+          find.byType(TextField).first,
+          'DiscardedAthleteQuery',
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+
+        // 2. Tap clear button (< 500ms)
+        await tester.tap(find.byIcon(Icons.clear));
+        await tester.pumpAndSettle();
+
+        // 3. Advance past original 500ms debounce
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+
+        expect(executedSearches.contains('DiscardedAthleteQuery'), isFalse);
+      },
+    );
   });
 }

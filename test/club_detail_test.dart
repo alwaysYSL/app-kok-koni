@@ -249,9 +249,11 @@ class _TestAthletePaginationController extends AthletePaginationController {
   _TestAthletePaginationController(
     super.scope, [
     this._initialState = const AthletePaginationState(),
+    this.onSearchUpdated,
   ]);
 
   final AthletePaginationState _initialState;
+  final void Function(String?)? onSearchUpdated;
 
   @override
   AthletePaginationState build() => _initialState;
@@ -264,6 +266,7 @@ class _TestAthletePaginationController extends AthletePaginationController {
 
   @override
   void updateSearch(String? query) {
+    onSearchUpdated?.call(query);
     state = query == null
         ? state.copyWith(clearSearch: true)
         : state.copyWith(search: query);
@@ -874,6 +877,65 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Coba Lagi'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: fast typing followed by clear (< 500ms) in club athletes tab cancels debounce',
+      (tester) async {
+        final executedSearches = <String?>[];
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              dataRequestContextProvider.overrideWithValue(
+                const DataRequestContext(
+                  environment: AppEnv.production,
+                  userId: 'user-1',
+                  scope: testScope,
+                  generation: 1,
+                ),
+              ),
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(items: [], total: 0),
+                  (q) => executedSearches.add(q),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3 (Atlet)
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+        executedSearches.clear();
+
+        // 1. Enter query in search bar of club athletes tab
+        await tester.enterText(
+          find.byType(TextField).first,
+          'DiscardedClubAthleteQuery',
+        );
+        await tester.pump(const Duration(milliseconds: 200));
+
+        // 2. Clear (< 500ms)
+        await tester.tap(find.byIcon(Icons.clear));
+        await tester.pumpAndSettle();
+
+        // 3. Advance 600ms
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+
+        expect(executedSearches.contains('DiscardedClubAthleteQuery'), isFalse);
       },
     );
 

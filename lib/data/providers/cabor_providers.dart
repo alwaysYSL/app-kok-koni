@@ -162,6 +162,9 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
     final expectedGen = _generation;
 
     state = state.copyWith(
+      items: const [],
+      total: 0,
+      hasMore: false,
       isLoading: true,
       error: null,
       source: source,
@@ -193,7 +196,13 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
           expectedGen != _generation) {
         return;
       }
-      state = state.copyWith(isLoading: false, error: e);
+      state = state.copyWith(
+        isLoading: false,
+        error: e,
+        items: const [],
+        total: 0,
+        hasMore: false,
+      );
     }
   }
 

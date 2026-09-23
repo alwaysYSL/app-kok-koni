@@ -450,6 +450,75 @@ void main() {
         expect(state.items.first.name, 'Search Result Club');
       },
     );
+
+    test(
+      'updating filter/search clears old items and total immediately during loading and leaves them empty on error',
+      () async {
+        final completerSearch = Completer<PaginatedResult<Club>>();
+
+        final mockService = _MockClubService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (search == null) {
+                  return PaginatedResult(
+                    items: [_createTestClub(id: 1, name: 'Old Club')],
+                    limit: 25,
+                    offset: 0,
+                    total: 10,
+                  );
+                }
+                return completerSearch.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            clubServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          clubPaginationProvider(null).notifier,
+        );
+        await controller.loadFirstPage();
+
+        final loadedState = container.read(clubPaginationProvider(null));
+        expect(loadedState.items.length, 1);
+        expect(loadedState.total, 10);
+
+        // 1. Trigger search update
+        controller.updateSearch('new_query');
+
+        // Immediately during loading, old items and total must be reset
+        final loadingState = container.read(clubPaginationProvider(null));
+        expect(loadingState.isLoading, isTrue);
+        expect(loadingState.items, isEmpty);
+        expect(loadingState.total, 0);
+        expect(loadingState.hasMore, isFalse);
+
+        // 2. Request fails
+        completerSearch.completeError(Exception('Network error'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // After error, items must remain empty (not reverting to 'Old Club')
+        final errorState = container.read(clubPaginationProvider(null));
+        expect(errorState.isLoading, isFalse);
+        expect(errorState.items, isEmpty);
+        expect(errorState.total, 0);
+        expect(errorState.hasMore, isFalse);
+        expect(errorState.error, isNotNull);
+      },
+    );
   });
 
   group('Pagination Race Condition Tests — AthletePaginationController', () {
@@ -698,6 +767,83 @@ void main() {
         expect(state.items.first.name, 'Search Result Athlete');
       },
     );
+
+    test(
+      'updating filter/search clears old items and total immediately during loading and leaves them empty on error',
+      () async {
+        final completerSearch = Completer<PaginatedResult<Athlete>>();
+
+        final mockService = _MockAthleteService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? idClub,
+                String? sex,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (search == null) {
+                  return PaginatedResult(
+                    items: [_createTestAthlete(id: 1, name: 'Old Athlete')],
+                    limit: 25,
+                    offset: 0,
+                    total: 10,
+                  );
+                }
+                return completerSearch.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            athleteServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          athletePaginationProvider(defaultScope).notifier,
+        );
+        await controller.loadFirstPage();
+
+        final loadedState = container.read(
+          athletePaginationProvider(defaultScope),
+        );
+        expect(loadedState.items.length, 1);
+        expect(loadedState.total, 10);
+
+        // 1. Trigger search update
+        controller.updateSearch('new_query');
+
+        // Immediately during loading, old items and total must be reset
+        final loadingState = container.read(
+          athletePaginationProvider(defaultScope),
+        );
+        expect(loadingState.isLoading, isTrue);
+        expect(loadingState.items, isEmpty);
+        expect(loadingState.total, 0);
+        expect(loadingState.hasMore, isFalse);
+
+        // 2. Request fails
+        completerSearch.completeError(Exception('Network error'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // After error, items must remain empty (not reverting to 'Old Athlete')
+        final errorState = container.read(
+          athletePaginationProvider(defaultScope),
+        );
+        expect(errorState.isLoading, isFalse);
+        expect(errorState.items, isEmpty);
+        expect(errorState.total, 0);
+        expect(errorState.hasMore, isFalse);
+        expect(errorState.error, isNotNull);
+      },
+    );
   });
 
   group('Pagination Race Condition Tests — CaborPaginationController', () {
@@ -912,6 +1058,71 @@ void main() {
         final state = container.read(caborPaginationProvider);
         expect(state.items.length, 1);
         expect(state.items.first.name, 'Search Result Cabor');
+      },
+    );
+
+    test(
+      'updating filter clears old items and total immediately during loading and leaves them empty on error',
+      () async {
+        final completerFetch = Completer<PaginatedResult<Cabor>>();
+
+        final mockService = _MockCaborService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                String source = 'all',
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (source == 'all') {
+                  return PaginatedResult(
+                    items: [_createTestCabor(id: 1, name: 'Old Cabor')],
+                    limit: 25,
+                    offset: 0,
+                    total: 10,
+                  );
+                }
+                return completerFetch.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            caborServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(caborPaginationProvider.notifier);
+        await controller.loadFirstPage();
+
+        final loadedState = container.read(caborPaginationProvider);
+        expect(loadedState.items.length, 1);
+        expect(loadedState.total, 10);
+
+        // 1. Trigger filter update
+        controller.loadFirstPage(source: 'filtered');
+
+        // Immediately during loading, old items and total must be reset
+        final loadingState = container.read(caborPaginationProvider);
+        expect(loadingState.isLoading, isTrue);
+        expect(loadingState.items, isEmpty);
+        expect(loadingState.total, 0);
+        expect(loadingState.hasMore, isFalse);
+
+        // 2. Request fails
+        completerFetch.completeError(Exception('Network error'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // After error, items must remain empty (not reverting to 'Old Cabor')
+        final errorState = container.read(caborPaginationProvider);
+        expect(errorState.isLoading, isFalse);
+        expect(errorState.items, isEmpty);
+        expect(errorState.total, 0);
+        expect(errorState.hasMore, isFalse);
+        expect(errorState.error, isNotNull);
       },
     );
   });

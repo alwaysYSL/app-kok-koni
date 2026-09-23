@@ -1389,7 +1389,10 @@ class _RemoteClubAthletesTabState
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: TextField(
             controller: _searchController,
-            onChanged: _onSearchChanged,
+            onChanged: (val) {
+              setState(() {});
+              _onSearchChanged(val);
+            },
             decoration: InputDecoration(
               hintText: 'Cari nama atlet...',
               prefixIcon: const Icon(
@@ -1401,8 +1404,10 @@ class _RemoteClubAthletesTabState
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
                       onPressed: () {
+                        _debounceTimer?.cancel();
                         _searchController.clear();
                         controller.updateSearch(null);
+                        setState(() {});
                       },
                     )
                   : null,

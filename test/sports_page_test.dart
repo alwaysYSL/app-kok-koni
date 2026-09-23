@@ -23,11 +23,13 @@ class FakeCaborService implements CaborService {
     required this.allCabors,
     this.shouldThrow = false,
     this.errorToThrow,
+    this.onFetch,
   });
 
   final List<Cabor> allCabors;
   final bool shouldThrow;
   final Object? errorToThrow;
+  final Future<PaginatedResult<Cabor>> Function(int limit, int offset)? onFetch;
 
   @override
   Future<PaginatedResult<Cabor>> fetchCaborList({
@@ -37,6 +39,9 @@ class FakeCaborService implements CaborService {
     String sort = 'name',
     RequestCancellation? cancellation,
   }) async {
+    if (onFetch != null) {
+      return onFetch!(limit, offset);
+    }
     if (errorToThrow != null) {
       throw errorToThrow!;
     }
@@ -488,5 +493,70 @@ void main() {
 
       expect(find.text('Belum ada cabang olahraga terdaftar.'), findsOneWidget);
     });
+
+    testWidgets(
+      'retry button reloads first page and displays cabors after initial error',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        var callCount = 0;
+        final fakeService = FakeCaborService(
+          allCabors: sampleCabors,
+          onFetch: (limit, offset) async {
+            callCount++;
+            if (callCount == 1) {
+              throw Exception('Network error');
+            }
+            return PaginatedResult<Cabor>(
+              items: sampleCabors,
+              limit: limit,
+              offset: offset,
+              total: sampleCabors.length,
+            );
+          },
+        );
+
+        final router = GoRouter(
+          initialLocation: '/sports',
+          routes: [
+            GoRoute(path: '/sports', builder: (_, _) => const SportsPage()),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              caborServiceProvider.overrideWithValue(fakeService),
+              profileSummaryProvider.overrideWith((ref) => defaultSummary),
+              dataRequestContextProvider.overrideWithValue(
+                const DataRequestContext(
+                  environment: AppEnv.demo,
+                  userId: 'test_user',
+                  scope: AccessScope(
+                    type: AccessScopeType.district,
+                    id: 'garut_kota',
+                    name: 'Kecamatan Garut Kota',
+                  ),
+                  generation: 1,
+                ),
+              ),
+            ],
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data.'), findsOneWidget);
+        expect(find.text('Pencak Silat'), findsNothing);
+
+        // Tap 'Coba lagi'
+        await tester.tap(find.text('Coba lagi'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data.'), findsNothing);
+        expect(find.text('Pencak Silat'), findsWidgets);
+      },
+    );
   });
 }
