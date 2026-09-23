@@ -1,6 +1,6 @@
 # Status proyek
 
-Terakhir diperbarui: 21 September 2026.
+Terakhir diperbarui: 23 September 2026.
 
 ## Ringkasan
 
@@ -72,10 +72,35 @@ Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KO
 - **Pengujian & Verifikasi**:
   - 687 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
 
+### Milestone 4.1: Hardening Integrasi & Perbaikan Bug (SELESAI)
+- **Pagination Session Reset**: Ketiga pagination controller (`ClubPaginationController`, `AthletePaginationController`, `CaborPaginationController`) menonton `dataRequestContextProvider` di `build()`, otomatis me-reset state saat user switch akun atau logout.
+- **Race Condition Prevention**: Counter generation (`_generation`) pada semua pagination controller memastikan response usang/lambat dari search/filter sebelumnya tidak mengorup state aktif.
+- **Centralized 401/403 Session Expiry**: `AuthSessionInterceptor` pada Dio secara otomatis memicu `handleUnauthorizedSession()` saat token kedaluwarsa (401) atau terjadi error fatal otorisasi (403 `MEMBER_NOT_FOUND`, `MEMBER_INACTIVE`, `NOT_KOK`), langsung mengarahkan user ke login tanpa terdampar di error screen.
+- **Perbaikan Bug Layanan & UI**:
+  - Opsi sort modal `ClubsPage` disesuaikan dengan parameter backend SICABOR (`name`, `code`, `since`, `status`).
+  - Isolasi scope demo: `DemoClubService` dan `DemoAthleteService` tidak lagi membocorkan data antar-kecamatan (throw `NotFoundException` jika di luar scope aktif).
+  - Mapping teks reason code `NOT_RECORDED_IN_SYSTEM` ke *"Belum tercatat di sistem"* pada `ClubDetailPage`.
+  - Perbaikan label hierarki alamat pada `ClubDetailPage` (`subdistrictName` -> "Kecamatan", `districtName` -> "Kabupaten / Kota").
+  - Aksi salin link berkas SK pada profil detail klub.
+
+### Milestone 5: Konsistensi Mode Remote & Audit Halaman (SELESAI)
+- **Shared Placeholder Widget**: Implementasi `RemoteFeaturePlaceholder` sebagai UI fallback standar yang informatif dan konsisten untuk fitur yang belum didukung endpoint server SICABOR.
+- **Pencegahan Crash Halaman Non-Remote**:
+  - `GlobalSearchPage`: Menampilkan `RemoteFeaturePlaceholder` yang mengarahkan user ke pencarian per-entitas (Cabor, Atlet, Klub).
+  - `AttentionPage`: Menampilkan `RemoteFeaturePlaceholder` yang menjelaskan belum adanya modul monitoring kelengkapan berkas di SICABOR.
+  - `CommitteePage`: Menampilkan `RemoteFeaturePlaceholder` yang menjelaskan data anggota KOK belum tersedia di SICABOR.
+- **Migrasi Parsial Halaman Profil (`ProfilePage`)**:
+  - Pada `DataMode.remote`, tidak lagi memanggil `DataView`/`snapshotProvider`.
+  - Mengonsumsi `profileSummaryProvider` untuk menampilkan statistik data keolahragaan (Total Cabor, Total Klub, Total Atlet, Total Atlet Belum Ada Klub), catatan data notes, dan nama kontingen.
+  - Utilitas ekspor rekapitulasi data kecamatan terhubung langsung dengan `ProfileSummary`.
+  - Modul Helpdesk dan Sync Status Card disembunyikan secara bersih pada mode remote.
+- **Pengujian & Verifikasi**:
+  - **740 unit & widget test passing (100% test suite pass, 0 warning/lint issue)**.
+
 ### Milestone Berikutnya (In Progress / Backlog)
-- **Milestone 5: Integrasi Pelatih, Official, dan Profil Keolahragaan Lanjutan**
-  - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management` lanjutan.
-  - Tab Pelatih/Official di `SportDetailPage` dan verifikasi berkas person.
+- **Milestone 6: Integrasi Pelatih, Official, dan Profil Keolahragaan Lanjutan**
+  - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management` lanjutan saat backend SICABOR menyediakannya.
+  - Verifikasi berkas person jika endpoint integrasi dokumen dibuka.
 
 ## Gap sebelum Play Store
 
