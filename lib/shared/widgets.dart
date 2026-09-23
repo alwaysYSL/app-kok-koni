@@ -4,6 +4,8 @@ import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/providers/snapshot_provider.dart';
 
+export 'remote_feature_placeholder.dart';
+
 class DataView extends ConsumerWidget {
   const DataView({super.key, required this.builder});
   final Widget Function(KokSnapshot) builder;

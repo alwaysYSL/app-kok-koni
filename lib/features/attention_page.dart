@@ -1,19 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../core/composition/app_composition.dart';
+import '../core/config/deployment_profile.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../shared/widgets.dart';
 
-class AttentionPage extends StatefulWidget {
+bool _isRemoteMode(WidgetRef ref) {
+  try {
+    return ref.watch(appCompositionProvider).profile.dataMode ==
+        DataMode.remote;
+  } catch (_) {
+    return false;
+  }
+}
+
+class AttentionPage extends ConsumerStatefulWidget {
   const AttentionPage({super.key, this.type});
 
   final String? type;
 
   @override
-  State<AttentionPage> createState() => _AttentionPageState();
+  ConsumerState<AttentionPage> createState() => _AttentionPageState();
 }
 
-class _AttentionPageState extends State<AttentionPage> {
+class _AttentionPageState extends ConsumerState<AttentionPage> {
   late String _type = widget.type ?? 'all';
 
   @override
@@ -184,6 +196,46 @@ class _AttentionPageState extends State<AttentionPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isRemoteMode(ref)) {
+      return Scaffold(
+        backgroundColor: KokColors.background,
+        appBar: AppBar(
+          title: const Text(
+            'Perlu Perhatian',
+            style: TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF17191D),
+            ),
+          ),
+          shape: const Border(
+            bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
+          ),
+          leading: IconButton(
+            icon: const Icon(
+              Icons.chevron_left,
+              size: 28,
+              color: Color(0xFF17191D),
+            ),
+            tooltip: 'Kembali',
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+        ),
+        body: const RemoteFeaturePlaceholder(
+          featureName: 'Perlu Perhatian',
+          description:
+              'Fitur pemantauan kelengkapan berkas dokumen belum tersedia di server SICABOR.',
+          icon: Icons.assignment_late_outlined,
+        ),
+      );
+    }
+
     return DataView(
       builder: (data) {
         final docCount = data.people

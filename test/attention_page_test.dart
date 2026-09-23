@@ -3,15 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/attention_page.dart';
 import 'package:kok_app/shared/widgets.dart';
 
+import 'test_composition.dart';
+
 Widget buildTestableWidget({
   required Widget child,
   KokSnapshot? snapshot,
+  AppComposition? appComposition,
   GoRouter? router,
 }) {
   final snap =
@@ -93,8 +98,14 @@ Widget buildTestableWidget({
         ],
       );
 
+  final overrides = [
+    snapshotProvider.overrideWith((ref) async => snap),
+    if (appComposition != null)
+      appCompositionProvider.overrideWithValue(appComposition),
+  ];
+
   return ProviderScope(
-    overrides: [snapshotProvider.overrideWith((ref) async => snap)],
+    overrides: overrides,
     child: MaterialApp.router(routerConfig: appRouter),
   );
 }
@@ -103,6 +114,7 @@ Future<void> pumpAttentionPage(
   WidgetTester tester, {
   Widget child = const AttentionPage(),
   KokSnapshot? snapshot,
+  AppComposition? appComposition,
   GoRouter? router,
 }) async {
   tester.view.physicalSize = const Size(390, 844);
@@ -134,7 +146,12 @@ Future<void> pumpAttentionPage(
   }
 
   await tester.pumpWidget(
-    buildTestableWidget(child: child, snapshot: snapshot, router: appRouter),
+    buildTestableWidget(
+      child: child,
+      snapshot: snapshot,
+      appComposition: appComposition,
+      router: appRouter,
+    ),
   );
   await tester.pumpAndSettle();
 }
@@ -341,4 +358,34 @@ void main() {
       expect(find.text('Lisensi 5'), findsOneWidget);
     },
   );
+
+  testWidgets('renders RemoteFeaturePlaceholder in remote data mode', (
+    tester,
+  ) async {
+    final remoteComposition = buildTestAppComposition(
+      profile: const DeploymentProfile(
+        environment: AppEnv.staging,
+        authMode: AuthMode.remote,
+        dataMode: DataMode.remote,
+        apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+      ),
+    );
+
+    await pumpAttentionPage(
+      tester,
+      child: const AttentionPage(),
+      appComposition: remoteComposition,
+    );
+
+    expect(find.byType(RemoteFeaturePlaceholder), findsOneWidget);
+    expect(find.text('Perlu Perhatian'), findsWidgets);
+    expect(
+      find.text(
+        'Fitur pemantauan kelengkapan berkas dokumen belum tersedia di server SICABOR.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.assignment_late_outlined), findsOneWidget);
+    expect(find.byType(AttentionCard), findsNothing);
+  });
 }

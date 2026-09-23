@@ -58,14 +58,16 @@ final class _TestCredentialIdGenerator implements CredentialIdGenerator {
   String generate() => 'test-composition-credential';
 }
 
-AppComposition buildTestAppComposition() {
+AppComposition buildTestAppComposition({
+  DeploymentProfile profile = const DeploymentProfile(
+    environment: AppEnv.demo,
+    authMode: AuthMode.demo,
+    dataMode: DataMode.demo,
+  ),
+}) {
   final demoRepo = DemoKokRepository(simulateLatency: false);
   return AppComposition(
-    profile: const DeploymentProfile(
-      environment: AppEnv.demo,
-      authMode: AuthMode.demo,
-      dataMode: DataMode.demo,
-    ),
+    profile: profile,
     authTokenStorage: _TestAuthTokenStorage(),
     sessionMetadataStore: _TestSessionMetadataStore(),
     rememberedUsernameStore: _TestRememberedUsernameStore(),

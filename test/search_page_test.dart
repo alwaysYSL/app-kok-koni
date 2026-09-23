@@ -4,11 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/composition/app_composition.dart';
+import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/theme.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
+import 'package:kok_app/shared/remote_feature_placeholder.dart';
+
+import 'test_composition.dart';
 
 const garutScope = AccessScope(
   type: AccessScopeType.district,
@@ -17,13 +22,18 @@ const garutScope = AccessScope(
 );
 
 Widget createSearchTestApp({
-  required KokSnapshot snapshot,
+  KokSnapshot? snapshot,
+  AppComposition? appComposition,
   void Function(String route)? onNavigated,
 }) {
   final router = GoRouter(
     initialLocation: '/search',
     routes: [
       GoRoute(path: '/search', builder: (_, _) => const GlobalSearchPage()),
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('Home Page')),
+      ),
       GoRoute(
         path: '/person/:id',
         builder: (_, state) {
@@ -55,8 +65,14 @@ Widget createSearchTestApp({
   );
   addTearDown(router.dispose);
 
+  final overrides = [
+    if (snapshot != null) snapshotProvider.overrideWith((_) async => snapshot),
+    if (appComposition != null)
+      appCompositionProvider.overrideWithValue(appComposition),
+  ];
+
   return ProviderScope(
-    overrides: [snapshotProvider.overrideWith((_) async => snapshot)],
+    overrides: overrides,
     child: MaterialApp.router(theme: kokTheme(), routerConfig: router),
   );
 }
@@ -230,6 +246,34 @@ void main() {
 
       expect(find.widgetWithText(TextField, 'Sepak Bola'), findsOneWidget);
       expect(find.textContaining('DITEMUKAN'), findsOneWidget);
+    });
+
+    testWidgets('renders RemoteFeaturePlaceholder in remote data mode', (
+      tester,
+    ) async {
+      final remoteComposition = buildTestAppComposition(
+        profile: const DeploymentProfile(
+          environment: AppEnv.staging,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+        ),
+      );
+
+      await tester.pumpWidget(
+        createSearchTestApp(appComposition: remoteComposition),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RemoteFeaturePlaceholder), findsOneWidget);
+      expect(find.text('Pencarian'), findsOneWidget);
+      expect(find.text('Pencarian Global'), findsOneWidget);
+      expect(
+        find.textContaining('Pencarian lintas entitas belum tersedia'),
+        findsOneWidget,
+      );
+      expect(find.byIcon(Icons.search_off_rounded), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
     });
   });
 }
