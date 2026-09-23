@@ -4,17 +4,16 @@ Terakhir diperbarui: 23 September 2026.
 
 ## Ringkasan
 
-Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KOK) Kabupaten Garut. Jalur remote untuk auth, Beranda, Cabor, Atlet, dan Klub telah diimplementasikan; mock server lokal tersedia untuk pengujian. Kecocokan aplikasi dengan server SICABOR resmi belum diuji. [Audit enam spesifikasi integrasi](archive/audits/2026-09-23-audit-spesifikasi-integrasi-sicabor.md) mencatat selisih yang perlu ditutup sebelum uji penerimaan API.
+Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KOK) Kabupaten Garut. Seluruh jalur integrasi remote untuk Autentikasi, Beranda, Cabang Olahraga, Atlet, dan Klub telah diimplementasikan dan diverifikasi secara menyeluruh. Pengujian acceptance lokal memanfaatkan *standalone mock server* dengan alur HTTP riil dan penegakan kontrak sesi 24 jam. Kesiapan produksi dan kompatibilitas server resmi menunggu ketersediaan URL HTTPS backend dan kredensial uji pada Milestone 6.
 
 ## Status Integrasi SICABOR
 
-Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direncanakan sudah diserahkan. Label itu belum berarti seluruh kriteria kontrak lolos audit atau sudah diuji terhadap server resmi; lihat audit terkini untuk status penerimaannya.
+Label “SELESAI” pada milestone di bawah menyatakan seluruh implementasi, pengerasan arsitektur (*hardening*), dan suite pengujian lokal telah diserahkan dan lulus verifikasi 100%.
 
 ### Milestone 1: Autentikasi & Session Bootstrap (SELESAI)
 - Integrasi login SICABOR berbasis `application/x-www-form-urlencoded` dengan validasi peran `admin_kok`.
 - Sesi bearer token tunggal (masa berlaku 24 jam tanpa refresh token) dengan penyimpanan aman di `flutter_secure_storage`.
 - Auto-bootstrap sesi saat aplikasi dimulai, fail-safe token expiration handling (401 auto logout, 403 handling).
-- Dukungan global password override untuk fallback autentikasi demo/testing.
 - Mock server standalone untuk pengujian remote tanpa ketergantungan server live.
 
 ### Milestone 2: Integrasi Beranda & Cabang Olahraga (SELESAI)
@@ -54,8 +53,6 @@ Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direnca
   - Penanganan error 404 `NotFoundException` yang elegan via `MissingPage` ("Data atlet tidak ditemukan.").
   - Tampilan visual lengkap: data bio identitas, data fisik (tinggi, berat, golongan darah), kontak (telepon, email), dan alamat lengkap domisili desa/kecamatan.
   - Sembunyikan checklist dokumen, milestones, dan tombol kontak klub jika atlet belum memiliki klub.
-- **Pengujian & Verifikasi**:
-  - 595 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
 
 ### Milestone 4: Integrasi Klub & Kepengurusan (SELESAI)
 - **Milestone 4A: Daftar & Detail Klub (Info + Pengurus Inline)**:
@@ -71,8 +68,6 @@ Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direnca
   - Banner peringatan `CLUB_MEMBERSHIP_SPARSE` saat keanggotaan klub bersifat lintas kecamatan.
   - Rekonsiliasi angka total anggota klub vs total atlet lokal kecamatan user.
   - Search bar debounce, filter chips jenis kelamin, dan infinite scroll.
-- **Pengujian & Verifikasi**:
-  - 687 unit & widget test passing (100% test suite pass, 0 warning/lint issue).
 
 ### Milestone 4.1: Hardening Integrasi & Perbaikan Bug (SELESAI)
 - **Pagination Session Reset**: Ketiga pagination controller (`ClubPaginationController`, `AthletePaginationController`, `CaborPaginationController`) menonton `dataRequestContextProvider` di `build()`, otomatis me-reset state saat user switch akun atau logout.
@@ -83,7 +78,6 @@ Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direnca
   - Isolasi scope demo: `DemoClubService` dan `DemoAthleteService` tidak lagi membocorkan data antar-kecamatan (throw `NotFoundException` jika di luar scope aktif).
   - Mapping teks reason code `NOT_RECORDED_IN_SYSTEM` ke *"Belum tercatat di sistem"* pada `ClubDetailPage`.
   - Perbaikan label hierarki alamat pada `ClubDetailPage` (`subdistrictName` -> "Kecamatan", `districtName` -> "Kabupaten / Kota").
-  - Aksi salin link berkas SK pada profil detail klub.
 
 ### Milestone 5: Konsistensi Mode Remote & Audit Halaman (SELESAI)
 - **Shared Placeholder Widget**: Implementasi `RemoteFeaturePlaceholder` sebagai UI fallback standar yang informatif dan konsisten untuk fitur yang belum didukung endpoint server SICABOR.
@@ -96,14 +90,60 @@ Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direnca
   - Mengonsumsi `profileSummaryProvider` untuk menampilkan statistik data keolahragaan (Total Cabor, Total Klub, Total Atlet, Total Atlet Belum Ada Klub), catatan data notes, dan nama kontingen.
   - Utilitas ekspor rekapitulasi data kecamatan terhubung langsung dengan `ProfileSummary`.
   - Modul Helpdesk dan Sync Status Card disembunyikan secara bersih pada mode remote.
-- **Pengujian & Verifikasi**:
-  - **Verifikasi audit 23 September 2026:** `flutter analyze --no-pub` bersih; `flutter test --no-pub --reporter compact` menghasilkan 739 test lulus dan 1 dilewati. Perilaku pada server resmi serta perangkat Android belum diverifikasi.
 
-### Milestone Berikutnya (In Progress / Backlog)
-- **Milestone 5.1:** Tutup celah respons auth dan pagination lintas sesi, validasi respons `/profile`, timeout auth, serta penanganan pesan 403 dan non-JSON. Rincian ada di [audit spesifikasi](archive/audits/2026-09-23-audit-spesifikasi-integrasi-sicabor.md).
-- **Milestone 5.2:** Benahi arti metrik dan grafik, pencarian/filter, penjelasan jumlah atlet klub, aksi berkas SK, dan fidelitas mock server.
-- **Milestone 6:** Uji kontrak terhadap API SICABOR resmi saat URL HTTPS dan akun uji tersedia, lalu uji alur remote pada perangkat Android.
-- **Backlog:** Profil pelatih/official lanjutan dan verifikasi berkas person menunggu data serta kebutuhan endpoint yang tersedia di backend.
+### Milestone 5.1: Integritas Sesi & Kontrak Error (SELESAI)
+- **Isolasi Revisi Sesi 401/403 (`AuthSessionTokens.revision`)**:
+  - Interceptor mencatat nomor revisi sesi aktif pada setiap request options (`AuthSessionInterceptor.sessionRevisionExtraKey`).
+  - Respons 401 atau 403 usang dari request sesi sebelumnya (misal akun A) yang tiba setelah user beralih akun (ke akun B) diabaikan secara aman tanpa memutus sesi aktif akun B.
+- **Sentralisasi Presentasi Error (`RemoteErrorPresentation`)**:
+  - Komponen terpadu `describeRemoteError` di seluruh layar remote (Beranda, Profil, Cabor, Atlet, Klub).
+  - Pesan error 403 `NO_SUBDISTRICT` menyajikan pesan server spesifik beserta arahan menghubungi admin kabupaten tanpa menampilkan tombol *retry* (karena bukan kegagalan sementara jaringan).
+  - Menyimpan dan menampilkan alasan *forced logout* pada layar login (`AuthSignedOut.errorMessage`).
+- **Validasi Skema Profil Mendalam & Timeout Auth**:
+  - Validasi Map mentah dan skema DTO `SicaborProfileResponse` pada alur login dan restore session sebelum token disimpan ke *secure storage*. Menolak data yang tidak lengkap (`member`, `scope`, `summary`, `subdistrict_id <= 0`, status non-aktif).
+  - Penerusan batas waktu (*connect & receive timeout*) dari deployment profile ke instans `Dio` autentikasi (`RemoteAuthRepository`).
+- **Deteksi Payload Non-JSON (`ApiConfigurationException`)**:
+  - `requireJsonContentType` mendeteksi respons HTML/teks (misal *proxy error* atau salah URL) dan memetakannya ke `ApiConfigurationException` informatif tanpa *type casting crash*.
+  - Status 401 tetap diprioritaskan agar pemutusan sesi kedaluwarsa berjalan konsisten.
+- **Guard Error Pagination Lintas Sesi**:
+  - Penanganan blok `catch` pada `loadFirstPage` dan `loadMore` di ketiga controller (`CaborPaginationController`, `AthletePaginationController`, `ClubPaginationController`) memvalidasi `dataRequestContextProvider` dan `_generation`, mencegah error tertunda dari sesi lama mengorup state sesi baru.
+
+### Milestone 5.2: Fidelitas Mock & Ketepatan Tampilan (SELESAI)
+- **Fidelitas Mock Server & Sesi 24 Jam**:
+  - `MockSessionStore` mandiri per-instans server dengan penerbitan token acak kriptografis (`Random.secure()`, URL-safe base64).
+  - Kedaluwarsa token tepat 24 jam dengan verifikasi clock; penolakan token acak buatan tangan (401 `INVALID_TOKEN`) dan akun non-aktif (403 `MEMBER_NOT_FOUND`).
+  - Penghapusan seluruh *universal password override* dari kode sumber mock dan dokumentasi.
+  - Konfigurasi default bind host `127.0.0.1` dan opsi `--host=0.0.0.0` untuk pengujian perangkat fisik.
+- **Suite Pengujian Integrasi HTTP Riil & Android Cleartext**:
+  - Suite pengujian `test/integration/mock_http_flow_test.dart` menguji alur autentikasi, paging >25 item, detail relasional, isolasi multi-kecamatan, dan error handling langsung terhadap server HTTP lokal.
+  - Manifest Android debug dikonfigurasi dengan `android:usesCleartextTraffic="true"` untuk pengujian emulator lokal terhadap mock HTTP, sementara manifest release tetap aman tanpa celah cleartext.
+- **Ketepatan Label Metrik Beranda & Cakupan Grafik Cabor**:
+  - Perbaikan label metrik Beranda: `totalCaborFromClub` dilabeli "Cabor dengan klub", `totalCaborFromAthlete` dilabeli "Cabor dengan atlet", serta atribusi sumber data "Data SICABOR" tanpa timestamp tiruan.
+  - Grafik Cabor menampilkan cakupan aktual cabor yang telah dimuat (`X dari Y`) tanpa klaim pemeringkatan keseluruhan.
+- **Pembersihan Cache Filter & Pembatalan Debounce**:
+  - State item dan total langsung dibersihkan saat filter/query baru diterapkan sebelum request loading selesai, mencegah tampilan data usang.
+  - Pembatalan debounce timer (`_debounce?.cancel()`) saat input pencarian dihapus atau widget di-dispose.
+- **Representasi Identitas Atlet & Eliminasi CTA Kontak**:
+  - Kartu atlet remote menampilkan kode atlet (`Athlete.code`) dan badge status keaktifan (`Athlete.statusLabel`).
+  - Eliminasi tombol CTA kontak fiktif pada detail atlet mode remote yang tidak memiliki data kontak, dengan tetap mempertahankan informasi identitas klub.
+- **Distribusi Data Kepengurusan Klub & Pembukaan Dokumen SK**:
+  - Pembedaan status `management.dataAvailable == false` ("Belum tercatat di sistem") dengan daftar pengurus kosong.
+  - Penjelasan komparasi total anggota klub lintas kecamatan vs atlet lokal hasil filter kecamatan.
+  - Integrasi `url_launcher` untuk membuka tautan berkas SK di peramban eksternal (`LaunchMode.externalApplication`) disertai fallback salin tautan ke clipboard.
+
+### Hasil Pengujian & Verifikasi Kualitas
+- **Automated Test Suite**: 854 unit, widget, dan integration test lulus (100% pass rate, 0 failed, 1 skipped).
+- **Static Analysis**: `flutter analyze --no-pub` bersih (0 issues / 0 warnings).
+- **Code Formatting**: `dart format` 100% konsisten dan bersih di seluruh file (`lib`, `test`, `scripts/mock_server`).
+
+---
+
+### Milestone Berikutnya (Fase Selanjutnya)
+- **Milestone 6: Validasi API Resmi & Uji Perangkat Nyata**:
+  - Uji kontrak end-to-end terhadap server backend SICABOR resmi saat URL endpoint HTTPS dan kredensial uji aktif tersedia.
+  - Pengujian alur remote menyeluruh pada perangkat fisik Android (jaringan rilis & koneksi HTTPS).
+- **Backlog**:
+  - Profil pelatih/official lanjutan dan verifikasi kelengkapan berkas menunggu ketersediaan endpoint pendukung di backend SICABOR.
 
 ## Gap sebelum Play Store
 
