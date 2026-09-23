@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/composition/app_composition.dart';
 import '../../core/config/deployment_profile.dart';
@@ -625,14 +626,48 @@ class _RemoteHeaderBadge extends StatelessWidget {
   );
 }
 
-class _RemoteClubInfoTab extends StatelessWidget {
+typedef UrlLauncherFn = Future<bool> Function(Uri uri, {LaunchMode mode});
+
+final urlLauncherProvider = Provider<UrlLauncherFn>((ref) => launchUrl);
+
+Future<void> launchDocumentUrl(
+  BuildContext context,
+  String? rawUrl, {
+  UrlLauncherFn launcher = launchUrl,
+}) async {
+  if (rawUrl == null || rawUrl.trim().isEmpty) return;
+  final trimmed = rawUrl.trim();
+  final uri = Uri.tryParse(trimmed);
+  final isValid =
+      uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty;
+
+  var launched = false;
+  if (isValid) {
+    try {
+      launched = await launcher(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      launched = false;
+    }
+  }
+
+  if (!launched && context.mounted) {
+    unawaited(Clipboard.setData(ClipboardData(text: trimmed)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Tautan berkas SK disalin ke papan klip')),
+    );
+  }
+}
+
+class _RemoteClubInfoTab extends ConsumerWidget {
   const _RemoteClubInfoTab({required this.detail, required this.palette});
 
   final domain_detail.ClubDetail detail;
   final ClubBrandPalette palette;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       child: Column(
@@ -688,18 +723,11 @@ class _RemoteClubInfoTab extends StatelessWidget {
                         tooltip: 'Salin / Buka tautan berkas SK',
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: detail.fileSkUrl!),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Tautan berkas SK disalin ke papan klip',
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: () => launchDocumentUrl(
+                          context,
+                          detail.fileSkUrl,
+                          launcher: ref.read(urlLauncherProvider),
+                        ),
                       )
                     : null,
               ),
@@ -970,7 +998,7 @@ class _RemoteClubPengurusTab extends StatelessWidget {
                   ),
                 ),
               ),
-              if (mgmt.partial)
+              if (mgmt.dataAvailable && mgmt.partial)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -992,7 +1020,7 @@ class _RemoteClubPengurusTab extends StatelessWidget {
                 ),
             ],
           ),
-          if (mgmt.partial) ...[
+          if (mgmt.dataAvailable && mgmt.partial) ...[
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(10),
@@ -1020,7 +1048,9 @@ class _RemoteClubPengurusTab extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          if (mgmt.items.isEmpty)
+          if (!mgmt.dataAvailable)
+            const _UnavailableNotice(message: 'Belum tercatat di sistem')
+          else if (mgmt.items.isEmpty)
             const Text(
               'Belum ada data kepengurusan.',
               style: TextStyle(
@@ -1495,12 +1525,12 @@ class _RemoteClubAthletesTabState
             ),
           ),
 
-        // Reconciliation info / note if widget.club.totalAthleteInClub > state.total
-        if (widget.club.totalAthleteInClub > state.total)
+        // Subtitle / info header explaining counts
+        if (!state.isLoading)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              'Menampilkan ${state.total} atlet dari wilayah Anda (Total ${widget.club.totalAthleteInClub} atlet terdaftar di klub)',
+              'Hasil filter wilayah ini: ${state.total} atlet (Total atlet terdaftar di klub: ${widget.club.totalAthleteInClub})',
               style: const TextStyle(
                 fontSize: 12,
                 color: KokColors.muted,

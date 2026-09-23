@@ -138,6 +138,50 @@ final class ClubDetail {
   final ClubPersonnelBlock coaches;
   final ClubManagementBlock management;
 
+  ClubDetail copyWith({
+    int? id,
+    String? code,
+    String? name,
+    String? logoUrl,
+    ClubCabor? cabor,
+    String? headName,
+    String? phone,
+    String? email,
+    String? since,
+    String? noSk,
+    int? status,
+    String? statusLabel,
+    ClubAddress? secretariat,
+    int? totalAthleteInClub,
+    ClubAddress? training,
+    String? fileSkUrl,
+    ClubPersonnelBlock? officials,
+    ClubPersonnelBlock? coaches,
+    ClubManagementBlock? management,
+  }) {
+    return ClubDetail(
+      id: id ?? this.id,
+      code: code ?? this.code,
+      name: name ?? this.name,
+      logoUrl: logoUrl ?? this.logoUrl,
+      cabor: cabor ?? this.cabor,
+      headName: headName ?? this.headName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      since: since ?? this.since,
+      noSk: noSk ?? this.noSk,
+      status: status ?? this.status,
+      statusLabel: statusLabel ?? this.statusLabel,
+      secretariat: secretariat ?? this.secretariat,
+      totalAthleteInClub: totalAthleteInClub ?? this.totalAthleteInClub,
+      training: training ?? this.training,
+      fileSkUrl: fileSkUrl ?? this.fileSkUrl,
+      officials: officials ?? this.officials,
+      coaches: coaches ?? this.coaches,
+      management: management ?? this.management,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

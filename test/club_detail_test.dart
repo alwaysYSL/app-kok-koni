@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
@@ -373,6 +374,9 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
+        Uri? launchedUri;
+        LaunchMode? launchedMode;
+
         await tester.pumpWidget(
           createRemoteTestApp(
             initialLocation: '/club/10',
@@ -380,6 +384,14 @@ void main() {
               clubDetailProvider(
                 10,
               ).overrideWith((ref) async => sampleRemoteClubDetail),
+              urlLauncherProvider.overrideWithValue((
+                uri, {
+                mode = LaunchMode.platformDefault,
+              }) async {
+                launchedUri = uri;
+                launchedMode = mode;
+                return true;
+              }),
             ],
           ),
         );
@@ -397,14 +409,14 @@ void main() {
         expect(find.text('Berkas tersedia'), findsOneWidget);
         expect(find.byTooltip('Salin / Buka tautan berkas SK'), findsOneWidget);
 
-        // Tap SK action button
+        // Tap SK action button -> external browser launch
         await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
         expect(
-          find.text('Tautan berkas SK disalin ke papan klip'),
-          findsOneWidget,
+          launchedUri?.toString(),
+          'https://files.example.test/sk-garuda.pdf',
         );
+        expect(launchedMode, LaunchMode.externalApplication);
 
         // 3. Kontak section
         expect(find.text('Kontak'), findsOneWidget);
@@ -430,6 +442,85 @@ void main() {
         // 5. Total Anggota section
         expect(find.text('Total Anggota'), findsOneWidget);
         expect(find.text('42 Atlet'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Tab 1 (Info) falls back to copy link and SnackBar when opening SK fails or launcher returns false',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              urlLauncherProvider.overrideWithValue(
+                (uri, {mode = LaunchMode.platformDefault}) async => false,
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(
+          find.text('Tautan berkas SK disalin ke papan klip'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Tab 1 (Info) falls back to copy link and SnackBar when SK URL is invalid without calling launcher',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        var launcherCalled = false;
+        final invalidUrlClub = sampleRemoteClubDetail.copyWith(
+          fileSkUrl: 'not-a-valid-http-url',
+        );
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => invalidUrlClub),
+              urlLauncherProvider.overrideWithValue((
+                uri, {
+                mode = LaunchMode.platformDefault,
+              }) async {
+                launcherCalled = true;
+                return true;
+              }),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
+        await tester.pump();
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(launcherCalled, isFalse);
+        expect(
+          find.text('Tautan berkas SK disalin ke papan klip'),
+          findsOneWidget,
+        );
       },
     );
 
@@ -509,6 +600,39 @@ void main() {
     );
 
     testWidgets(
+      'Tab 2 (Pengurus) renders "Belum tercatat di sistem" when management dataAvailable is false',
+      (tester) async {
+        final unrecordedClub = sampleRemoteClubDetail.copyWith(
+          management: const ClubManagementBlock(
+            dataAvailable: false,
+            partial: false,
+            items: [],
+          ),
+        );
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => unrecordedClub),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 2
+        await tester.tap(find.text('Pengurus'));
+        await tester.pumpAndSettle();
+
+        // Management section should show "Belum tercatat di sistem"
+        expect(find.text('Struktur Kepengurusan'), findsOneWidget);
+        expect(find.text('Belum tercatat di sistem'), findsWidgets);
+        expect(find.text('Data Parsial'), findsNothing);
+      },
+    );
+
+    testWidgets(
       'Tab 2 (Pengurus) renders available officials and coaches when dataAvailable is true',
       (tester) async {
         await tester.pumpWidget(
@@ -527,7 +651,7 @@ void main() {
         await tester.tap(find.text('Pengurus'));
         await tester.pumpAndSettle();
 
-        // Management is empty
+        // Management is empty with dataAvailable true -> displays standard empty state
         expect(find.text('Belum ada data kepengurusan.'), findsOneWidget);
         expect(find.text('Data Parsial'), findsNothing);
 
@@ -684,7 +808,7 @@ void main() {
         // sampleRemoteClubDetail has totalAthleteInClub: 42, state.total: 2
         expect(
           find.text(
-            'Menampilkan 2 atlet dari wilayah Anda (Total 42 atlet terdaftar di klub)',
+            'Hasil filter wilayah ini: 2 atlet (Total atlet terdaftar di klub: 42)',
           ),
           findsOneWidget,
         );
