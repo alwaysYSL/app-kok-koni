@@ -98,8 +98,14 @@ final class AppComposition {
       authRepo = DemoAuthRepository(simulateLatency: false);
     } else {
       final client = ApiClient(profile: profile, tokens: bridge);
+      final authDio = Dio(
+        BaseOptions(
+          connectTimeout: profile.connectTimeout,
+          receiveTimeout: profile.receiveTimeout,
+        ),
+      );
       final remoteAuthRepository = RemoteAuthRepository(
-        dio: Dio(),
+        dio: authDio,
         profile: profile,
       );
       apiClient = client;

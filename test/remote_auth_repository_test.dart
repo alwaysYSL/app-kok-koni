@@ -523,49 +523,528 @@ void main() {
     });
   });
 
-  group('RemoteAuthRepository - URL Resolution', () {
-    test('menangani base URL dengan dan tanpa trailing slashes', () async {
-      final urlsTested = <String>[];
-      final dio = Dio()
-        ..httpClientAdapter = _MockHttpAdapter((options) async {
-          urlsTested.add(options.uri.toString());
-          if (options.uri.path == '/api/auth') {
+  group('RemoteAuthRepository - Profile Response Validation', () {
+    test(
+      'login gagal jika profil tidak memiliki field scope (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
             return ResponseBody.fromString(
-              sampleLoginSuccessJson,
+              '{"success":true,"message":"OK","data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":1,"total_cabor_from_club":0,"total_cabor_from_athlete":1,"total_club":0,"total_athlete":1,"total_athlete_without_club":1}}}',
               200,
               headers: {
                 Headers.contentTypeHeader: ['application/json'],
               },
             );
-          }
-          return ResponseBody.fromString(
-            sampleProfileSuccessJson,
-            200,
-            headers: {
-              Headers.contentTypeHeader: ['application/json'],
-            },
-          );
-        });
+          });
 
-      const profileWithSlash = DeploymentProfile(
-        environment: AppEnv.staging,
-        authMode: AuthMode.remote,
-        dataMode: DataMode.remote,
-        apiBaseUrl: 'https://sicabor.test/api/v1/kok/',
-      );
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
 
-      final repo = RemoteAuthRepository(dio: dio, profile: profileWithSlash);
-      await repo.login(
-        username: 'kt.garutkota',
-        password: 'pw',
-        staySignedIn: true,
-      );
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
 
-      expect(urlsTested, [
-        'https://sicabor.test/api/auth',
-        'https://sicabor.test/api/v1/kok/profile',
-      ]);
-    });
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika profil tidak memiliki field data (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika data profil tidak memiliki map member (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika data profil tidak memiliki map summary (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika member.id bernilai 0 (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":0,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika member.username kosong (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"   ","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika member.name kosong (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika member.type profil bukan admin_kok (AccountNotKokFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"cabor","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<AccountNotKokFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika member.status profil bukan 1 (AccountInactiveFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":0,"status_label":"Nonaktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<AccountInactiveFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika scope.subdistrict_id bernilai 0 (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":0,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal jika scope.subdistrict_name kosong (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"  ","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal jika profil tidak memiliki field scope (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":1,"total_cabor_from_club":0,"total_cabor_from_athlete":1,"total_club":0,"total_athlete":1,"total_athlete_without_club":1}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal jika member.type profil bukan admin_kok (AccountNotKokFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"cabor","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<AccountNotKokFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal jika member.status profil bukan 1 (AccountInactiveFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":0,"status_label":"Nonaktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<AccountInactiveFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal jika scope.subdistrict_id bernilai 0 (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":0,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":0,"total_cabor_from_club":0,"total_cabor_from_athlete":0,"total_club":0,"total_athlete":0,"total_athlete_without_club":0}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login timeout saat memanggil endpoint profile menghasilkan NetworkTimeoutFailure',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            throw DioException(
+              requestOptions: options,
+              type: DioExceptionType.connectionTimeout,
+              message: 'Connection timeout on profile',
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<NetworkTimeoutFailure>());
+      },
+    );
   });
 }
 

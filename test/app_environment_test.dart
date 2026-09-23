@@ -363,6 +363,37 @@ void main() {
       },
     );
 
+    test(
+      'fromProfile configures connectTimeout and receiveTimeout on auth Dio in RemoteAuthRepository',
+      () {
+        const customProfile = DeploymentProfile(
+          environment: AppEnv.staging,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://api.example.test',
+          connectTimeout: Duration(seconds: 7),
+          receiveTimeout: Duration(seconds: 14),
+        );
+
+        final composition = AppComposition.fromProfile(
+          customProfile,
+          preferences: prefs,
+          secureStore: secureStore,
+        );
+
+        expect(composition.authRepository, isA<RemoteAuthRepository>());
+        final remoteRepo = composition.authRepository as RemoteAuthRepository;
+        expect(
+          remoteRepo.dio.options.connectTimeout,
+          const Duration(seconds: 7),
+        );
+        expect(
+          remoteRepo.dio.options.receiveTimeout,
+          const Duration(seconds: 14),
+        );
+      },
+    );
+
     test('fromProfile validates profile before composition', () {
       const invalidProfile = DeploymentProfile(
         environment: AppEnv.demo,

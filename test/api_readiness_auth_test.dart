@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/auth_repository.dart';
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
 import 'package:kok_app/core/auth/data/session_metadata_store.dart';
+import 'package:kok_app/core/auth/domain/auth_failure.dart';
 import 'package:kok_app/core/auth/domain/auth_state.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
@@ -123,6 +124,59 @@ void main() {
     expect(state1, equals(state3));
     expect(state1.hashCode, equals(state3.hashCode));
   });
+
+  test(
+    'login gagal karena validasi profil tidak mengupdate session tokens bridge',
+    () async {
+      final storage = _MemoryTokenStorage();
+      final container = createTestProviderContainer(
+        overrides: [
+          authRepositoryProvider.overrideWithValue(
+            _FailingProfileAuthRepository(),
+          ),
+          authTokenStorageProvider.overrideWithValue(storage),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      final result = await controller.login(
+        username: 'DEMO-001',
+        password: 'password',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(
+        result.errorMessage,
+        equals('Gagal memuat data profil akun dari server.'),
+      );
+      final tokens = container.read(sessionTokensProvider);
+      expect(tokens.accessToken, isNull);
+      expect(tokens.sessionToken, isNull);
+      expect(await storage.read(), isNull);
+    },
+  );
+}
+
+final class _FailingProfileAuthRepository implements AuthRepository {
+  @override
+  Future<AuthResult> login({
+    required String username,
+    required String password,
+    required bool staySignedIn,
+  }) async => const AuthResult.failed(ProfileFetchFailedFailure());
+
+  @override
+  Future<AuthResult> restoreSession(String sessionToken) async =>
+      const AuthResult.failed(ProfileFetchFailedFailure());
+
+  @override
+  Future<RemoteRevocationResult> revokeSession(
+    RemoteSessionHandle session,
+  ) async => const RemoteRevocationResult(RemoteRevocationStatus.notApplicable);
 }
 
 final class _TokenAuthRepository implements AuthRepository {

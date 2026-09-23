@@ -3333,4 +3333,125 @@ void main() {
       expect((state as AuthSignedOut).errorMessage, isNull);
     });
   });
+
+  group('AuthController - Profile Validation Failure Integration', () {
+    test(
+      'login gagal jika validasi profil gagal (ProfileFetchFailedFailure): tidak commit token ke storage dan state tetap AuthSignedOut',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final repo = CompleterAuthRepository(
+          loginResult: const AuthResult.failed(ProfileFetchFailedFailure()),
+        );
+
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(repo),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final result = await controller.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+          rememberUsername: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(
+          result.errorMessage,
+          equals('Gagal memuat data profil akun dari server.'),
+        );
+
+        final state = container.read(authControllerProvider);
+        expect(state, isA<AuthSignedOut>());
+        expect(storage.credential, isNull);
+        expect(storage.writeCallCount, equals(0));
+      },
+    );
+
+    test(
+      'login gagal jika profil bukan admin_kok (AccountNotKokFailure): tidak commit token',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final repo = CompleterAuthRepository(
+          loginResult: const AuthResult.failed(AccountNotKokFailure()),
+        );
+
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(repo),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final result = await controller.login(
+          username: 'cabor.user',
+          password: 'password123',
+          staySignedIn: true,
+          rememberUsername: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(
+          result.errorMessage,
+          equals('Akun ini bukan akun KOK dan tidak memiliki akses.'),
+        );
+
+        final state = container.read(authControllerProvider);
+        expect(state, isA<AuthSignedOut>());
+        expect(storage.credential, isNull);
+        expect(storage.writeCallCount, equals(0));
+      },
+    );
+
+    test(
+      'restoreSession gagal jika validasi profil gagal: menghapus sesi lokal dan transisi ke AuthSignedOut',
+      () async {
+        final storage = FakeAuthTokenStorage(
+          credential: StoredCredential(
+            credentialId: 'cred-invalid-profile',
+            sessionToken: 'token-invalid-profile',
+          ),
+        );
+        final metadataStore = FakeSessionMetadataStore(
+          metadata: SessionMetadata.restoreEnabled('cred-invalid-profile'),
+        );
+        final repo = ControlledAuthRepo(
+          restoreResult: const AuthResult.failed(ProfileFetchFailedFailure()),
+        );
+
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(repo),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+
+        final state = container.read(authControllerProvider);
+        expect(state, isA<AuthSignedOut>());
+        expect(storage.credential, isNull);
+      },
+    );
+  });
 }

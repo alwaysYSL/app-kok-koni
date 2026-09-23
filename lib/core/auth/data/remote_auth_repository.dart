@@ -81,7 +81,11 @@ final class RemoteAuthRepository implements AuthRepository {
     }
 
     final profileData = profileResponse.data;
-    if (profileData is! Map<String, dynamic>) {
+    if (profileData is! Map<String, dynamic> ||
+        profileData['scope'] is! Map ||
+        profileData['data'] is! Map ||
+        (profileData['data'] as Map)['member'] is! Map ||
+        (profileData['data'] as Map)['summary'] is! Map) {
       return const AuthResult.failed(ProfileFetchFailedFailure());
     }
 
@@ -94,6 +98,11 @@ final class RemoteAuthRepository implements AuthRepository {
               : 'Gagal memuat data profil akun dari server.',
         ),
       );
+    }
+
+    final validationError = _validateProfile(profileRes);
+    if (validationError != null) {
+      return validationError;
     }
 
     final principal = SicaborAuthMapper.mapProfileToUserPrincipal(
@@ -130,7 +139,11 @@ final class RemoteAuthRepository implements AuthRepository {
     }
 
     final profileData = profileResponse.data;
-    if (profileData is! Map<String, dynamic>) {
+    if (profileData is! Map<String, dynamic> ||
+        profileData['scope'] is! Map ||
+        profileData['data'] is! Map ||
+        (profileData['data'] as Map)['member'] is! Map ||
+        (profileData['data'] as Map)['summary'] is! Map) {
       return const AuthResult.failed(ProfileFetchFailedFailure());
     }
 
@@ -145,6 +158,11 @@ final class RemoteAuthRepository implements AuthRepository {
       );
     }
 
+    final validationError = _validateProfile(profileRes);
+    if (validationError != null) {
+      return validationError;
+    }
+
     final principal = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
       profileResponse: profileRes,
     );
@@ -154,6 +172,29 @@ final class RemoteAuthRepository implements AuthRepository {
       accessToken: sessionToken,
       sessionToken: sessionToken,
     );
+  }
+
+  AuthResult? _validateProfile(SicaborProfileResponse profileRes) {
+    final member = profileRes.data.member;
+    final scope = profileRes.scope;
+
+    if (member.type.trim() != 'admin_kok') {
+      return const AuthResult.failed(AccountNotKokFailure());
+    }
+
+    if (member.status != 1) {
+      return const AuthResult.failed(AccountInactiveFailure());
+    }
+
+    if (member.id <= 0 ||
+        member.username.trim().isEmpty ||
+        member.name.trim().isEmpty ||
+        scope.subdistrictId <= 0 ||
+        scope.subdistrictName.trim().isEmpty) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
+    return null;
   }
 
   @override
