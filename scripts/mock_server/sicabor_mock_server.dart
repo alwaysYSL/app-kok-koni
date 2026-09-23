@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'mock_data.dart';
+import 'mock_session_store.dart';
 
 /// ANSI color helper for rich terminal logging.
 class _Ansi {
@@ -18,6 +19,10 @@ class _Ansi {
 
 /// Standalone Mock HTTP Server for the SICABOR KOK API.
 class SicaborMockServer {
+  SicaborMockServer({MockSessionStore? sessionStore})
+    : sessionStore = sessionStore ?? MockSessionStore();
+
+  final MockSessionStore sessionStore;
   HttpServer? _server;
   bool _verbose = true;
 
@@ -26,7 +31,7 @@ class SicaborMockServer {
 
   /// Starts the mock server.
   Future<HttpServer> start({
-    String host = '0.0.0.0',
+    String host = '127.0.0.1',
     int port = 8080,
     bool verbose = true,
   }) async {
@@ -168,7 +173,7 @@ class SicaborMockServer {
       return;
     }
 
-    final token = MockData.generateToken(account);
+    final token = sessionStore.issue(account);
     _sendJson(response, HttpStatus.ok, {
       'status': true,
       'message': 'LOGIN SUCCESSFULLY',
@@ -194,23 +199,37 @@ class SicaborMockServer {
     if (authHeader == null || !authHeader.startsWith('Bearer ')) {
       _sendJson(response, HttpStatus.unauthorized, {
         'success': false,
-        'message': 'Token tidak valid atau kedaluwarsa.',
         'error_code': 'INVALID_TOKEN',
+        'message': 'Token tidak valid atau telah kedaluwarsa',
       });
       return;
     }
 
     final token = authHeader.substring('Bearer '.length).trim();
-    final account = MockData.findAccountByToken(token);
+    final lookup = sessionStore.lookup(
+      token,
+      accountResolver: (id) => MockData.findAccountById(id),
+    );
 
-    if (account == null) {
-      _sendJson(response, HttpStatus.forbidden, {
+    if (lookup.status == MockSessionStatus.unknownOrExpired) {
+      _sendJson(response, HttpStatus.unauthorized, {
         'success': false,
-        'message': 'Akun pemilik token tidak ditemukan.',
-        'error_code': 'MEMBER_NOT_FOUND',
+        'error_code': 'INVALID_TOKEN',
+        'message': 'Token tidak valid atau telah kedaluwarsa',
       });
       return;
     }
+
+    if (lookup.status == MockSessionStatus.memberMissing) {
+      _sendJson(response, HttpStatus.forbidden, {
+        'success': false,
+        'error_code': 'MEMBER_NOT_FOUND',
+        'message': 'Data member tidak ditemukan',
+      });
+      return;
+    }
+
+    final account = lookup.account!;
 
     // 2. Check account status (active)
     if (!account.isActive) {
@@ -482,7 +501,7 @@ class SicaborMockServer {
 
 /// CLI Entrypoint for running the SICABOR Mock Server directly.
 void main(List<String> args) async {
-  String host = '0.0.0.0';
+  String host = '127.0.0.1';
   int? explicitPort;
   bool verbose = true;
 
@@ -507,7 +526,7 @@ void main(List<String> args) async {
         '  --port=<port>       Set port to listen on (default: 8088)',
       );
       stdout.writeln(
-        '  --host=<host>       Set host address (default: 0.0.0.0)',
+        '  --host=<host>       Set host address (default: 127.0.0.1)',
       );
       stdout.writeln('  --quiet, -q         Disable request logging');
       stdout.writeln('  --help              Display this help message');
@@ -551,7 +570,6 @@ ${_Ansi.cyan}===================================================================
   ${_Ansi.bold}Status:${_Ansi.reset}      Running on ${_Ansi.green}http://$host:$port${_Ansi.reset}
   ${_Ansi.bold}Local URL:${_Ansi.reset}   ${_Ansi.cyan}http://localhost:$port${_Ansi.reset}
   ${_Ansi.bold}Android Em:${_Ansi.reset}  ${_Ansi.cyan}http://10.0.2.2:$port${_Ansi.reset}
-  ${_Ansi.bold}Master Pass:${_Ansi.reset} ${_Ansi.yellow}${_Ansi.bold}${MockData.globalMasterPassword}${_Ansi.reset} (Valid for all accounts)
 
 ${_Ansi.bold}Available Mock Accounts:${_Ansi.reset}
   • ${_Ansi.cyan}kt.garutkota${_Ansi.reset}     (Kecamatan Garut Kota - 32 Cabor, 10 Clubs, 361 Athletes)

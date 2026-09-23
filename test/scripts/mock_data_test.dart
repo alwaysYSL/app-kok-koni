@@ -64,37 +64,39 @@ void main() {
       },
     );
 
+    test('finds account by ID correctly', () {
+      final garut = MockData.findAccountById(578);
+      expect(garut, isNotNull);
+      expect(garut?.username, equals('kt.garutkota'));
+
+      final limbangan = MockData.findAccountById(560);
+      expect(limbangan, isNotNull);
+      expect(limbangan?.username, equals('kt.bllimbangan'));
+
+      expect(MockData.findAccountById(99999), isNull);
+    });
+
     test('returns null for unknown username', () {
       expect(MockData.findAccountByUsername('non_existent_user'), isNull);
     });
   });
 
-  group('Global Master Password & Auth Verification', () {
-    test('verifies master password and standard password for all accounts', () {
-      final garut = MockData.findAccountByUsername('kt.garutkota')!;
-      expect(MockData.globalMasterPassword, equals('sicabor4K0N1'));
+  group('Password Verification', () {
+    test(
+      'verifies standard password and rejects wrong or universal passwords',
+      () {
+        final garut = MockData.findAccountByUsername('kt.garutkota')!;
 
-      // Account password
-      expect(MockData.verifyPassword(garut, 'password123'), isTrue);
+        // Account password
+        expect(MockData.verifyPassword(garut, 'password123'), isTrue);
 
-      // Global master password
-      expect(MockData.verifyPassword(garut, 'sicabor4K0N1'), isTrue);
+        // Incorrect password
+        expect(MockData.verifyPassword(garut, 'wrong_password'), isFalse);
 
-      // Incorrect password
-      expect(MockData.verifyPassword(garut, 'wrong_password'), isFalse);
-    });
-
-    test('generates and resolves tokens correctly', () {
-      final garut = MockData.findAccountByUsername('kt.garutkota')!;
-      final token = MockData.generateToken(garut);
-      expect(token, isNotEmpty);
-
-      final resolved = MockData.findAccountByToken(token);
-      expect(resolved, isNotNull);
-      expect(resolved?.username, equals('kt.garutkota'));
-
-      expect(MockData.findAccountByToken('invalid_token_123'), isNull);
-    });
+        // Former global master password should no longer be accepted
+        expect(MockData.verifyPassword(garut, 'sicabor4K0N1'), isFalse);
+      },
+    );
   });
 
   group('MockData JSON Builders', () {

@@ -289,12 +289,6 @@ class MockAthlete {
 
 /// In-memory Mock Data Store & Response Builder for SICABOR.
 class MockData {
-  /// Universal master password for all legitimate accounts.
-  static const String globalMasterPassword = 'sicabor4K0N1';
-
-  static int _tokenCounter = 1000;
-  static final Map<String, MockAccount> _activeTokens = {};
-
   static final List<String> _defaultDataNotes = [
     'Cabor tidak memiliki data kecamatan sendiri; daftar ini diturunkan dari cabor yang memiliki club atau atlet di kecamatan ini.',
     'Jumlah cabor adalah gabungan unik dari cabor club dan cabor atlet.',
@@ -1463,35 +1457,19 @@ class MockData {
     return null;
   }
 
-  /// Verifies password including support for global master password.
-  static bool verifyPassword(MockAccount account, String password) {
-    return password == account.password || password == globalMasterPassword;
-  }
-
-  /// Generates a valid bearer token for an account and records it in active sessions.
-  static String generateToken(MockAccount account) {
-    final token =
-        'sicabor-mock-token-${account.username}-${_tokenCounter++}-${DateTime.now().millisecondsSinceEpoch}';
-    _activeTokens[token] = account;
-    return token;
-  }
-
-  /// Finds account associated with a token.
-  static MockAccount? findAccountByToken(String token) {
-    final cleanToken = token.trim();
-    if (_activeTokens.containsKey(cleanToken)) {
-      return _activeTokens[cleanToken];
-    }
-    // Fallback: decode username if token matches standard mock pattern
-    if (cleanToken.startsWith('sicabor-mock-token-') ||
-        cleanToken.startsWith('mock-token-')) {
-      final parts = cleanToken.split('-');
-      if (parts.length >= 4) {
-        final username = parts[3];
-        return findAccountByUsername(username);
+  /// Finds an account by ID.
+  static MockAccount? findAccountById(int id) {
+    for (final acc in accounts) {
+      if (acc.id == id) {
+        return acc;
       }
     }
     return null;
+  }
+
+  /// Verifies password against account password.
+  static bool verifyPassword(MockAccount account, String password) {
+    return password == account.password;
   }
 
   /// Builds profile response JSON for GET /api/v1/kok/profile.

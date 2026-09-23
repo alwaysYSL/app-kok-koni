@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import '../../scripts/mock_server/mock_data.dart';
+import '../../scripts/mock_server/mock_session_store.dart';
 import '../../scripts/mock_server/sicabor_mock_server.dart';
 
 void main() {
@@ -84,15 +85,11 @@ void main() {
         expect(body['token'], isNotEmpty);
       });
 
-      test('succeeds with global master password', () async {
-        final res = await login(
-          'kt.bllimbangan',
-          MockData.globalMasterPassword,
-        );
-        expect(res['statusCode'], equals(200));
+      test('fails when using former global master password', () async {
+        final res = await login('kt.bllimbangan', 'sicabor4K0N1');
+        expect(res['statusCode'], equals(401));
         final body = res['body'] as Map<String, dynamic>;
-        expect(body['status'], isTrue);
-        expect(body['data']['username'], equals('kt.bllimbangan'));
+        expect(body['status'], isFalse);
       });
 
       test('fails with wrong password', () async {
@@ -496,6 +493,174 @@ void main() {
         final res = await req.close();
         expect(res.statusCode, equals(405));
       });
+    });
+
+    group('Token Expiration, Isolation & Missing Member Tests', () {
+      test(
+        'token is valid within 24 hours and expires after 24 hours',
+        () async {
+          var simulatedTime = DateTime(2026, 9, 23, 10, 0, 0);
+          final customStore = MockSessionStore(clock: () => simulatedTime);
+          final customServer = SicaborMockServer(sessionStore: customStore);
+          final httpCustomServer = await customServer.start(
+            host: '127.0.0.1',
+            port: 0,
+            verbose: false,
+          );
+          final customPort = httpCustomServer.port;
+
+          try {
+            // Login
+            final req = await client.post('127.0.0.1', customPort, '/api/auth');
+            req.headers.contentType = ContentType('application', 'json');
+            req.write(
+              jsonEncode({
+                'username': 'kt.garutkota',
+                'password': 'password123',
+              }),
+            );
+            final res = await req.close();
+            final body =
+                jsonDecode(await utf8.decodeStream(res))
+                    as Map<String, dynamic>;
+            final token = body['token'] as String;
+
+            // Request before 24h
+            simulatedTime = simulatedTime.add(
+              const Duration(hours: 23, minutes: 59),
+            );
+            final reqValid = await client.get(
+              '127.0.0.1',
+              customPort,
+              '/api/v1/kok/profile',
+            );
+            reqValid.headers.set('Authorization', 'Bearer $token');
+            final resValid = await reqValid.close();
+            expect(resValid.statusCode, equals(200));
+
+            // Request at/after 24h
+            simulatedTime = simulatedTime.add(
+              const Duration(minutes: 2),
+            ); // now at 24h 1m
+            final reqExpired = await client.get(
+              '127.0.0.1',
+              customPort,
+              '/api/v1/kok/profile',
+            );
+            reqExpired.headers.set('Authorization', 'Bearer $token');
+            final resExpired = await reqExpired.close();
+            expect(resExpired.statusCode, equals(401));
+            final expiredBody =
+                jsonDecode(await utf8.decodeStream(resExpired))
+                    as Map<String, dynamic>;
+            expect(expiredBody['error_code'], equals('INVALID_TOKEN'));
+            expect(
+              expiredBody['message'],
+              equals('Token tidak valid atau telah kedaluwarsa'),
+            );
+          } finally {
+            await customServer.stop();
+          }
+        },
+      );
+
+      test(
+        'fake, pattern-matching handmade tokens return 401 INVALID_TOKEN',
+        () async {
+          final req = await client.get(
+            '127.0.0.1',
+            port,
+            '/api/v1/kok/profile',
+          );
+          req.headers.set(
+            'Authorization',
+            'Bearer sicabor-mock-token-kt.garutkota-1000-123456',
+          );
+          final res = await req.close();
+          expect(res.statusCode, equals(401));
+          final body =
+              jsonDecode(await utf8.decodeStream(res)) as Map<String, dynamic>;
+          expect(body['error_code'], equals('INVALID_TOKEN'));
+          expect(
+            body['message'],
+            equals('Token tidak valid atau telah kedaluwarsa'),
+          );
+        },
+      );
+
+      test('tokens are isolated across server instances', () async {
+        final otherServer = SicaborMockServer();
+        final httpOtherServer = await otherServer.start(
+          host: '127.0.0.1',
+          port: 0,
+          verbose: false,
+        );
+        final otherPort = httpOtherServer.port;
+
+        try {
+          // Login on first server
+          final loginRes = await login('kt.garutkota', 'password123');
+          final token = loginRes['body']['token'] as String;
+
+          // Attempt to use token on otherServer
+          final req = await client.get(
+            '127.0.0.1',
+            otherPort,
+            '/api/v1/kok/profile',
+          );
+          req.headers.set('Authorization', 'Bearer $token');
+          final res = await req.close();
+          expect(res.statusCode, equals(401));
+          final body =
+              jsonDecode(await utf8.decodeStream(res)) as Map<String, dynamic>;
+          expect(body['error_code'], equals('INVALID_TOKEN'));
+        } finally {
+          await otherServer.stop();
+        }
+      });
+
+      test(
+        'returns 403 MEMBER_NOT_FOUND when session account is no longer in mock store',
+        () async {
+          final customStore = MockSessionStore();
+          // Issue token for non-existent account ID
+          const phantomAccount = MockAccount(
+            id: 99999,
+            username: 'phantom_user',
+            password: 'password123',
+            name: 'Phantom User',
+            type: 'admin_kok',
+          );
+          final token = customStore.issue(phantomAccount);
+
+          final customServer = SicaborMockServer(sessionStore: customStore);
+          final httpCustom = await customServer.start(
+            host: '127.0.0.1',
+            port: 0,
+            verbose: false,
+          );
+          final customPort = httpCustom.port;
+
+          try {
+            final req = await client.get(
+              '127.0.0.1',
+              customPort,
+              '/api/v1/kok/profile',
+            );
+            req.headers.set('Authorization', 'Bearer $token');
+            final res = await req.close();
+            expect(res.statusCode, equals(403));
+            final body =
+                jsonDecode(await utf8.decodeStream(res))
+                    as Map<String, dynamic>;
+            expect(body['success'], isFalse);
+            expect(body['error_code'], equals('MEMBER_NOT_FOUND'));
+            expect(body['message'], equals('Data member tidak ditemukan'));
+          } finally {
+            await customServer.stop();
+          }
+        },
+      );
     });
   });
 }
