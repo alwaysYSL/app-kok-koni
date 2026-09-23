@@ -127,39 +127,45 @@ class ProfilePage extends ConsumerWidget {
                   ),
                   child: const Center(child: CircularProgressIndicator()),
                 ),
-                error: (err, stack) => Container(
-                  margin: const EdgeInsets.only(bottom: 20),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE5E7EB)),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.cloud_off_outlined,
-                        size: 36,
-                        color: KokColors.muted,
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Gagal memuat ringkasan data keolahragaan.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF6B7280),
+                error: (err, stack) {
+                  final presentation = describeRemoteError(err);
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.cloud_off_outlined,
+                          size: 36,
+                          color: KokColors.muted,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 10),
-                      OutlinedButton.icon(
-                        onPressed: () => ref.invalidate(profileSummaryProvider),
-                        icon: const Icon(Icons.refresh_rounded, size: 16),
-                        label: const Text('Coba Lagi'),
-                      ),
-                    ],
-                  ),
-                ),
+                        const SizedBox(height: 8),
+                        Text(
+                          presentation.message,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF6B7280),
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (presentation.canRetry) ...[
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                ref.invalidate(profileSummaryProvider),
+                            icon: const Icon(Icons.refresh_rounded, size: 16),
+                            label: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
               ),
             _buildSectionHeader('UTILITAS KOORDINATOR'),
             _MenuTile(

@@ -16,6 +16,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/athlete.dart';
 import 'package:kok_app/data/models/cabor.dart';
@@ -830,7 +831,7 @@ void main() {
                   const AthletePaginationState(
                     items: [],
                     total: 0,
-                    error: 'Koneksi ke server terputus',
+                    error: BadRequestException('Koneksi ke server terputus'),
                   ),
                 ),
               ),
@@ -847,6 +848,72 @@ void main() {
         expect(find.text('Gagal memuat data atlet'), findsOneWidget);
         expect(find.text('Koneksi ke server terputus'), findsOneWidget);
         expect(find.text('Coba Lagi'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Atlet handles NO_SUBDISTRICT without retry button',
+      (tester) async {
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              athletePaginationProvider((
+                idCabor: 42,
+                idClub: null,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: 42, idClub: null),
+                  const AthletePaginationState(
+                    items: [],
+                    total: 0,
+                    error: ForbiddenException(
+                      'Akses ditolak',
+                      'NO_SUBDISTRICT',
+                      'Akun belum terikat pada kecamatan.',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab Atlet
+        await tester.tap(find.text('Atlet').first);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data atlet'), findsOneWidget);
+        expect(
+          find.text(
+            'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Coba Lagi'), findsNothing);
       },
     );
 
@@ -1177,7 +1244,7 @@ void main() {
                   const ClubPaginationState(
                     items: [],
                     total: 0,
-                    error: 'Koneksi ke server terputus',
+                    error: BadRequestException('Koneksi ke server terputus'),
                   ),
                 ),
               ),
@@ -1190,6 +1257,65 @@ void main() {
         expect(find.text('Gagal memuat data klub'), findsOneWidget);
         expect(find.text('Koneksi ke server terputus'), findsOneWidget);
         expect(find.text('Coba Lagi'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'DataMode.remote: Tab Klub handles NO_SUBDISTRICT without retry button',
+      (tester) async {
+        const sampleCabor = Cabor(
+          id: 42,
+          code: 'CB-42',
+          name: 'Arung Jeram',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: 1,
+          totalAthlete: 10,
+        );
+
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+          remoteCabors: [sampleCabor],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborPaginationProvider.overrideWith(
+                () => _TestCaborPaginationController(
+                  const CaborPaginationState(items: [sampleCabor], total: 1),
+                ),
+              ),
+              clubPaginationProvider(42).overrideWith(
+                () => _TestClubPaginationController(
+                  42,
+                  const ClubPaginationState(
+                    items: [],
+                    total: 0,
+                    error: ForbiddenException(
+                      'Akses ditolak',
+                      'NO_SUBDISTRICT',
+                      'Akun belum terikat pada kecamatan.',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '42')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data klub'), findsOneWidget);
+        expect(
+          find.text(
+            'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Coba Lagi'), findsNothing);
       },
     );
 

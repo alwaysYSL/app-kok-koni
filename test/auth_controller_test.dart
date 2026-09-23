@@ -3164,5 +3164,173 @@ void main() {
         expect(container.read(authControllerProvider), isA<AuthSignedOut>());
       },
     );
+
+    test(
+      'preserves error message for MEMBER_INACTIVE with serverMessage',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+        await controller.login(
+          username: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberUsername: false,
+        );
+
+        await controller.handleUnauthorizedSession(
+          errorCode: 'MEMBER_INACTIVE',
+          serverMessage: 'Status keanggotaan Anda nonaktif.',
+        );
+
+        final state = container.read(authControllerProvider);
+        expect(state, isA<AuthSignedOut>());
+        expect(
+          (state as AuthSignedOut).errorMessage,
+          equals('Status keanggotaan Anda nonaktif.'),
+        );
+      },
+    );
+
+    test(
+      'preserves default message for MEMBER_INACTIVE without serverMessage',
+      () async {
+        final storage = FakeAuthTokenStorage();
+        final metadataStore = FakeSessionMetadataStore();
+        final container = createTestProviderContainer(
+          overrides: [
+            authTokenStorageProvider.overrideWithValue(storage),
+            sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+            authRepositoryProvider.overrideWithValue(authRepository),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(authControllerProvider.notifier);
+        await controller.bootstrap();
+        await controller.login(
+          username: 'DEMO-001',
+          password: 'kokgarut123',
+          staySignedIn: true,
+          rememberUsername: false,
+        );
+
+        await controller.handleUnauthorizedSession(
+          errorCode: 'MEMBER_INACTIVE',
+        );
+
+        final state = container.read(authControllerProvider);
+        expect(state, isA<AuthSignedOut>());
+        expect(
+          (state as AuthSignedOut).errorMessage,
+          equals('Akun anggota tidak aktif. Hubungi admin kabupaten.'),
+        );
+      },
+    );
+
+    test('preserves message for MEMBER_NOT_FOUND', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      await controller.login(
+        username: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+
+      await controller.handleUnauthorizedSession(errorCode: 'MEMBER_NOT_FOUND');
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthSignedOut>());
+      expect(
+        (state as AuthSignedOut).errorMessage,
+        equals('Akun tidak terdaftar pada sistem SICABOR.'),
+      );
+    });
+
+    test('preserves message for NOT_KOK', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      await controller.login(
+        username: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+
+      await controller.handleUnauthorizedSession(errorCode: 'NOT_KOK');
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthSignedOut>());
+      expect(
+        (state as AuthSignedOut).errorMessage,
+        equals('Akun tidak memiliki hak akses sebagai admin KOK.'),
+      );
+    });
+
+    test('manual logout does not set errorMessage', () async {
+      final storage = FakeAuthTokenStorage();
+      final metadataStore = FakeSessionMetadataStore();
+      final container = createTestProviderContainer(
+        overrides: [
+          authTokenStorageProvider.overrideWithValue(storage),
+          sessionMetadataStoreProvider.overrideWithValue(metadataStore),
+          authRepositoryProvider.overrideWithValue(authRepository),
+          rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final controller = container.read(authControllerProvider.notifier);
+      await controller.bootstrap();
+      await controller.login(
+        username: 'DEMO-001',
+        password: 'kokgarut123',
+        staySignedIn: true,
+        rememberUsername: false,
+      );
+
+      await controller.logout();
+
+      final state = container.read(authControllerProvider);
+      expect(state, isA<AuthSignedOut>());
+      expect((state as AuthSignedOut).errorMessage, isNull);
+    });
   });
 }

@@ -50,3 +50,9 @@ final class ServerErrorException extends ApiException {
 final class ApiTimeoutException extends ApiException {
   const ApiTimeoutException([super.message = 'Request timeout']);
 }
+
+final class ApiConfigurationException extends ApiException {
+  const ApiConfigurationException([
+    super.message = 'Konfigurasi API tidak valid',
+  ]);
+}

@@ -807,7 +807,7 @@ void main() {
                 const AthletePaginationState(
                   items: [],
                   total: 0,
-                  error: 'Koneksi ke server terputus',
+                  error: BadRequestException('Koneksi ke server terputus'),
                 ),
               ),
             ),
@@ -824,6 +824,58 @@ void main() {
       expect(find.text('Koneksi ke server terputus'), findsOneWidget);
       expect(find.text('Coba Lagi'), findsOneWidget);
     });
+
+    testWidgets(
+      'Tab 3 (Atlet) handles NO_SUBDISTRICT error without retry button',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController(
+                  (idCabor: null, idClub: 10),
+                  const AthletePaginationState(
+                    items: [],
+                    total: 0,
+                    error: ForbiddenException(
+                      'Akses ditolak',
+                      'NO_SUBDISTRICT',
+                      'Akun belum terikat pada kecamatan.',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat data atlet'), findsOneWidget);
+        expect(
+          find.text(
+            'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Coba Lagi'), findsNothing);
+      },
+    );
 
     testWidgets('renders MissingPage when non-integer club ID is provided', (
       tester,
@@ -867,7 +919,7 @@ void main() {
               clubDetailProvider(10).overrideWith((ref) async {
                 callCount++;
                 if (callCount == 1) {
-                  throw Exception('Network connection timed out');
+                  throw const ApiTimeoutException();
                 }
                 return sampleRemoteClubDetail;
               }),
@@ -877,10 +929,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Gagal memuat detail klub'), findsOneWidget);
-        expect(
-          find.textContaining('Network connection timed out'),
-          findsOneWidget,
-        );
+        expect(find.text('Koneksi ke server terganggu.'), findsOneWidget);
         expect(find.text('Coba Lagi'), findsOneWidget);
 
         // Tap retry button
@@ -888,6 +937,36 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('PB Garuda Perkasa'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'renders NO_SUBDISTRICT error state on club detail without retry button',
+      (tester) async {
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(10).overrideWith((ref) async {
+                throw const ForbiddenException(
+                  'Akses ditolak',
+                  'NO_SUBDISTRICT',
+                  'Akun belum terikat pada kecamatan.',
+                );
+              }),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Gagal memuat detail klub'), findsOneWidget);
+        expect(
+          find.text(
+            'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Coba Lagi'), findsNothing);
       },
     );
 

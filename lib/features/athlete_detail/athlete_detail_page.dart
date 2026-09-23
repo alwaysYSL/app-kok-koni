@@ -51,6 +51,7 @@ class AthleteDetailPage extends ConsumerWidget {
           if (e is NotFoundException) {
             return const MissingPage(message: 'Data atlet tidak ditemukan.');
           }
+          final presentation = describeRemoteError(e);
           return Scaffold(
             backgroundColor: const Color(0xFFF8FAFC),
             appBar: AppBar(
@@ -88,20 +89,22 @@ class AthleteDetailPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '$e',
+                      presentation.message,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,
                         color: KokColors.muted,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () =>
-                          ref.refresh(athleteDetailProvider(athleteId)),
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Coba Lagi'),
-                    ),
+                    if (presentation.canRetry) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            ref.refresh(athleteDetailProvider(athleteId)),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -288,6 +288,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final displayedError =
+        _error ?? (authState is AuthSignedOut ? authState.errorMessage : null);
     final isDemoAuth = _isDemoAuthMode(ref);
     final isCleanupFailed =
         authState is AuthSignedOut &&
@@ -747,7 +749,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     ),
                                   ),
                                 ),
-                                if (_error != null)
+                                if (displayedError != null)
                                   Container(
                                     margin: const EdgeInsets.only(top: 14),
                                     padding: const EdgeInsets.symmetric(
@@ -771,7 +773,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: Text(
-                                            _error!,
+                                            displayedError,
                                             style: const TextStyle(
                                               color: Color(0xFFDC2626),
                                               fontSize: 12.5,

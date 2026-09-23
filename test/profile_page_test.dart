@@ -10,6 +10,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/core/preferences.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
@@ -30,8 +31,9 @@ class _FakeProfileAuthController extends AuthController {
   @override
   Future<LogoutResult> logout({
     Duration revocationTimeout = const Duration(seconds: 5),
+    String? errorMessage,
   }) async {
-    state = const AuthSignedOut();
+    state = AuthSignedOut(errorMessage: errorMessage);
     return const LogoutResult(
       localSessionClosed: true,
       credentialCleared: true,
@@ -67,9 +69,10 @@ class _CompleterAuthController extends AuthController {
   @override
   Future<LogoutResult> logout({
     Duration revocationTimeout = const Duration(seconds: 5),
+    String? errorMessage,
   }) async {
     final res = await completer.future;
-    state = const AuthSignedOut();
+    state = AuthSignedOut(errorMessage: errorMessage);
     return res;
   }
 }
@@ -1350,11 +1353,41 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(
-        find.text('Gagal memuat ringkasan data keolahragaan.'),
-        findsOneWidget,
-      );
+      expect(find.text('Gagal memuat data.'), findsOneWidget);
       expect(find.text('Coba Lagi'), findsOneWidget);
     });
+
+    testWidgets(
+      'remote mode handles NO_SUBDISTRICT error without retry button',
+      (tester) async {
+        final prefs = await SharedPreferences.getInstance();
+        final remoteComposition = buildRemoteTestComposition();
+
+        await tester.pumpWidget(
+          buildTestableProfileWidget(
+            child: const ProfilePage(),
+            preferences: prefs,
+            composition: remoteComposition,
+            profileSummaryOverride: (_) => Future.error(
+              const ForbiddenException(
+                'Akses ditolak',
+                'NO_SUBDISTRICT',
+                'Akun belum terikat pada kecamatan.',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        expect(
+          find.text(
+            'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Coba Lagi'), findsNothing);
+      },
+    );
   });
 }

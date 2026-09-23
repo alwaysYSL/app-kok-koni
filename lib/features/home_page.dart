@@ -231,33 +231,38 @@ class HomePage extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.cloud_off_outlined,
-                  size: 48,
-                  color: KokColors.muted,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  error.toString().replaceAll('Exception: ', ''),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: KokColors.ink),
-                ),
-                const SizedBox(height: 16),
-                FilledButton.icon(
-                  onPressed: () => ref.refresh(profileSummaryProvider),
-                  icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Coba Lagi'),
-                ),
-              ],
+        error: (error, stackTrace) {
+          final presentation = describeRemoteError(error);
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.cloud_off_outlined,
+                    size: 48,
+                    color: KokColors.muted,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    presentation.message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14, color: KokColors.ink),
+                  ),
+                  if (presentation.canRetry) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: () => ref.refresh(profileSummaryProvider),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Coba Lagi'),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

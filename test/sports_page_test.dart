@@ -7,6 +7,7 @@ import 'package:kok_app/core/auth/data/dto/sicabor_profile_response.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/models/cabor.dart';
 import 'package:kok_app/data/models/paginated_result.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
@@ -18,10 +19,15 @@ import 'package:kok_app/data/services/cabor_service.dart';
 import 'package:kok_app/features/sports_page.dart';
 
 class FakeCaborService implements CaborService {
-  FakeCaborService({required this.allCabors, this.shouldThrow = false});
+  FakeCaborService({
+    required this.allCabors,
+    this.shouldThrow = false,
+    this.errorToThrow,
+  });
 
   final List<Cabor> allCabors;
   final bool shouldThrow;
+  final Object? errorToThrow;
 
   @override
   Future<PaginatedResult<Cabor>> fetchCaborList({
@@ -31,6 +37,9 @@ class FakeCaborService implements CaborService {
     String sort = 'name',
     RequestCancellation? cancellation,
   }) async {
+    if (errorToThrow != null) {
+      throw errorToThrow!;
+    }
     if (shouldThrow) {
       throw Exception('Network error');
     }
@@ -129,12 +138,14 @@ void main() {
       List<Cabor>? cabors,
       ProfileSummary? summary = defaultSummary,
       bool shouldThrow = false,
+      Object? errorToThrow,
       String? Function(String route)? onNavigated,
       UserPrincipal? user,
     }) {
       final fakeService = FakeCaborService(
         allCabors: cabors ?? sampleCabors,
         shouldThrow: shouldThrow,
+        errorToThrow: errorToThrow,
       );
 
       final router = GoRouter(
@@ -378,13 +389,36 @@ void main() {
         await tester.pumpWidget(buildSubject(shouldThrow: true));
         await tester.pumpAndSettle();
 
-        expect(
-          find.text('Gagal memuat daftar cabang olahraga.'),
-          findsOneWidget,
-        );
+        expect(find.text('Gagal memuat data.'), findsOneWidget);
         expect(find.text('Coba lagi'), findsOneWidget);
       },
     );
+
+    testWidgets('renders NO_SUBDISTRICT error state without retry button', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        buildSubject(
+          errorToThrow: const ForbiddenException(
+            'Akses ditolak',
+            'NO_SUBDISTRICT',
+            'Akun belum terikat pada kecamatan.',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Coba lagi'), findsNothing);
+    });
 
     testWidgets('renders empty state when no cabors are returned', (
       tester,

@@ -5,6 +5,7 @@ Gunakan halaman ini sebagai pintu masuk dokumentasi. Dokumen aktif dipisahkan da
 ## Dokumen aktif
 
 - [Status proyek](project-status.md): kondisi implementasi, gap integrasi, dan kesiapan Play Store.
+- [Audit spesifikasi integrasi SICABOR, 23 September 2026](archive/audits/2026-09-23-audit-spesifikasi-integrasi-sicabor.md): kesesuaian enam desain dengan source, mock server, test, dan pekerjaan lanjutan.
 - [API KOK SICABOR](api/api-kok-sicabor.md): kontrak resmi untuk integrasi backend.
 - [Arsitektur autentikasi saat ini](architecture/authentication-current.md): baseline frontend sebelum integrasi API.
 - [Rencana serah terima GitLab](handover.md): ruang lingkup dan kriteria migrasi repository.

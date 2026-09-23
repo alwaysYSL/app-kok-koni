@@ -14,6 +14,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
@@ -408,7 +409,9 @@ void main() {
             profileSummaryProvider.overrideWith((ref) {
               attempt++;
               if (attempt == 1) {
-                throw Exception('Gagal menghubungi server SICABOR');
+                throw const BadRequestException(
+                  'Gagal menghubungi server SICABOR',
+                );
               }
               return sampleSummary;
             }),
@@ -429,6 +432,44 @@ void main() {
 
       expect(find.text('Gagal menghubungi server SICABOR'), findsNothing);
       expect(find.text('245'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'HomePage menampilkan pesan NO_SUBDISTRICT dan menyembunyikan tombol Coba Lagi',
+    (tester) async {
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeHomeAuthController(cecepUser),
+            ),
+            profileSummaryProvider.overrideWith((ref) {
+              throw const ForbiddenException(
+                'Akses ditolak',
+                'NO_SUBDISTRICT',
+                'Akun belum terikat pada kecamatan.',
+              );
+            }),
+            appCompositionProvider.overrideWithValue(composition),
+          ],
+          child: const MaterialApp(home: HomePage()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Coba Lagi'), findsNothing);
     },
   );
 }

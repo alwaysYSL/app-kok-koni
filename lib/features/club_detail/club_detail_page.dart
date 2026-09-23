@@ -63,6 +63,7 @@ class ClubDetailPage extends ConsumerWidget {
               e.toString().toLowerCase().contains('tidak ditemukan')) {
             return const MissingPage(message: 'Data klub tidak ditemukan.');
           }
+          final presentation = describeRemoteError(e);
           return Scaffold(
             backgroundColor: const Color(0xFFF4F6FA),
             appBar: AppBar(
@@ -94,19 +95,22 @@ class ClubDetailPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '$e',
+                      presentation.message,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 13,
                         color: KokColors.muted,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () => ref.refresh(clubDetailProvider(clubId)),
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Coba Lagi'),
-                    ),
+                    if (presentation.canRetry) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            ref.refresh(clubDetailProvider(clubId)),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Coba Lagi'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1517,6 +1521,7 @@ class _RemoteClubAthletesTabState
     }
 
     if (state.error != null && state.items.isEmpty) {
+      final presentation = describeRemoteError(state.error!);
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -1535,16 +1540,18 @@ class _RemoteClubAthletesTabState
               ),
               const SizedBox(height: 6),
               Text(
-                '${state.error}',
+                presentation.message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: KokColors.muted),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => controller.loadFirstPage(),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Coba Lagi'),
-              ),
+              if (presentation.canRetry) ...[
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => controller.loadFirstPage(),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Coba Lagi'),
+                ),
+              ],
             ],
           ),
         ),

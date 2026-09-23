@@ -4,9 +4,11 @@ Terakhir diperbarui: 23 September 2026.
 
 ## Ringkasan
 
-Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KOK) Kabupaten Garut yang terhubung ke backend SICABOR. Milestone 1 (Autentikasi & Sesi) dan Milestone 2 (Integrasi Beranda & Cabang Olahraga) telah selesai diimplementasikan dan diverifikasi secara penuh dengan test suite otomatis.
+Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KOK) Kabupaten Garut. Jalur remote untuk auth, Beranda, Cabor, Atlet, dan Klub telah diimplementasikan; mock server lokal tersedia untuk pengujian. Kecocokan aplikasi dengan server SICABOR resmi belum diuji. [Audit enam spesifikasi integrasi](archive/audits/2026-09-23-audit-spesifikasi-integrasi-sicabor.md) mencatat selisih yang perlu ditutup sebelum uji penerimaan API.
 
 ## Status Integrasi SICABOR
+
+Label “SELESAI” pada milestone di bawah menyatakan implementasi yang direncanakan sudah diserahkan. Label itu belum berarti seluruh kriteria kontrak lolos audit atau sudah diuji terhadap server resmi; lihat audit terkini untuk status penerimaannya.
 
 ### Milestone 1: Autentikasi & Session Bootstrap (SELESAI)
 - Integrasi login SICABOR berbasis `application/x-www-form-urlencoded` dengan validasi peran `admin_kok`.
@@ -61,7 +63,7 @@ Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KO
   - **Service Layer**: Interface `ClubService` dengan `RemoteClubService` (endpoint `/club`, `/club/detail/{id}`) dan `DemoClubService` adapter.
   - **State Management**: `clubServiceProvider`, `clubListProvider`, `ClubPaginationController` (`clubPaginationProvider(idCabor)`), dan `clubDetailProvider(clubId)`.
   - **UI Tab Klub di `SportDetailPage`**: `_RemoteClubsTab` dengan search debounce 500ms, filter status chip (`Semua`, `Aktif`, `Belum Aktif`), warning banner, infinite scrolling, empty & error states, dan navigasi detail `/club/:id`.
-  - **UI Halaman Daftar Klub (`ClubsPage`)**: Migrasi ke remote pagination dengan modal sort (`name`, `-name`, `-total_athlete`, `status`), filter chip status, dan search terintegrasi.
+  - **UI Halaman Daftar Klub (`ClubsPage`)**: Migrasi ke remote pagination dengan modal sort (`name`, `code`, `since`, `status`), filter chip status, dan search terintegrasi.
   - **UI Halaman Detail Klub (`ClubDetailPage`)**: Migrasi ke layout 3-tab (`Info`, `Pengurus`, `Atlet`) dengan branding dinamis, single counter total anggota lintas kecamatan, penanganan 404 `NotFoundException`, kartu alamat sekretariat & latihan, serta blok pengurus/official/pelatih inline (`data_available: false` & `partial: true` handling).
 - **Milestone 4B: Tab Atlet Klub & Scope-Extended Pagination**:
   - Perluasan `AthletePaginationController` dengan family scope `AthleteFilterScope` (`({int? idCabor, int? idClub})`).
@@ -95,17 +97,18 @@ Aplikasi KOK merupakan frontend Flutter untuk Koordinator Olahraga Kecamatan (KO
   - Utilitas ekspor rekapitulasi data kecamatan terhubung langsung dengan `ProfileSummary`.
   - Modul Helpdesk dan Sync Status Card disembunyikan secara bersih pada mode remote.
 - **Pengujian & Verifikasi**:
-  - **740 unit & widget test passing (100% test suite pass, 0 warning/lint issue)**.
+  - **Verifikasi audit 23 September 2026:** `flutter analyze --no-pub` bersih; `flutter test --no-pub --reporter compact` menghasilkan 739 test lulus dan 1 dilewati. Perilaku pada server resmi serta perangkat Android belum diverifikasi.
 
 ### Milestone Berikutnya (In Progress / Backlog)
-- **Milestone 6: Integrasi Pelatih, Official, dan Profil Keolahragaan Lanjutan**
-  - Endpoint `/api/v1/kok/club/official`, `/api/v1/kok/club/coach`, `/api/v1/kok/club/management` lanjutan saat backend SICABOR menyediakannya.
-  - Verifikasi berkas person jika endpoint integrasi dokumen dibuka.
+- **Milestone 5.1:** Tutup celah respons auth dan pagination lintas sesi, validasi respons `/profile`, timeout auth, serta penanganan pesan 403 dan non-JSON. Rincian ada di [audit spesifikasi](archive/audits/2026-09-23-audit-spesifikasi-integrasi-sicabor.md).
+- **Milestone 5.2:** Benahi arti metrik dan grafik, pencarian/filter, penjelasan jumlah atlet klub, aksi berkas SK, dan fidelitas mock server.
+- **Milestone 6:** Uji kontrak terhadap API SICABOR resmi saat URL HTTPS dan akun uji tersedia, lalu uji alur remote pada perangkat Android.
+- **Backlog:** Profil pelatih/official lanjutan dan verifikasi berkas person menunggu data serta kebutuhan endpoint yang tersedia di backend.
 
 ## Gap sebelum Play Store
 
 - Konfigurasi signing release masih memakai debug key.
-- Permission jaringan pada manifest release perlu dipastikan sebelum mode remote diuji.
+- Permission `INTERNET` sudah ada di manifest utama; koneksi HTTPS ke server resmi dan perilaku jaringan pada build release masih perlu diuji.
 - App icon, nama final, versioning, application ID, kebijakan privasi, data safety, screenshot, dan listing belum difinalkan.
 - Pengujian perangkat Android nyata, staging API, keamanan token, crash reporting, serta proses rilis AAB belum dilakukan.
 

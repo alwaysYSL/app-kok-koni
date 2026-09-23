@@ -736,6 +736,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     }
 
     if (state.error != null && state.items.isEmpty) {
+      final presentation = describeRemoteError(state.error!);
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -754,16 +755,18 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                '${state.error}',
+                presentation.message,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: KokColors.muted),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => controller.loadFirstPage(),
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Coba Lagi'),
-              ),
+              if (presentation.canRetry) ...[
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: () => controller.loadFirstPage(),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Coba Lagi'),
+                ),
+              ],
             ],
           ),
         ),

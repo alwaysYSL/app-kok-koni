@@ -755,13 +755,29 @@ class AuthController extends Notifier<AuthState> {
   }) async {
     if (state is AuthSignedIn ||
         (state is AuthSigningOut && _activeLogoutFlight != null)) {
-      return logout(revocationTimeout: revocationTimeout);
+      final String message;
+      if (errorCode == 'MEMBER_INACTIVE') {
+        message =
+            serverMessage ??
+            'Akun anggota tidak aktif. Hubungi admin kabupaten.';
+      } else if (errorCode == 'MEMBER_NOT_FOUND') {
+        message = 'Akun tidak terdaftar pada sistem SICABOR.';
+      } else if (errorCode == 'NOT_KOK') {
+        message = 'Akun tidak memiliki hak akses sebagai admin KOK.';
+      } else {
+        message = 'Sesi berakhir. Silakan masuk kembali.';
+      }
+      return logout(
+        revocationTimeout: revocationTimeout,
+        errorMessage: message,
+      );
     }
     return null;
   }
 
   Future<LogoutResult> logout({
     Duration revocationTimeout = const Duration(seconds: 5),
+    String? errorMessage,
   }) {
     final active = _activeLogoutFlight;
     if (active != null &&
@@ -792,7 +808,10 @@ class AuthController extends Notifier<AuthState> {
     // Publish before AuthSigningOut can notify a reentrant logout caller.
     _activeLogoutFlight = flight;
     unawaited(
-      _runLogout(revocationTimeout: revocationTimeout).then<void>(
+      _runLogout(
+        revocationTimeout: revocationTimeout,
+        errorMessage: errorMessage,
+      ).then<void>(
         (result) {
           if (identical(_activeLogoutFlight, flight)) {
             _activeLogoutFlight = null;
@@ -812,6 +831,7 @@ class AuthController extends Notifier<AuthState> {
 
   Future<LogoutResult> _runLogout({
     Duration revocationTimeout = const Duration(seconds: 5),
+    String? errorMessage,
   }) async {
     final compositionTimeout = ref
         .read(appCompositionProvider)
@@ -893,6 +913,7 @@ class AuthController extends Notifier<AuthState> {
         cleanupStatus: isClean
             ? LocalCleanupStatus.clean
             : LocalCleanupStatus.failed,
+        errorMessage: errorMessage,
       );
     }
 

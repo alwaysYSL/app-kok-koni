@@ -138,33 +138,39 @@ class _SportsPageState extends ConsumerState<SportsPage> {
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else if (caborState.error != null && caborState.items.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.cloud_off_outlined,
-                            size: 40,
-                            color: KokColors.muted,
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Gagal memuat daftar cabang olahraga.',
-                            style: TextStyle(color: KokColors.muted),
-                          ),
-                          const SizedBox(height: 8),
-                          FilledButton(
-                            onPressed: () => ref
-                                .read(caborPaginationProvider.notifier)
-                                .loadFirstPage(),
-                            child: const Text('Coba lagi'),
-                          ),
-                        ],
+                  () {
+                    final presentation = describeRemoteError(caborState.error!);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_outlined,
+                              size: 40,
+                              color: KokColors.muted,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              presentation.message,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(color: KokColors.muted),
+                            ),
+                            if (presentation.canRetry) ...[
+                              const SizedBox(height: 8),
+                              FilledButton(
+                                onPressed: () => ref
+                                    .read(caborPaginationProvider.notifier)
+                                    .loadFirstPage(),
+                                child: const Text('Coba lagi'),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                    ),
-                  )
+                    );
+                  }()
                 else if (caborState.items.isEmpty)
                   const EmptyState(
                     message: 'Belum ada cabang olahraga terdaftar.',

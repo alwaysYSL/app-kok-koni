@@ -230,4 +230,45 @@ void main() {
       expect(controller.retryCleanupCalled, isTrue);
     },
   );
+
+  testWidgets(
+    'Saat authState AuthSignedOut memiliki errorMessage, banner merah menampilkan pesan tersebut',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final usernameStore = RememberedUsernameStore(
+        prefs: prefs,
+        key: 'remembered_username',
+      );
+      final composition = _demoComposition(prefs);
+
+      final controller = _MockLoginStateAuthController(
+        const AuthSignedOut(
+          errorMessage: 'Akun anggota tidak aktif. Hubungi admin kabupaten.',
+        ),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            authControllerProvider.overrideWith(() => controller),
+            rememberedUsernameStoreProvider.overrideWithValue(usernameStore),
+          ],
+          child: const MaterialApp(home: LoginPage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Akun anggota tidak aktif. Hubungi admin kabupaten.'),
+        findsOneWidget,
+      );
+    },
+  );
 }
