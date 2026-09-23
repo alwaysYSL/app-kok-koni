@@ -222,7 +222,9 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
         isLoading: false,
       );
     } catch (e) {
-      if (!ref.mounted || expectedGen != _generation) {
+      if (!ref.mounted ||
+          ref.read(dataRequestContextProvider) != contextAtStart ||
+          expectedGen != _generation) {
         return;
       }
       state = state.copyWith(isLoading: false, error: e);
@@ -260,7 +262,9 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
         isLoadingMore: false,
       );
     } catch (e) {
-      if (!ref.mounted || expectedGen != _generation) {
+      if (!ref.mounted ||
+          ref.read(dataRequestContextProvider) != contextAtStart ||
+          expectedGen != _generation) {
         return;
       }
       state = state.copyWith(isLoadingMore: false, loadMoreError: e);

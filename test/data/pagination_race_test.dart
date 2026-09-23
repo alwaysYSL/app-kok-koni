@@ -538,6 +538,166 @@ void main() {
         expect(finalState.items.length, 1);
       },
     );
+
+    test(
+      'late error from superseded request does not corrupt active state',
+      () async {
+        final completer1 = Completer<PaginatedResult<Athlete>>();
+        final completer2 = Completer<PaginatedResult<Athlete>>();
+
+        final mockService = _MockAthleteService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? idClub,
+                String? sex,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) {
+                if (search == 'query1') return completer1.future;
+                if (search == 'query2') return completer2.future;
+                return Future.value(
+                  const PaginatedResult(
+                    items: [],
+                    limit: 25,
+                    offset: 0,
+                    total: 0,
+                  ),
+                );
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            athleteServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          athletePaginationProvider(defaultScope).notifier,
+        );
+
+        // 1. Query 1 fires
+        controller.updateSearch('query1');
+        // 2. Query 2 supersedes
+        controller.updateSearch('query2');
+
+        // 3. Query 2 succeeds
+        completer2.complete(
+          PaginatedResult(
+            items: [_createTestAthlete(id: 2, name: 'Success Athlete 2')],
+            limit: 25,
+            offset: 0,
+            total: 1,
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(
+          container.read(athletePaginationProvider(defaultScope)).items.length,
+          1,
+        );
+
+        // 4. Query 1 completes with error
+        completer1.completeError(Exception('Network timeout'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // State remains successful and error is suppressed
+        final state = container.read(athletePaginationProvider(defaultScope));
+        expect(state.error, isNull);
+        expect(state.items.first.name, 'Success Athlete 2');
+      },
+    );
+
+    test(
+      'in-flight loadMore is invalidated when loadFirstPage is triggered',
+      () async {
+        final completerMore = Completer<PaginatedResult<Athlete>>();
+        final completerNewSearch = Completer<PaginatedResult<Athlete>>();
+
+        final mockService = _MockAthleteService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? idClub,
+                String? sex,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (offset == 0 && search == null) {
+                  return PaginatedResult(
+                    items: [_createTestAthlete(id: 1, name: 'Initial Athlete')],
+                    limit: 25,
+                    offset: 0,
+                    total: 50,
+                  );
+                }
+                if (offset > 0) {
+                  return completerMore.future;
+                }
+                return completerNewSearch.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            athleteServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          athletePaginationProvider(defaultScope).notifier,
+        );
+        await controller.loadFirstPage();
+        expect(
+          container.read(athletePaginationProvider(defaultScope)).items.length,
+          1,
+        );
+
+        // 1. Start loadMore
+        final loadMoreFuture = controller.loadMore();
+
+        // 2. User suddenly updates search (starts new generation)
+        controller.updateSearch('new_search');
+
+        // 3. New search resolves
+        completerNewSearch.complete(
+          PaginatedResult(
+            items: [_createTestAthlete(id: 99, name: 'Search Result Athlete')],
+            limit: 25,
+            offset: 0,
+            total: 1,
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // 4. Stale loadMore finishes
+        completerMore.complete(
+          PaginatedResult(
+            items: [_createTestAthlete(id: 2, name: 'Stale Page 2 Athlete')],
+            limit: 25,
+            offset: 1,
+            total: 50,
+          ),
+        );
+        await loadMoreFuture;
+
+        final state = container.read(athletePaginationProvider(defaultScope));
+        expect(state.items.length, 1);
+        expect(state.items.first.name, 'Search Result Athlete');
+      },
+    );
   });
 
   group('Pagination Race Condition Tests — CaborPaginationController', () {
@@ -610,6 +770,148 @@ void main() {
         final finalState = container.read(caborPaginationProvider);
         expect(finalState.items.first.name, 'Fast Cabor');
         expect(finalState.items.length, 1);
+      },
+    );
+
+    test(
+      'late error from superseded request does not corrupt active state',
+      () async {
+        final completer1 = Completer<PaginatedResult<Cabor>>();
+        final completer2 = Completer<PaginatedResult<Cabor>>();
+
+        final mockService = _MockCaborService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                String source = 'all',
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) {
+                if (source == 'source1') return completer1.future;
+                if (source == 'source2') return completer2.future;
+                return Future.value(
+                  const PaginatedResult(
+                    items: [],
+                    limit: 25,
+                    offset: 0,
+                    total: 0,
+                  ),
+                );
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            caborServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(caborPaginationProvider.notifier);
+
+        // 1. Source 1 fires
+        controller.loadFirstPage(source: 'source1');
+        // 2. Source 2 supersedes
+        controller.loadFirstPage(source: 'source2');
+
+        // 3. Source 2 succeeds
+        completer2.complete(
+          PaginatedResult(
+            items: [_createTestCabor(id: 2, name: 'Success Cabor 2')],
+            limit: 25,
+            offset: 0,
+            total: 1,
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        expect(container.read(caborPaginationProvider).items.length, 1);
+
+        // 4. Source 1 completes with error
+        completer1.completeError(Exception('Network timeout'));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // State remains successful and error is suppressed
+        final state = container.read(caborPaginationProvider);
+        expect(state.error, isNull);
+        expect(state.items.first.name, 'Success Cabor 2');
+      },
+    );
+
+    test(
+      'in-flight loadMore is invalidated when loadFirstPage is triggered',
+      () async {
+        final completerMore = Completer<PaginatedResult<Cabor>>();
+        final completerNewSearch = Completer<PaginatedResult<Cabor>>();
+
+        final mockService = _MockCaborService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                String source = 'all',
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (offset == 0 && source == 'all') {
+                  return PaginatedResult(
+                    items: [_createTestCabor(id: 1, name: 'Initial Cabor')],
+                    limit: 25,
+                    offset: 0,
+                    total: 50,
+                  );
+                }
+                if (offset > 0) {
+                  return completerMore.future;
+                }
+                return completerNewSearch.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            caborServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWithValue(defaultContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(caborPaginationProvider.notifier);
+        await controller.loadFirstPage();
+        expect(container.read(caborPaginationProvider).items.length, 1);
+
+        // 1. Start loadMore
+        final loadMoreFuture = controller.loadMore();
+
+        // 2. User suddenly triggers new loadFirstPage (starts new generation)
+        controller.loadFirstPage(source: 'new_source');
+
+        // 3. New fetch resolves
+        completerNewSearch.complete(
+          PaginatedResult(
+            items: [_createTestCabor(id: 99, name: 'Search Result Cabor')],
+            limit: 25,
+            offset: 0,
+            total: 1,
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // 4. Stale loadMore finishes
+        completerMore.complete(
+          PaginatedResult(
+            items: [_createTestCabor(id: 2, name: 'Stale Page 2 Cabor')],
+            limit: 25,
+            offset: 1,
+            total: 50,
+          ),
+        );
+        await loadMoreFuture;
+
+        final state = container.read(caborPaginationProvider);
+        expect(state.items.length, 1);
+        expect(state.items.first.name, 'Search Result Cabor');
       },
     );
   });

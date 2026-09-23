@@ -422,5 +422,134 @@ void main() {
       expect(state.items, isEmpty);
       expect(state.isLoadingMore, isFalse);
     });
+
+    test(
+      'loadFirstPage ignores error if session context changes while in-flight',
+      () async {
+        DataRequestContext? currentContext = contextA;
+        final completerFirst = Completer<PaginatedResult<Athlete>>();
+
+        final mockService = _MockAthleteService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? idClub,
+                String? sex,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                return completerFirst.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            athleteServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWith((ref) => currentContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          athletePaginationProvider(defaultScope).notifier,
+        );
+        controller.loadFirstPage();
+
+        // Switch session before loadFirstPage completes
+        currentContext = contextB;
+        container.refresh(dataRequestContextProvider);
+        // Access provider under context B so it is re-evaluated for Context B
+        expect(
+          container.read(athletePaginationProvider(defaultScope)).error,
+          isNull,
+        );
+
+        // Pending loadFirstPage from context A fails
+        completerFirst.completeError(
+          Exception('Network error under Context A'),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // State for Context B must NOT have Context A's error
+        final state = container.read(athletePaginationProvider(defaultScope));
+        expect(state.error, isNull);
+      },
+    );
+
+    test(
+      'loadMore ignores error if session context changes while in-flight',
+      () async {
+        DataRequestContext? currentContext = contextA;
+        final completerMore = Completer<PaginatedResult<Athlete>>();
+
+        final mockService = _MockAthleteService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? idClub,
+                String? sex,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                if (offset == 0) {
+                  return PaginatedResult(
+                    items: [_createTestAthlete(id: 1, name: 'Initial Athlete')],
+                    limit: limit,
+                    offset: offset,
+                    total: 50,
+                  );
+                }
+                return completerMore.future;
+              },
+        );
+
+        final container = ProviderContainer(
+          overrides: [
+            athleteServiceProvider.overrideWithValue(mockService),
+            dataRequestContextProvider.overrideWith((ref) => currentContext),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final controller = container.read(
+          athletePaginationProvider(defaultScope).notifier,
+        );
+        await controller.loadFirstPage();
+        expect(
+          container.read(athletePaginationProvider(defaultScope)).items.length,
+          1,
+        );
+
+        // Start loadMore under Context A
+        controller.loadMore();
+
+        // Switch session before loadMore completes
+        currentContext = contextB;
+        container.refresh(dataRequestContextProvider);
+        // Access provider under Context B so it is re-evaluated for Context B
+        expect(
+          container.read(athletePaginationProvider(defaultScope)).loadMoreError,
+          isNull,
+        );
+
+        // Fail pending loadMore from Context A
+        completerMore.completeError(
+          Exception('loadMore error under Context A'),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        // State for Context B must NOT have Context A's loadMore error
+        final state = container.read(athletePaginationProvider(defaultScope));
+        expect(state.loadMoreError, isNull);
+      },
+    );
   });
 }
