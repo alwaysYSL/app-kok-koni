@@ -673,6 +673,31 @@ class _RemoteClubInfoTab extends StatelessWidget {
                 value: detail.fileSkUrl != null && detail.fileSkUrl!.isNotEmpty
                     ? 'Berkas tersedia'
                     : 'Berkas belum tersedia',
+                trailing:
+                    detail.fileSkUrl != null && detail.fileSkUrl!.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.open_in_new,
+                          size: 18,
+                          color: KokColors.blue,
+                        ),
+                        tooltip: 'Salin / Buka tautan berkas SK',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: detail.fileSkUrl!),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Tautan berkas SK disalin ke papan klip',
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : null,
               ),
             ],
           ),
@@ -718,11 +743,11 @@ class _RemoteClubInfoTab extends StatelessWidget {
                     : '-',
               ),
               _InfoRow(
-                label: 'Kelurahan / Desa',
+                label: 'Kecamatan',
                 value: detail.secretariat.subdistrictName,
               ),
               _InfoRow(
-                label: 'Kecamatan',
+                label: 'Kabupaten / Kota',
                 value: detail.secretariat.districtName,
               ),
               const Padding(
@@ -748,11 +773,11 @@ class _RemoteClubInfoTab extends StatelessWidget {
                       : '-',
                 ),
                 _InfoRow(
-                  label: 'Kelurahan / Desa',
+                  label: 'Kecamatan',
                   value: detail.training!.subdistrictName,
                 ),
                 _InfoRow(
-                  label: 'Kecamatan',
+                  label: 'Kabupaten / Kota',
                   value: detail.training!.districtName,
                 ),
               ] else
@@ -839,10 +864,11 @@ class _RemoteClubInfoTab extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.trailing});
 
   final String label;
   final String value;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -873,6 +899,7 @@ class _InfoRow extends StatelessWidget {
               ),
             ),
           ),
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       ),
     );
@@ -1007,6 +1034,14 @@ class _RemoteClubPengurusTab extends StatelessWidget {
     );
   }
 
+  static String _mapReasonToMessage(String? reason, String fallback) {
+    return switch (reason) {
+      'NOT_RECORDED_IN_SYSTEM' => 'Belum tercatat di sistem',
+      'NOT_AVAILABLE' => 'Data belum tersedia',
+      _ => fallback,
+    };
+  }
+
   Widget _buildOfficialsSection(BuildContext context) {
     final officials = detail.officials;
     return Container(
@@ -1047,9 +1082,10 @@ class _RemoteClubPengurusTab extends StatelessWidget {
           const SizedBox(height: 12),
           if (!officials.dataAvailable)
             _UnavailableNotice(
-              message:
-                  officials.reason ??
-                  'Data official belum tersedia atau tidak dipublikasikan.',
+              message: _mapReasonToMessage(
+                officials.reason,
+                'Data official belum tersedia atau tidak dipublikasikan.',
+              ),
             )
           else if (officials.items.isEmpty)
             const Text(
@@ -1105,9 +1141,10 @@ class _RemoteClubPengurusTab extends StatelessWidget {
           const SizedBox(height: 12),
           if (!coaches.dataAvailable)
             _UnavailableNotice(
-              message:
-                  coaches.reason ??
-                  'Data pelatih belum tersedia atau tidak dipublikasikan.',
+              message: _mapReasonToMessage(
+                coaches.reason,
+                'Data pelatih belum tersedia atau tidak dipublikasikan.',
+              ),
             )
           else if (coaches.items.isEmpty)
             const Text(

@@ -315,6 +315,32 @@ void main() {
         );
       });
 
+      test(
+        'throws NotFoundException when querying an athlete ID from another subdistrict',
+        () async {
+          final tkService = DemoAthleteService(
+            demoRepo: demoRepo,
+            currentScopeProvider: () => const AccessScope(
+              type: AccessScopeType.district,
+              id: 'tarogong_kidul',
+              name: 'Kecamatan Tarogong Kidul',
+            ),
+          );
+          final tkAthletes = await tkService.fetchAthleteList();
+          final tkAthleteId = tkAthletes.items.first.id;
+
+          final service = DemoAthleteService(
+            demoRepo: demoRepo,
+            currentScopeProvider: () => scope,
+          );
+
+          expect(
+            () => service.fetchAthleteDetail(tkAthleteId),
+            throwsA(isA<NotFoundException>()),
+          );
+        },
+      );
+
       test('respects RequestCancellation when cancelled', () async {
         final cancellationController = RequestCancellationController()
           ..cancel('User cancelled athlete detail');

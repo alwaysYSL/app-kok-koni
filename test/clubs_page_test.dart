@@ -500,28 +500,28 @@ void main() {
 
       expect(find.text('Urutkan Klub'), findsOneWidget);
       expect(find.text('Nama (A → Z)'), findsOneWidget);
-      expect(find.text('Nama (Z → A)'), findsOneWidget);
-      expect(find.text('Jumlah Atlet Terbanyak'), findsOneWidget);
-      expect(find.text('Status (Aktif Terlebih Dahulu)'), findsOneWidget);
+      expect(find.text('Kode Klub'), findsOneWidget);
+      expect(find.text('Tahun Berdiri'), findsOneWidget);
+      expect(find.text('Status'), findsOneWidget);
 
-      // Tap 'Jumlah Atlet Terbanyak'
-      await tester.tap(find.text('Jumlah Atlet Terbanyak'));
+      // Tap 'Kode Klub'
+      await tester.tap(find.text('Kode Klub'));
       await tester.pumpAndSettle();
 
       expect(find.text('Urutkan Klub'), findsNothing);
-      expect(lastSort, '-total_athlete');
+      expect(lastSort, 'code');
 
-      // Open sort modal again and tap 'Nama (Z → A)'
+      // Open sort modal again and tap 'Tahun Berdiri'
       await tester.tap(find.byTooltip('Urutkan klub'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Nama (Z → A)'));
+      await tester.tap(find.text('Tahun Berdiri'));
       await tester.pumpAndSettle();
-      expect(lastSort, '-name');
+      expect(lastSort, 'since');
 
-      // Open sort modal again and tap 'Status (Aktif Terlebih Dahulu)'
+      // Open sort modal again and tap 'Status'
       await tester.tap(find.byTooltip('Urutkan klub'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Status (Aktif Terlebih Dahulu)'));
+      await tester.tap(find.text('Status'));
       await tester.pumpAndSettle();
       expect(lastSort, 'status');
     });

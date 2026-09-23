@@ -164,12 +164,12 @@ final sampleRemoteClubDetail = ClubDetail(
   fileSkUrl: 'https://files.example.test/sk-garuda.pdf',
   officials: const ClubPersonnelBlock(
     dataAvailable: false,
-    reason: 'Data official klub belum dipublikasikan oleh pengurus.',
+    reason: 'NOT_RECORDED_IN_SYSTEM',
     items: [],
   ),
   coaches: const ClubPersonnelBlock(
     dataAvailable: false,
-    reason: 'Data pelatih klub belum dipublikasikan.',
+    reason: 'NOT_AVAILABLE',
     items: [],
   ),
   management: const ClubManagementBlock(
@@ -365,6 +365,11 @@ void main() {
     testWidgets(
       'Tab 1 (Info) renders identitas, SK, kontak, alamat sekretariat & latihan',
       (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
         await tester.pumpWidget(
           createRemoteTestApp(
             initialLocation: '/club/10',
@@ -387,23 +392,37 @@ void main() {
         expect(find.text('Surat Keputusan (SK)'), findsOneWidget);
         expect(find.text('SK/012/KONI/2020'), findsOneWidget);
         expect(find.text('Berkas tersedia'), findsOneWidget);
+        expect(find.byTooltip('Salin / Buka tautan berkas SK'), findsOneWidget);
+
+        // Tap SK action button
+        await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          find.text('Tautan berkas SK disalin ke papan klip'),
+          findsOneWidget,
+        );
 
         // 3. Kontak section
         expect(find.text('Kontak'), findsOneWidget);
         expect(find.text('081234567890'), findsWidgets);
         expect(find.text('garuda@example.test'), findsOneWidget);
 
-        // 4. Alamat section
+        // 4. Alamat section (Kecamatan & Kabupaten / Kota)
         expect(find.text('Alamat & Lokasi'), findsOneWidget);
         expect(find.text('Sekretariat'), findsOneWidget);
         expect(find.text('Jl. Merdeka No. 45'), findsOneWidget);
+        expect(find.text('Kecamatan'), findsWidgets);
         expect(find.text('Kota Kulon'), findsOneWidget);
+        expect(find.text('Kabupaten / Kota'), findsWidgets);
+        expect(find.text('Garut Kota'), findsWidgets);
         expect(find.text('Tempat Latihan'), findsOneWidget);
         expect(
           find.text('GOR Gelora Merdeka, Jl. Cimanuk No. 88'),
           findsOneWidget,
         );
         expect(find.text('Jayawaras'), findsOneWidget);
+        expect(find.text('Tarogong Kidul'), findsOneWidget);
 
         // 5. Total Anggota section
         expect(find.text('Total Anggota'), findsOneWidget);
@@ -430,13 +449,14 @@ void main() {
         expect(find.text('BELUM AKTIF'), findsOneWidget);
         expect(find.text('SK belum tersedia'), findsOneWidget);
         expect(find.text('Berkas belum tersedia'), findsOneWidget);
+        expect(find.byTooltip('Salin / Buka tautan berkas SK'), findsNothing);
         expect(find.text('Belum ada data tempat latihan'), findsOneWidget);
         expect(find.text('0 Atlet'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'Tab 2 (Pengurus) renders partial management banner, nullable IDs, and unavailable notices',
+      'Tab 2 (Pengurus) renders partial management banner, nullable IDs, and mapped reason notices',
       (tester) async {
         var personReached = false;
         await tester.pumpWidget(
@@ -470,19 +490,13 @@ void main() {
         expect(find.text('Rahmat Hidayat'), findsOneWidget);
         expect(find.text('Sekretaris'), findsOneWidget);
 
-        // 2. Official Section (Unavailable)
+        // 2. Official Section (Mapped reason from NOT_RECORDED_IN_SYSTEM)
         expect(find.text('Official'), findsOneWidget);
-        expect(
-          find.text('Data official klub belum dipublikasikan oleh pengurus.'),
-          findsOneWidget,
-        );
+        expect(find.text('Belum tercatat di sistem'), findsOneWidget);
 
-        // 3. Pelatih Section (Unavailable)
+        // 3. Pelatih Section (Mapped reason from NOT_AVAILABLE)
         expect(find.text('Pelatih'), findsOneWidget);
-        expect(
-          find.text('Data pelatih klub belum dipublikasikan.'),
-          findsOneWidget,
-        );
+        expect(find.text('Data belum tersedia'), findsOneWidget);
 
         // 4. Test tap on non-null ID item navigates
         await tester.tap(find.text('Haji Ahmad Subagja'));

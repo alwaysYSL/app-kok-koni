@@ -112,9 +112,9 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
       builder: (modalContext) {
         final options = [
           ('name', 'Nama (A → Z)'),
-          ('-name', 'Nama (Z → A)'),
-          ('-total_athlete', 'Jumlah Atlet Terbanyak'),
-          ('status', 'Status (Aktif Terlebih Dahulu)'),
+          ('code', 'Kode Klub'),
+          ('since', 'Tahun Berdiri'),
+          ('status', 'Status'),
         ];
 
         return SafeArea(

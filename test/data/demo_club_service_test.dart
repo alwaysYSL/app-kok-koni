@@ -265,6 +265,27 @@ void main() {
         );
       });
 
+      test(
+        'throws NotFoundException when querying a club ID from another subdistrict',
+        () async {
+          // Balubur Limbangan only has 3 clubs (IDs 1..3)
+          final blService = DemoClubService(
+            demoRepo: demoRepo,
+            currentScopeProvider: () => const AccessScope(
+              type: AccessScopeType.district,
+              id: 'balubur_limbangan',
+              name: 'Kecamatan Balubur Limbangan',
+            ),
+          );
+
+          // Club 5 exists in Garut Kota (Tirta Kencana), but not in Balubur Limbangan
+          expect(
+            () => blService.fetchClubDetail(5),
+            throwsA(isA<NotFoundException>()),
+          );
+        },
+      );
+
       test('respects RequestCancellation when cancelled', () async {
         final cancellationController = RequestCancellationController()
           ..cancel('User cancelled club detail');

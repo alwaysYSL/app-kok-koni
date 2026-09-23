@@ -124,56 +124,10 @@ final class DemoAthleteService implements AthleteService {
 
     final sports = snapshot.clubs.map((c) => c.sport).toSet().toList()..sort();
 
-    // Check in current scope's snapshot first
+    // Check in current scope's snapshot
     for (final person in snapshot.people) {
       if (_resolvePersonId(person) == id || person.id == id.toString()) {
         return _mapToAthleteDetail(person, snapshot, sports);
-      }
-    }
-
-    // Try fetchPersonDetail from repo with id.toString()
-    try {
-      final person = await demoRepo.fetchPersonDetail(
-        id.toString(),
-        cancellation: cancellation,
-      );
-      return _mapToAthleteDetail(person, snapshot, sports);
-    } catch (e) {
-      if (e is RequestCancelledException) rethrow;
-    }
-
-    // Search across other standard demo scopes
-    const scopes = [
-      AccessScope(
-        type: AccessScopeType.district,
-        id: 'garut_kota',
-        name: 'Kecamatan Garut Kota',
-      ),
-      AccessScope(
-        type: AccessScopeType.district,
-        id: 'tarogong_kidul',
-        name: 'Kecamatan Tarogong Kidul',
-      ),
-      AccessScope(
-        type: AccessScopeType.district,
-        id: 'balubur_limbangan',
-        name: 'Kecamatan Balubur Limbangan',
-      ),
-    ];
-
-    for (final s in scopes) {
-      if (s.id == scope.id) continue;
-      try {
-        final snap = await demoRepo.fetchScope(s, cancellation: cancellation);
-        final snapSports = snap.clubs.map((c) => c.sport).toSet().toList()
-          ..sort();
-        for (final person in snap.people) {
-          if (_resolvePersonId(person) == id || person.id == id.toString()) {
-            return _mapToAthleteDetail(person, snap, snapSports);
-          }
-        }
-      } catch (e) {
-        if (e is RequestCancelledException) rethrow;
       }
     }
 
