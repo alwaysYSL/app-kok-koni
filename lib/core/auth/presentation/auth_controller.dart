@@ -185,6 +185,14 @@ class AuthController extends Notifier<AuthState> {
 
   @override
   AuthState build() {
+    try {
+      final composition = ref.watch(appCompositionProvider);
+      composition.apiClient?.attachUnauthorizedHandler(({errorCode}) {
+        handleUnauthorizedSession();
+      });
+    } catch (_) {
+      // Allows raw ProviderContainer() in unit tests that do not inject AppComposition.
+    }
     return const AuthBootstrapping();
   }
 

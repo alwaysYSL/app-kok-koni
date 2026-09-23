@@ -5,20 +5,31 @@ import 'package:dio/dio.dart';
 import '../config/deployment_profile.dart';
 import '../../data/request_cancellation.dart';
 import 'api_exceptions.dart';
+import 'auth_session_interceptor.dart';
 import 'auth_session_tokens.dart';
 
 final class ApiClient {
   ApiClient({
     required DeploymentProfile profile,
     required AuthSessionTokens tokens,
+    AuthSessionInterceptor? sessionInterceptor,
     Dio? dio,
   }) : _tokens = tokens, // ignore: prefer_initializing_formals
+       sessionInterceptor = sessionInterceptor ?? AuthSessionInterceptor(),
        _dio = dio ?? Dio(_optionsFor(profile)) {
     profile.validate();
+    if (!_dio.interceptors.contains(this.sessionInterceptor)) {
+      _dio.interceptors.add(this.sessionInterceptor);
+    }
   }
 
   final Dio _dio;
   final AuthSessionTokens _tokens;
+  final AuthSessionInterceptor sessionInterceptor;
+
+  void attachUnauthorizedHandler(void Function({String? errorCode}) handler) {
+    sessionInterceptor.attachUnauthorizedHandler(handler);
+  }
 
   static BaseOptions _optionsFor(DeploymentProfile profile) {
     profile.validate();
