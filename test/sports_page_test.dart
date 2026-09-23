@@ -420,6 +420,25 @@ void main() {
       expect(find.text('Coba lagi'), findsNothing);
     });
 
+    testWidgets(
+      'renders ApiConfigurationException error message without retry button',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 1000));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        await tester.pumpWidget(
+          buildSubject(errorToThrow: const ApiConfigurationException()),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('Respons server bukan JSON. Periksa alamat API.'),
+          findsOneWidget,
+        );
+        expect(find.text('Coba lagi'), findsNothing);
+      },
+    );
+
     testWidgets('renders empty state when no cabors are returned', (
       tester,
     ) async {

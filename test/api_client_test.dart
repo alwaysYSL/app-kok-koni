@@ -178,29 +178,182 @@ void main() {
     },
   );
 
-  test('ApiClient menangani response error non-JSON secara graceful', () async {
-    final dio = Dio()
-      ..httpClientAdapter = _FakeAdapter((options) async {
-        return ResponseBody.fromString('<html>502 Bad Gateway</html>', 502);
-      });
+  test(
+    'ApiClient melempar ApiConfigurationException saat 200 text/html',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '<html><body>Welcome</body></html>',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            },
+          );
+        });
 
-    final client = ApiClient(
-      profile: _remoteProfile,
-      tokens: AuthSessionTokens(),
-      dio: dio,
-    );
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
 
-    await expectLater(
-      client.request<void>('/bad-gateway', method: 'GET'),
-      throwsA(
-        isA<ServerErrorException>().having(
-          (e) => e.statusCode,
-          'statusCode',
-          502,
+      await expectLater(
+        client.request<Map<String, dynamic>>('/html-200', method: 'GET'),
+        throwsA(isA<ApiConfigurationException>()),
+      );
+    },
+  );
+
+  test(
+    'ApiClient melempar ApiConfigurationException saat 200 text/html dengan body valid json',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '{"status": true}',
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+            },
+          );
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
+
+      await expectLater(
+        client.request<Map<String, dynamic>>(
+          '/html-200-json-body',
+          method: 'GET',
         ),
-      ),
-    );
-  });
+        throwsA(isA<ApiConfigurationException>()),
+      );
+    },
+  );
+
+  test(
+    'ApiClient melempar ApiConfigurationException saat 404 text/html',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '<html>404 Not Found (Nginx)</html>',
+            404,
+            headers: {
+              Headers.contentTypeHeader: ['text/html'],
+            },
+          );
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
+
+      await expectLater(
+        client.request<void>('/not-found-html', method: 'GET'),
+        throwsA(isA<ApiConfigurationException>()),
+      );
+    },
+  );
+
+  test(
+    'ApiClient tetap melempar UnauthorizedException saat 401 text/html (prioritas 401)',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '<html>401 Unauthorized</html>',
+            401,
+            headers: {
+              Headers.contentTypeHeader: ['text/html'],
+            },
+          );
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
+
+      await expectLater(
+        client.request<void>('/unauthorized-html', method: 'GET'),
+        throwsA(
+          isA<UnauthorizedException>().having(
+            (e) => e.statusCode,
+            'statusCode',
+            401,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'ApiClient melempar NotFoundException saat 404 application/json',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '{"message":"Item tidak ditemukan"}',
+            404,
+            headers: {
+              Headers.contentTypeHeader: ['application/json'],
+            },
+          );
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
+
+      await expectLater(
+        client.request<void>('/not-found-json', method: 'GET'),
+        throwsA(
+          isA<NotFoundException>().having(
+            (e) => e.message,
+            'message',
+            'Item tidak ditemukan',
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'ApiClient menangani response error non-JSON sebagai ApiConfigurationException',
+    () async {
+      final dio = Dio()
+        ..httpClientAdapter = _FakeAdapter((options) async {
+          return ResponseBody.fromString(
+            '<html>502 Bad Gateway</html>',
+            502,
+            headers: {
+              Headers.contentTypeHeader: ['text/html'],
+            },
+          );
+        });
+
+      final client = ApiClient(
+        profile: _remoteProfile,
+        tokens: AuthSessionTokens(),
+        dio: dio,
+      );
+
+      await expectLater(
+        client.request<void>('/bad-gateway', method: 'GET'),
+        throwsA(isA<ApiConfigurationException>()),
+      );
+    },
+  );
 
   test('ApiClient mempertahankan cancellation domain exception', () async {
     final controller = RequestCancellationController()..cancel('stop');
@@ -229,7 +382,13 @@ void main() {
     for (final entry in statuses.entries) {
       final dio = Dio()
         ..httpClientAdapter = _FakeAdapter(
-          (_) async => ResponseBody.fromString('', entry.key),
+          (_) async => ResponseBody.fromString(
+            '{"message":"Error"}',
+            entry.key,
+            headers: {
+              Headers.contentTypeHeader: ['application/json'],
+            },
+          ),
         );
       final client = ApiClient(
         profile: _remoteProfile,
@@ -248,7 +407,13 @@ void main() {
     for (final statusCode in [400, 422]) {
       final dio = Dio()
         ..httpClientAdapter = _FakeAdapter(
-          (_) async => ResponseBody.fromString('', statusCode),
+          (_) async => ResponseBody.fromString(
+            '{"message":"Bad request"}',
+            statusCode,
+            headers: {
+              Headers.contentTypeHeader: ['application/json'],
+            },
+          ),
         );
       final client = ApiClient(
         profile: _remoteProfile,

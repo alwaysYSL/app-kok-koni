@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../config/deployment_profile.dart';
+import '../../network/json_response_guard.dart';
 import '../domain/auth_failure.dart';
 import 'auth_repository.dart';
 import 'dto/sicabor_login_response.dart';
@@ -46,7 +47,8 @@ final class RemoteAuthRepository implements AuthRepository {
     }
 
     final loginData = loginResponse.data;
-    if (loginData is! Map<String, dynamic>) {
+    if (!isJsonContentType(loginResponse.headers) ||
+        loginData is! Map<String, dynamic>) {
       return const AuthResult.failed(
         InvalidCredentialsFailure('Format respons login tidak valid.'),
       );
@@ -81,7 +83,8 @@ final class RemoteAuthRepository implements AuthRepository {
     }
 
     final profileData = profileResponse.data;
-    if (profileData is! Map<String, dynamic> ||
+    if (!isJsonContentType(profileResponse.headers) ||
+        profileData is! Map<String, dynamic> ||
         profileData['scope'] is! Map ||
         profileData['data'] is! Map ||
         (profileData['data'] as Map)['member'] is! Map ||
@@ -139,7 +142,8 @@ final class RemoteAuthRepository implements AuthRepository {
     }
 
     final profileData = profileResponse.data;
-    if (profileData is! Map<String, dynamic> ||
+    if (!isJsonContentType(profileResponse.headers) ||
+        profileData is! Map<String, dynamic> ||
         profileData['scope'] is! Map ||
         profileData['data'] is! Map ||
         (profileData['data'] as Map)['member'] is! Map ||

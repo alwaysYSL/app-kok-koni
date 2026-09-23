@@ -53,6 +53,6 @@ final class ApiTimeoutException extends ApiException {
 
 final class ApiConfigurationException extends ApiException {
   const ApiConfigurationException([
-    super.message = 'Konfigurasi API tidak valid',
+    super.message = 'Respons server bukan JSON. Periksa alamat API.',
   ]);
 }

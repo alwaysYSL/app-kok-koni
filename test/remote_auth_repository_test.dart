@@ -383,6 +383,71 @@ void main() {
         expect(result.failure, isA<ProfileFetchFailedFailure>());
       },
     );
+
+    test(
+      'login gagal saat endpoint profile mengembalikan respons 200 text/html (ProfileFetchFailedFailure) tanpa menyimpan sesi',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '<html><body>Login Page</body></html>',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['text/html; charset=utf-8'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.accessToken, isNull);
+        expect(result.sessionToken, isNull);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'login gagal saat endpoint login mengembalikan 200 text/html',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '<html><body>Proxy Login Gateway</body></html>',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['text/html'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<InvalidCredentialsFailure>());
+      },
+    );
   });
 
   group('RemoteAuthRepository - restoreSession()', () {
@@ -507,6 +572,29 @@ void main() {
 
         expect(result.isSuccess, isFalse);
         expect(result.failure, isA<NetworkTimeoutFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal saat endpoint profile mengembalikan 200 text/html (ProfileFetchFailedFailure)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '<html><body>Error Portal</body></html>',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['text/html'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
       },
     );
   });

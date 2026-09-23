@@ -7,6 +7,7 @@ import '../../data/request_cancellation.dart';
 import 'api_exceptions.dart';
 import 'auth_session_interceptor.dart';
 import 'auth_session_tokens.dart';
+import 'json_response_guard.dart';
 
 final class ApiClient {
   ApiClient({
@@ -74,7 +75,7 @@ final class ApiClient {
     }
 
     try {
-      final response = await _dio.request<T>(
+      final response = await _dio.request<dynamic>(
         path,
         data: data,
         queryParameters: queryParameters,
@@ -82,7 +83,17 @@ final class ApiClient {
         cancelToken: cancelToken,
       );
       cancellation?.throwIfCancelled();
-      return response;
+      requireJsonContentType(response.headers);
+      return Response<T>(
+        data: response.data as T,
+        headers: response.headers,
+        requestOptions: response.requestOptions,
+        isRedirect: response.isRedirect,
+        statusCode: response.statusCode,
+        statusMessage: response.statusMessage,
+        redirects: response.redirects,
+        extra: response.extra,
+      );
     } on DioException catch (error) {
       if ((cancellation?.isCancelled ?? false) ||
           (error.type == DioExceptionType.cancel && cancellation != null)) {
@@ -115,8 +126,10 @@ final class ApiClient {
   }
 
   ApiException _mapException(DioException error) {
-    final status = error.response?.statusCode;
-    final jsonMap = _extractJson(error.response?.data);
+    final response = error.response;
+    final status = response?.statusCode;
+    final headers = response?.headers;
+    final jsonMap = _extractJson(response?.data);
     final errorCode = jsonMap?['error_code']?.toString();
     final serverMessage = jsonMap?['message']?.toString();
     final fallbackMessage = error.message;
@@ -124,6 +137,12 @@ final class ApiClient {
     if (status == 401) {
       final message = serverMessage ?? fallbackMessage ?? 'Sesi tidak sah';
       return UnauthorizedException(message, errorCode, serverMessage);
+    }
+    if (headers != null && !isJsonContentType(headers)) {
+      return const ApiConfigurationException();
+    }
+    if (error.error is FormatException || error.error is TypeError) {
+      return const ApiConfigurationException();
     }
     if (status == 403) {
       final message = serverMessage ?? fallbackMessage ?? 'Akses ditolak';
