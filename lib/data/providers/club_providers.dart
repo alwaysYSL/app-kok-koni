@@ -179,12 +179,20 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
 
   final int? idCabor;
 
+  int _generation = 0;
+
   @override
   ClubPaginationState build() {
+    ref.watch(dataRequestContextProvider);
     return const ClubPaginationState();
   }
 
   Future<void> loadFirstPage() async {
+    final contextAtStart = ref.read(dataRequestContextProvider);
+    if (contextAtStart == null) return;
+    _generation++;
+    final expectedGen = _generation;
+
     state = state.copyWith(
       isLoading: true,
       error: null,
@@ -201,6 +209,11 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
           sort: state.sort,
         )).future,
       );
+      if (!ref.mounted) return;
+      final currentContext = ref.read(dataRequestContextProvider);
+      if (currentContext != contextAtStart || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(
         items: result.items,
         total: result.total,
@@ -209,12 +222,19 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
         isLoading: false,
       );
     } catch (e) {
+      if (!ref.mounted || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(isLoading: false, error: e);
     }
   }
 
   Future<void> loadMore() async {
     if (!state.canLoadMore) return;
+    final contextAtStart = ref.read(dataRequestContextProvider);
+    if (contextAtStart == null) return;
+    final expectedGen = _generation;
+
     state = state.copyWith(isLoadingMore: true, loadMoreError: null);
     try {
       final result = await ref.refresh(
@@ -227,6 +247,11 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
           sort: state.sort,
         )).future,
       );
+      if (!ref.mounted) return;
+      final currentContext = ref.read(dataRequestContextProvider);
+      if (currentContext != contextAtStart || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(
         items: [...state.items, ...result.items],
         total: result.total,
@@ -235,6 +260,9 @@ class ClubPaginationController extends Notifier<ClubPaginationState> {
         isLoadingMore: false,
       );
     } catch (e) {
+      if (!ref.mounted || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(isLoadingMore: false, loadMoreError: e);
     }
   }

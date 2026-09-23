@@ -86,6 +86,8 @@ final class CaborPaginationState {
   final String source;
   final String sort;
 
+  bool get canLoadMore => !isLoading && !isLoadingMore && hasMore;
+
   CaborPaginationState copyWith({
     List<Cabor>? items,
     int? total,
@@ -142,8 +144,11 @@ final class CaborPaginationState {
 class CaborPaginationController extends Notifier<CaborPaginationState> {
   static const int pageSize = 25;
 
+  int _generation = 0;
+
   @override
   CaborPaginationState build() {
+    ref.watch(dataRequestContextProvider);
     return const CaborPaginationState();
   }
 
@@ -151,6 +156,11 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
     String source = 'all',
     String sort = 'name',
   }) async {
+    final contextAtStart = ref.read(dataRequestContextProvider);
+    if (contextAtStart == null) return;
+    _generation++;
+    final expectedGen = _generation;
+
     state = state.copyWith(
       isLoading: true,
       error: null,
@@ -158,7 +168,7 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
       sort: sort,
     );
     try {
-      final result = await ref.read(
+      final result = await ref.refresh(
         caborListProvider((
           offset: 0,
           limit: pageSize,
@@ -166,6 +176,11 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
           sort: sort,
         )).future,
       );
+      if (!ref.mounted) return;
+      final currentContext = ref.read(dataRequestContextProvider);
+      if (currentContext != contextAtStart || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(
         items: result.items,
         total: result.total,
@@ -173,15 +188,22 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
         isLoading: false,
       );
     } catch (e) {
+      if (!ref.mounted || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(isLoading: false, error: e);
     }
   }
 
   Future<void> loadMore() async {
-    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+    if (!state.canLoadMore) return;
+    final contextAtStart = ref.read(dataRequestContextProvider);
+    if (contextAtStart == null) return;
+    final expectedGen = _generation;
+
     state = state.copyWith(isLoadingMore: true, loadMoreError: null);
     try {
-      final result = await ref.read(
+      final result = await ref.refresh(
         caborListProvider((
           offset: state.items.length,
           limit: pageSize,
@@ -189,6 +211,11 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
           sort: state.sort,
         )).future,
       );
+      if (!ref.mounted) return;
+      final currentContext = ref.read(dataRequestContextProvider);
+      if (currentContext != contextAtStart || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(
         items: [...state.items, ...result.items],
         total: result.total,
@@ -196,6 +223,9 @@ class CaborPaginationController extends Notifier<CaborPaginationState> {
         isLoadingMore: false,
       );
     } catch (e) {
+      if (!ref.mounted || expectedGen != _generation) {
+        return;
+      }
       state = state.copyWith(isLoadingMore: false, loadMoreError: e);
     }
   }
