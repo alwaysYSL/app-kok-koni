@@ -16,6 +16,7 @@ import 'features/profile_page.dart';
 import 'features/detail_pages.dart';
 import 'features/club_detail/club_detail_page.dart';
 import 'features/athlete_detail/athlete_detail_page.dart';
+import 'features/athlete_list/athlete_list_page.dart';
 import 'features/sport_detail/sport_detail_page.dart';
 import 'features/attention_page.dart';
 import 'features/search/global_search_page.dart';
@@ -117,6 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/person/:id',
         builder: (_, s) => AthleteDetailPage(id: s.pathParameters['id']!),
       ),
+      GoRoute(path: '/athletes', builder: (_, _) => const AthleteListPage()),
       GoRoute(
         path: '/attention',
         builder: (_, s) => AttentionPage(type: s.uri.queryParameters['type']),
