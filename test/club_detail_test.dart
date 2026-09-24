@@ -446,7 +446,7 @@ void main() {
     );
 
     testWidgets(
-      'Tab 1 (Info) falls back to copy link and SnackBar when opening SK fails or launcher returns false',
+      'Tab 1 (Info) falls back to SnackBar with copy action when opening SK fails or launcher returns false',
       (tester) async {
         tester.view.physicalSize = const Size(800, 1600);
         tester.view.devicePixelRatio = 1.0;
@@ -469,19 +469,21 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpAndSettle();
+
         expect(
-          find.text('Tautan berkas SK disalin ke papan klip'),
+          find.text('Tidak dapat membuka peramban eksternal.'),
           findsOneWidget,
         );
+        expect(find.text('Salin Tautan'), findsOneWidget);
+
+        await tester.tap(find.text('Salin Tautan'));
+        await tester.pumpAndSettle();
       },
     );
 
     testWidgets(
-      'Tab 1 (Info) falls back to copy link and SnackBar when SK URL is invalid without calling launcher',
+      'Tab 1 (Info) falls back to SnackBar with copy action when SK URL is invalid without calling launcher',
       (tester) async {
         tester.view.physicalSize = const Size(800, 1600);
         tester.view.devicePixelRatio = 1.0;
@@ -512,15 +514,14 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.tap(find.byTooltip('Salin / Buka tautan berkas SK'));
-        await tester.pump();
-        await tester.pump();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpAndSettle();
+
         expect(launcherCalled, isFalse);
-        expect(
-          find.text('Tautan berkas SK disalin ke papan klip'),
-          findsOneWidget,
-        );
+        expect(find.text('Tautan berkas SK tidak valid.'), findsOneWidget);
+        expect(find.text('Salin Tautan'), findsOneWidget);
+
+        await tester.tap(find.text('Salin Tautan'));
+        await tester.pumpAndSettle();
       },
     );
 
@@ -812,6 +813,43 @@ void main() {
           ),
           findsOneWidget,
         );
+      },
+    );
+
+    testWidgets(
+      'Tab 3 (Atlet) hides athlete count header when athletePaginationProvider has error',
+      (tester) async {
+        tester.view.physicalSize = const Size(800, 1600);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(
+                10,
+              ).overrideWith((ref) async => sampleRemoteClubDetail),
+              athletePaginationProvider((
+                idCabor: null,
+                idClub: 10,
+              )).overrideWith(
+                () => _TestAthletePaginationController((
+                  idCabor: null,
+                  idClub: 10,
+                ), const AthletePaginationState(error: 'Gagal memuat atlet')),
+              ),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch to Tab 3
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('Hasil filter wilayah ini:'), findsNothing);
       },
     );
 

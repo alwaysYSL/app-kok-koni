@@ -9,7 +9,7 @@ Panduan lengkap penggunaan **SICABOR KOK API Mock Server** mandiri (*standalone*
 Mock server ini menyediakan replika lokal independen dari API SICABOR KOK tanpa memerlukan koneksi ke server backend produksi. Server dibangun sepenuhnya menggunakan library standar Dart (`dart:io`, `dart:convert`, `dart:async`) tanpa dependensi pustaka pihak ketiga.
 
 ### Fitur Utama
-- **Autentikasi Mandiri**: Mendukung login dengan Bearer Token dinamis serta verifikasi master password.
+- **Autentikasi Mandiri**: Mendukung login dengan token terbitan dinamis (masa berlaku 24 jam) serta kredensial pengujian sintetis khusus mock.
 - **Data Realistis**: Dilengkapi data mock kecamatan Garut Kota, Balubur Limbangan, dan Tarogong Kidul (34 Cabor, puluhan Klub, dan ratusan Atlet).
 - **Enforcement Keamanan KOK**: Memverifikasi hak akses akun (`admin_kok`), status keaktifan akun (`status == 1`), serta keterikatan wilayah kecamatan (`subdistrict_id`).
 - **Pencarian, Filter & Paginasi**: Mendukung query parameters (`limit`, `offset`, `search`, `sort`, `id_cabor`, `id_club`, `sex`, `status`, `source`).
@@ -31,7 +31,7 @@ dart run scripts/mock_server/sicabor_mock_server.dart
 | Parameter | Alias | Default | Deskripsi |
 | :--- | :--- | :--- | :--- |
 | `--port=<port>` | `-p=<port>` | `8088` | Menentukan nomor port server |
-| `--host=<host>` | `-h=<host>` | `0.0.0.0` | Menentukan alamat bind host (`0.0.0.0` untuk semua antarmuka) |
+| `--host=<host>` | `-h=<host>` | `127.0.0.1` | Menentukan alamat bind host (`0.0.0.0` untuk semua antarmuka) |
 | `--quiet` | `-q` | `false` | Menonaktifkan log request di terminal |
 | `--help` | - | - | Menampilkan panduan bantuan |
 
@@ -39,6 +39,10 @@ dart run scripts/mock_server/sicabor_mock_server.dart
 - Menjalankan pada port custom:
   ```bash
   dart run scripts/mock_server/sicabor_mock_server.dart --port=9090
+  ```
+- Menjalankan untuk pengujian smartphone fisik di LAN:
+  ```bash
+  dart run scripts/mock_server/sicabor_mock_server.dart --host=0.0.0.0 --port=8088
   ```
 - Menjalankan mode senyap:
   ```bash
@@ -85,6 +89,16 @@ Emulator Android berjalan di dalam virtual router tersendiri. Gunakan alamat IP 
 - **Base API URL**: `http://10.0.2.2:8088/api/v1/kok`
 - **Auth URL**: `http://10.0.2.2:8088/api/auth`
 
+**PowerShell (Windows):**
+```powershell
+flutter run `
+  --dart-define=APP_ENV=staging `
+  --dart-define=AUTH_MODE=remote `
+  --dart-define=DATA_MODE=remote `
+  --dart-define=API_BASE_URL=http://10.0.2.2:8088/api/v1/kok
+```
+
+**Bash / Zsh:**
 ```bash
 flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
   --dart-define=DATA_MODE=remote \
@@ -93,7 +107,7 @@ flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
 
 ### B. Smartphone Android Fisik (Kabel USB / Wi-Fi)
 Hubungkan laptop dan smartphone ke jaringan Wi-Fi lokal yang sama:
-1. Jalankan mock server dengan bind ke semua interface (default host `0.0.0.0` pada port `8088` atau custom):
+1. Jalankan mock server dengan opsi `--host=0.0.0.0` pada port `8088`:
    ```bash
    dart run scripts/mock_server/sicabor_mock_server.dart --host=0.0.0.0 --port=8088
    ```
@@ -105,6 +119,16 @@ Hubungkan laptop dan smartphone ke jaringan Wi-Fi lokal yang sama:
    - **Base API URL**: `http://<IP-Laptop>:8088/api/v1/kok` (Contoh: `http://192.168.1.50:8088/api/v1/kok`)
    - **Auth URL**: `http://<IP-Laptop>:8088/api/auth` (Contoh: `http://192.168.1.50:8088/api/auth`)
 
+**PowerShell (Windows):**
+```powershell
+flutter run `
+  --dart-define=APP_ENV=staging `
+  --dart-define=AUTH_MODE=remote `
+  --dart-define=DATA_MODE=remote `
+  --dart-define=API_BASE_URL=http://192.168.1.50:8088/api/v1/kok
+```
+
+**Bash / Zsh:**
 ```bash
 flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
   --dart-define=DATA_MODE=remote \
@@ -115,6 +139,16 @@ flutter run --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
 - **Base API URL**: `http://localhost:8088/api/v1/kok` (atau `http://127.0.0.1:8088/api/v1/kok`)
 - **Auth URL**: `http://localhost:8088/api/auth`
 
+**PowerShell (Windows):**
+```powershell
+flutter run -d chrome `
+  --dart-define=APP_ENV=staging `
+  --dart-define=AUTH_MODE=remote `
+  --dart-define=DATA_MODE=remote `
+  --dart-define=API_BASE_URL=http://localhost:8088/api/v1/kok
+```
+
+**Bash / Zsh:**
 ```bash
 flutter run -d chrome --dart-define=APP_ENV=staging --dart-define=AUTH_MODE=remote \
   --dart-define=DATA_MODE=remote \

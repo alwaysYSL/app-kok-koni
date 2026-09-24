@@ -47,8 +47,8 @@ class AuthSessionInterceptor extends Interceptor {
     final requestRevision = err.requestOptions.extra[sessionRevisionExtraKey];
     final currentRevision = _currentRevision;
 
-    if (requestRevision != null &&
-        currentRevision != null &&
+    if (requestRevision == null ||
+        currentRevision == null ||
         requestRevision != currentRevision) {
       handler.next(err);
       return;

@@ -653,9 +653,20 @@ Future<void> launchDocumentUrl(
   }
 
   if (!launched && context.mounted) {
-    unawaited(Clipboard.setData(ClipboardData(text: trimmed)));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tautan berkas SK disalin ke papan klip')),
+      SnackBar(
+        content: Text(
+          isValid
+              ? 'Tidak dapat membuka peramban eksternal.'
+              : 'Tautan berkas SK tidak valid.',
+        ),
+        action: SnackBarAction(
+          label: 'Salin Tautan',
+          onPressed: () {
+            unawaited(Clipboard.setData(ClipboardData(text: trimmed)));
+          },
+        ),
+      ),
     );
   }
 }
@@ -1526,7 +1537,7 @@ class _RemoteClubAthletesTabState
           ),
 
         // Subtitle / info header explaining counts
-        if (!state.isLoading)
+        if (!state.isLoading && state.error == null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(

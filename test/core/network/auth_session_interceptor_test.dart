@@ -24,13 +24,14 @@ final class _FakeAdapter implements HttpClientAdapter {
 void main() {
   group('AuthSessionInterceptor direct unit tests', () {
     test(
-      '401 triggers callback with INVALID_TOKEN error code and server message',
+      '401 triggers callback with INVALID_TOKEN error code and server message when revision matches',
       () {
         var callbackCount = 0;
         String? receivedErrorCode;
         String? receivedServerMessage;
 
         final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
           onUnauthorizedSession: ({errorCode, serverMessage}) {
             callbackCount++;
             receivedErrorCode = errorCode;
@@ -38,7 +39,10 @@ void main() {
           },
         );
 
-        final requestOptions = RequestOptions(path: '/test');
+        final requestOptions = RequestOptions(
+          path: '/test',
+          extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+        );
         final dioException = DioException(
           requestOptions: requestOptions,
           response: Response(
@@ -65,12 +69,86 @@ void main() {
       },
     );
 
+    test(
+      '401 with untagged request (requestRevision == null) does NOT trigger callback',
+      () {
+        var callbackCount = 0;
+
+        final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
+            callbackCount++;
+          },
+        );
+
+        final requestOptions = RequestOptions(path: '/test');
+        final dioException = DioException(
+          requestOptions: requestOptions,
+          response: Response(
+            requestOptions: requestOptions,
+            statusCode: 401,
+            data: {'message': 'Unauthorized token'},
+          ),
+        );
+
+        var nextCalled = false;
+        final handler = _TestErrorInterceptorHandler(
+          onNext: (err) {
+            nextCalled = true;
+            expect(err, same(dioException));
+          },
+        );
+
+        interceptor.onError(dioException, handler);
+
+        expect(callbackCount, 0);
+        expect(nextCalled, isTrue);
+      },
+    );
+
+    test('401 when currentRevision == null does NOT trigger callback', () {
+      var callbackCount = 0;
+
+      final interceptor = AuthSessionInterceptor(
+        onUnauthorizedSession: ({errorCode, serverMessage}) {
+          callbackCount++;
+        },
+      );
+
+      final requestOptions = RequestOptions(
+        path: '/test',
+        extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+      );
+      final dioException = DioException(
+        requestOptions: requestOptions,
+        response: Response(
+          requestOptions: requestOptions,
+          statusCode: 401,
+          data: {'message': 'Unauthorized token'},
+        ),
+      );
+
+      var nextCalled = false;
+      final handler = _TestErrorInterceptorHandler(
+        onNext: (err) {
+          nextCalled = true;
+          expect(err, same(dioException));
+        },
+      );
+
+      interceptor.onError(dioException, handler);
+
+      expect(callbackCount, 0);
+      expect(nextCalled, isTrue);
+    });
+
     test('401 with custom error_code in body preserves that error code', () {
       var callbackCount = 0;
       String? receivedErrorCode;
       String? receivedServerMessage;
 
       final interceptor = AuthSessionInterceptor(
+        currentRevisionProvider: () => 1,
         onUnauthorizedSession: ({errorCode, serverMessage}) {
           callbackCount++;
           receivedErrorCode = errorCode;
@@ -78,7 +156,10 @@ void main() {
         },
       );
 
-      final requestOptions = RequestOptions(path: '/test');
+      final requestOptions = RequestOptions(
+        path: '/test',
+        extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+      );
       final dioException = DioException(
         requestOptions: requestOptions,
         response: Response(
@@ -113,6 +194,7 @@ void main() {
           String? receivedServerMessage;
 
           final interceptor = AuthSessionInterceptor(
+            currentRevisionProvider: () => 1,
             onUnauthorizedSession: ({errorCode, serverMessage}) {
               callbackCount++;
               receivedErrorCode = errorCode;
@@ -120,7 +202,10 @@ void main() {
             },
           );
 
-          final requestOptions = RequestOptions(path: '/test');
+          final requestOptions = RequestOptions(
+            path: '/test',
+            extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+          );
           final dioException = DioException(
             requestOptions: requestOptions,
             response: Response(
@@ -149,6 +234,43 @@ void main() {
     }
 
     test(
+      '403 with sessionEndingCode on untagged request does NOT trigger callback',
+      () {
+        var callbackCount = 0;
+
+        final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
+            callbackCount++;
+          },
+        );
+
+        final requestOptions = RequestOptions(path: '/test');
+        final dioException = DioException(
+          requestOptions: requestOptions,
+          response: Response(
+            requestOptions: requestOptions,
+            statusCode: 403,
+            data: {'error_code': 'MEMBER_NOT_FOUND', 'message': 'Forbidden'},
+          ),
+        );
+
+        var nextCalled = false;
+        final handler = _TestErrorInterceptorHandler(
+          onNext: (err) {
+            nextCalled = true;
+            expect(err, same(dioException));
+          },
+        );
+
+        interceptor.onError(dioException, handler);
+
+        expect(callbackCount, 0);
+        expect(nextCalled, isTrue);
+      },
+    );
+
+    test(
       '403 with JSON string body containing session ending code triggers callback',
       () {
         var callbackCount = 0;
@@ -156,6 +278,7 @@ void main() {
         String? receivedServerMessage;
 
         final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
           onUnauthorizedSession: ({errorCode, serverMessage}) {
             callbackCount++;
             receivedErrorCode = errorCode;
@@ -163,7 +286,10 @@ void main() {
           },
         );
 
-        final requestOptions = RequestOptions(path: '/test');
+        final requestOptions = RequestOptions(
+          path: '/test',
+          extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+        );
         final dioException = DioException(
           requestOptions: requestOptions,
           response: Response(
@@ -338,7 +464,9 @@ void main() {
     );
 
     test('attachUnauthorizedHandler updates the handler successfully', () {
-      final interceptor = AuthSessionInterceptor();
+      final interceptor = AuthSessionInterceptor(
+        currentRevisionProvider: () => 1,
+      );
       var callbackCount = 0;
       String? lastCode;
 
@@ -347,7 +475,10 @@ void main() {
         lastCode = errorCode;
       });
 
-      final requestOptions = RequestOptions(path: '/test');
+      final requestOptions = RequestOptions(
+        path: '/test',
+        extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+      );
       final dioException = DioException(
         requestOptions: requestOptions,
         response: Response(requestOptions: requestOptions, statusCode: 401),
@@ -534,10 +665,54 @@ void main() {
 
   group('AuthSessionInterceptor Dio integration tests', () {
     test(
-      'Dio request yielding 401 triggers callback and throws DioException to caller',
+      'Dio request yielding 401 with matching revision triggers callback and throws DioException to caller',
       () async {
         var unauthorizedTriggered = false;
         final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
+          onUnauthorizedSession: ({errorCode, serverMessage}) {
+            unauthorizedTriggered = true;
+          },
+        );
+
+        final dio = Dio()
+          ..httpClientAdapter = _FakeAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"message":"Unauthorized"}',
+              401,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          })
+          ..interceptors.add(interceptor);
+
+        await expectLater(
+          dio.get<dynamic>(
+            'https://example.com/api/test',
+            options: Options(
+              extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+            ),
+          ),
+          throwsA(
+            isA<DioException>().having(
+              (e) => e.response?.statusCode,
+              'statusCode',
+              401,
+            ),
+          ),
+        );
+
+        expect(unauthorizedTriggered, isTrue);
+      },
+    );
+
+    test(
+      'Dio request yielding 401 without session revision (untagged) does NOT trigger callback',
+      () async {
+        var unauthorizedTriggered = false;
+        final interceptor = AuthSessionInterceptor(
+          currentRevisionProvider: () => 1,
           onUnauthorizedSession: ({errorCode, serverMessage}) {
             unauthorizedTriggered = true;
           },
@@ -566,13 +741,14 @@ void main() {
           ),
         );
 
-        expect(unauthorizedTriggered, isTrue);
+        expect(unauthorizedTriggered, isFalse);
       },
     );
 
     test('Dio request yielding 200 does not trigger callback', () async {
       var unauthorizedTriggered = false;
       final interceptor = AuthSessionInterceptor(
+        currentRevisionProvider: () => 1,
         onUnauthorizedSession: ({errorCode, serverMessage}) {
           unauthorizedTriggered = true;
         },
@@ -590,7 +766,12 @@ void main() {
         })
         ..interceptors.add(interceptor);
 
-      final response = await dio.get<dynamic>('https://example.com/api/test');
+      final response = await dio.get<dynamic>(
+        'https://example.com/api/test',
+        options: Options(
+          extra: {AuthSessionInterceptor.sessionRevisionExtraKey: 1},
+        ),
+      );
       expect(response.statusCode, 200);
       expect(unauthorizedTriggered, isFalse);
     });

@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../config/deployment_profile.dart';
 import '../../network/json_response_guard.dart';
 import '../domain/auth_failure.dart';
+import '../domain/user_principal.dart';
 import 'auth_repository.dart';
 import 'dto/sicabor_login_response.dart';
 import 'dto/sicabor_profile_response.dart';
@@ -92,7 +93,13 @@ final class RemoteAuthRepository implements AuthRepository {
       return const AuthResult.failed(ProfileFetchFailedFailure());
     }
 
-    final profileRes = SicaborProfileResponse.fromJson(profileData);
+    final SicaborProfileResponse profileRes;
+    try {
+      profileRes = SicaborProfileResponse.fromJson(profileData);
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
     if (!profileRes.success) {
       return AuthResult.failed(
         ProfileFetchFailedFailure(
@@ -108,10 +115,15 @@ final class RemoteAuthRepository implements AuthRepository {
       return validationError;
     }
 
-    final principal = SicaborAuthMapper.mapProfileToUserPrincipal(
-      loginData: loginRes.data!,
-      profileResponse: profileRes,
-    );
+    final UserPrincipal principal;
+    try {
+      principal = SicaborAuthMapper.mapProfileToUserPrincipal(
+        loginData: loginRes.data!,
+        profileResponse: profileRes,
+      );
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
 
     return AuthResult.success(
       user: principal,
@@ -151,7 +163,13 @@ final class RemoteAuthRepository implements AuthRepository {
       return const AuthResult.failed(ProfileFetchFailedFailure());
     }
 
-    final profileRes = SicaborProfileResponse.fromJson(profileData);
+    final SicaborProfileResponse profileRes;
+    try {
+      profileRes = SicaborProfileResponse.fromJson(profileData);
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
+
     if (!profileRes.success) {
       return AuthResult.failed(
         ProfileFetchFailedFailure(
@@ -167,9 +185,14 @@ final class RemoteAuthRepository implements AuthRepository {
       return validationError;
     }
 
-    final principal = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
-      profileResponse: profileRes,
-    );
+    final UserPrincipal principal;
+    try {
+      principal = SicaborAuthMapper.mapProfileOnlyToUserPrincipal(
+        profileResponse: profileRes,
+      );
+    } catch (_) {
+      return const AuthResult.failed(ProfileFetchFailedFailure());
+    }
 
     return AuthResult.success(
       user: principal,

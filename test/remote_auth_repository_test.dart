@@ -1133,6 +1133,65 @@ void main() {
         expect(result.failure, isA<NetworkTimeoutFailure>());
       },
     );
+
+    test(
+      'login gagal dengan ProfileFetchFailedFailure jika tipe field profil tidak sesuai (misal: email berupa integer)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            if (options.uri.path == '/api/auth') {
+              return ResponseBody.fromString(
+                sampleLoginSuccessJson,
+                200,
+                headers: {
+                  Headers.contentTypeHeader: ['application/json'],
+                },
+              );
+            }
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","email":12345,"type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":10,"total_cabor_from_club":2,"total_cabor_from_athlete":8,"total_club":5,"total_athlete":40,"total_athlete_without_club":10}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: false,
+        );
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
+
+    test(
+      'restoreSession gagal dengan ProfileFetchFailedFailure jika tipe field profil tidak sesuai (misal: email berupa integer)',
+      () async {
+        final dio = Dio()
+          ..httpClientAdapter = _MockHttpAdapter((options) async {
+            return ResponseBody.fromString(
+              '{"success":true,"message":"OK","scope":{"subdistrict_id":1728,"subdistrict_name":"Garut Kota","district_id":126,"district_name":"Garut"},"data":{"member":{"id":578,"username":"kt.garutkota","name":"Admin","email":12345,"type":"admin_kok","status":1,"status_label":"Aktif"},"summary":{"total_cabor":10,"total_cabor_from_club":2,"total_cabor_from_athlete":8,"total_club":5,"total_athlete":40,"total_athlete_without_club":10}}}',
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          });
+
+        final repository = RemoteAuthRepository(dio: dio, profile: profile);
+
+        final result = await repository.restoreSession('valid_token');
+
+        expect(result.isSuccess, isFalse);
+        expect(result.failure, isA<ProfileFetchFailedFailure>());
+      },
+    );
   });
 }
 
