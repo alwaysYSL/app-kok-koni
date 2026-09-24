@@ -6,6 +6,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/data/dto/sicabor_profile_response.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
@@ -21,6 +22,7 @@ Widget buildTestableWidget({
   KokSnapshot? snapshot,
   AppComposition? appComposition,
   ProfileSummary? profileSummary,
+  Future<ProfileSummary> Function(Ref)? profileSummaryOverride,
   GoRouter? router,
 }) {
   final snap =
@@ -79,7 +81,9 @@ Widget buildTestableWidget({
     snapshotProvider.overrideWith((_) async => snap),
     if (appComposition != null)
       appCompositionProvider.overrideWithValue(appComposition),
-    if (profileSummary != null)
+    if (profileSummaryOverride != null)
+      profileSummaryProvider.overrideWith(profileSummaryOverride)
+    else if (profileSummary != null)
       profileSummaryProvider.overrideWith((_) async => profileSummary),
   ];
 
@@ -95,6 +99,7 @@ Future<void> pumpCommitteePage(
   KokSnapshot? snapshot,
   AppComposition? appComposition,
   ProfileSummary? profileSummary,
+  Future<ProfileSummary> Function(Ref)? profileSummaryOverride,
   GoRouter? router,
 }) async {
   tester.view.physicalSize = const Size(390, 1000);
@@ -118,6 +123,7 @@ Future<void> pumpCommitteePage(
       snapshot: snapshot,
       appComposition: appComposition,
       profileSummary: profileSummary,
+      profileSummaryOverride: profileSummaryOverride,
       router: appRouter,
     ),
   );
@@ -428,4 +434,39 @@ void main() {
       expect(find.byType(CommitteeMemberCard), findsNothing);
     },
   );
+
+  testWidgets('remote committee keeps official-data notice when scope fails', (
+    tester,
+  ) async {
+    final remoteComposition = buildTestAppComposition(
+      profile: const DeploymentProfile(
+        environment: AppEnv.staging,
+        authMode: AuthMode.remote,
+        dataMode: DataMode.remote,
+        apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+      ),
+    );
+
+    await pumpCommitteePage(
+      tester,
+      appComposition: remoteComposition,
+      profileSummaryOverride: (_) => Future.error(
+        const ForbiddenException(
+          'Akses ditolak',
+          'NO_SUBDISTRICT',
+          'Akun belum terikat pada kecamatan.',
+        ),
+      ),
+    );
+
+    expect(
+      find.text('Data susunan pengurus KOK resmi belum tersedia di aplikasi.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Akun belum terikat pada kecamatan. Hubungi admin kabupaten.'),
+      findsOneWidget,
+    );
+    expect(find.text('Garut Kota'), findsNothing);
+  });
 }

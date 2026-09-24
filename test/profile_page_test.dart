@@ -1128,8 +1128,7 @@ void main() {
       expect(find.text('Pak Asep'), findsNothing);
       expect(find.text('Kecamatan Garut Kota'), findsNothing);
       expect(find.text('Sesi tidak aktif'), findsOneWidget);
-      expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
-      expect(find.text('Fitur tidak tersedia untuk peran ini'), findsOneWidget);
+      expect(find.text('Rekap Data Kecamatan'), findsNothing);
     });
 
     testWidgets(
@@ -1293,33 +1292,25 @@ void main() {
       },
     );
 
-    testWidgets(
-      'remote rekap sheet respects reports:export permission for disabled user',
-      (tester) async {
-        final prefs = await SharedPreferences.getInstance();
-        final remoteComposition = buildRemoteTestComposition();
+    testWidgets('remote account hides rekap when reports:export is absent', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final remoteComposition = buildRemoteTestComposition();
 
-        await pumpProfilePage(
-          tester,
-          user: cecepUser,
-          preferences: prefs,
-          composition: remoteComposition,
-          profileSummary: testProfileSummary,
-        );
+      await pumpProfilePage(
+        tester,
+        user: cecepUser,
+        preferences: prefs,
+        composition: remoteComposition,
+        profileSummary: testProfileSummary,
+      );
 
-        expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
-        expect(
-          find.text('Fitur tidak tersedia untuk peran ini'),
-          findsOneWidget,
-        );
-
-        await tester.tap(find.text('Rekap Data Kecamatan'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Rekapitulasi Data KOK Garut Kota'), findsNothing);
-        expect(find.text('Salin Teks Rekapitulasi'), findsNothing);
-      },
-    );
+      expect(find.text('Rekap Data Kecamatan'), findsNothing);
+      expect(find.text('UTILITAS KOORDINATOR'), findsNothing);
+      expect(find.text('Rekapitulasi Data KOK Garut Kota'), findsNothing);
+      expect(find.text('Salin Teks Rekapitulasi'), findsNothing);
+    });
 
     testWidgets('settings modal and logout dialog work in remote mode', (
       tester,

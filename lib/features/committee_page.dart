@@ -367,10 +367,10 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
             },
           ),
         ),
-        body: profile.when(
-          data: (summary) => Column(
-            children: [
-              Padding(
+        body: Column(
+          children: [
+            profile.when(
+              data: (summary) => Padding(
                 padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
                 child: Text(
                   summary.scope.subdistrictName.trim().isEmpty
@@ -383,21 +383,27 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
                   ),
                 ),
               ),
-              const Expanded(
-                child: RemoteFeaturePlaceholder(
-                  featureName: 'Kepengurusan KOK',
-                  description:
-                      'Data susunan pengurus KOK resmi belum tersedia di aplikasi.',
-                  icon: Icons.group_off_outlined,
+              loading: () => const Padding(
+                padding: EdgeInsets.only(top: 24),
+                child: CircularProgressIndicator(),
+              ),
+              error: (error, stack) => Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Text(
+                  describeRemoteError(error).message,
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ],
-          ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) {
-            final presentation = describeRemoteError(error);
-            return Center(child: Text(presentation.message));
-          },
+            ),
+            const Expanded(
+              child: RemoteFeaturePlaceholder(
+                featureName: 'Kepengurusan KOK',
+                description:
+                    'Data susunan pengurus KOK resmi belum tersedia di aplikasi.',
+                icon: Icons.group_off_outlined,
+              ),
+            ),
+          ],
         ),
       );
     }

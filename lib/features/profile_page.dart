@@ -167,18 +167,18 @@ class ProfilePage extends ConsumerWidget {
                   );
                 },
               ),
-            _buildSectionHeader('UTILITAS KOORDINATOR'),
-            _MenuTile(
-              icon: Icons.summarize_outlined,
-              iconBg: const Color(0xFFE8F0FE),
-              iconColor: const Color(0xFF1B4F9E),
-              title: 'Rekap Data Kecamatan',
-              subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
-              enabled:
-                  (user?.hasPermission('reports:export') ?? false) &&
-                  summary != null,
-              onTap: () => _showRemoteRekapSheet(context, summary, user, ref),
-            ),
+            if (user?.hasPermission('reports:export') ?? false) ...[
+              _buildSectionHeader('UTILITAS KOORDINATOR'),
+              _MenuTile(
+                icon: Icons.summarize_outlined,
+                iconBg: const Color(0xFFE8F0FE),
+                iconColor: const Color(0xFF1B4F9E),
+                title: 'Rekap Data Kecamatan',
+                subtitle: 'Ringkasan cabor, klub, dan atlet untuk laporan',
+                enabled: summary != null,
+                onTap: () => _showRemoteRekapSheet(context, summary, user, ref),
+              ),
+            ],
           ],
           _buildSectionHeader('PENGATURAN & APLIKASI'),
           _MenuTile(
