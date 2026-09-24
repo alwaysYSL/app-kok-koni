@@ -18,6 +18,7 @@ import '../../data/providers/cabor_providers.dart';
 import '../../data/providers/club_providers.dart';
 import '../../data/providers/profile_providers.dart';
 import '../../shared/widgets.dart';
+import '../../shared/detail_header_lip.dart';
 import '../dashboard_decorations.dart';
 import 'sport_brand_palette.dart';
 
@@ -115,133 +116,202 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
     );
   }
 
-  Widget _buildIntegrationPlaceholder() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE5E7EB)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.sync_outlined,
-                size: 40,
-                color: KokColors.bluePrimary,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: KokColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final canExport = user?.hasPermission('reports:export') ?? false;
 
     if (_isRemoteMode(ref)) {
-      final caborState = ref.watch(caborPaginationProvider);
-      final cabor = caborState.items.where((c) {
-        if (c.id.toString() == widget.sport) return true;
-        if (c.name.toLowerCase() == widget.sport.toLowerCase()) return true;
-        if (c.code.toLowerCase() == widget.sport.toLowerCase()) return true;
-        return false;
-      }).firstOrNull;
-
+      final id = int.tryParse(widget.sport) ?? 0;
+      final detail = ref.watch(caborByIdProvider(id));
       final summary = ref.watch(profileSummaryProvider).asData?.value;
-      final sportName =
-          cabor?.name ??
-          (int.tryParse(widget.sport) != null
-              ? 'Cabang Olahraga'
-              : widget.sport);
       final scopeName =
           summary?.scope.subdistrictName ?? user?.scope.name ?? 'KONI Garut';
-
-      final clubCount = cabor?.totalClub ?? 0;
-      final athleteCount = cabor?.totalAthlete ?? 0;
-      const coachCount = 0;
-      const verifiedCount = 0;
-
-      final palette = SportBrandPaletteResolver.resolve(sportName);
-
-      return Scaffold(
-        backgroundColor: const Color(0xFFF4F6FA),
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              SliverToBoxAdapter(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildHeader(
-                      context,
-                      palette,
-                      sportName: sportName,
-                      scopeName: scopeName,
-                      canExport: canExport,
-                      clubCount: clubCount,
-                      athleteCount: athleteCount,
-                      coachCount: coachCount,
-                      verifiedCount: verifiedCount,
+      return detail.when(
+        skipLoadingOnRefresh: false,
+        loading: () => Scaffold(
+          appBar: AppBar(title: const Text('Cabang Olahraga')),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (error, stack) {
+          final presentation = describeRemoteError(error);
+          return Scaffold(
+            appBar: AppBar(title: const Text('Cabang Olahraga')),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(presentation.message, textAlign: TextAlign.center),
+                  if (presentation.canRetry)
+                    TextButton(
+                      onPressed: () {
+                        ref.invalidate(caborListProvider);
+                        ref.invalidate(caborByIdProvider(id));
+                      },
+                      child: const Text('Coba Lagi'),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                      child: _buildFloatingStatsCard(
-                        clubCount,
-                        athleteCount,
-                        coachCount,
-                        verifiedCount,
+                ],
+              ),
+            ),
+          );
+        },
+        data: (cabor) {
+          if (cabor == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Cabang Olahraga')),
+              body: const Center(
+                child: Text('Cabang olahraga tidak ditemukan.'),
+              ),
+            );
+          }
+          final palette = SportBrandPaletteResolver.resolve(cabor.name);
+          return DefaultTabController(
+            key: ValueKey(cabor.id),
+            length: 2,
+            child: Scaffold(
+              backgroundColor: Colors.white,
+              body: Column(
+                children: [
+                  DetailHeaderLip(
+                    header: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [palette.headerStart, palette.headerEnd],
+                        ),
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                          child: Column(
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
+                                  tooltip: 'Kembali',
+                                  icon: const Icon(
+                                    Icons.chevron_left,
+                                    color: Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    if (context.canPop()) {
+                                      context.pop();
+                                    } else {
+                                      context.go('/sports');
+                                    }
+                                  },
+                                ),
+                              ),
+                              Text(
+                                cabor.name,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (cabor.groupName?.trim().isNotEmpty ?? false)
+                                Text(
+                                  cabor.groupName!,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              Text(
+                                scopeName,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          '${cabor.totalAthlete}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Atlet di kecamatan',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          '${cabor.totalClub}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Klub di kecamatan',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                      child: _buildAnalyticsCard(palette, const []),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: palette.softAccent,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: TabBar(
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: palette.chartColor,
+                        unselectedLabelColor: KokColors.muted,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        tabs: const [
+                          Tab(text: 'Atlet'),
+                          Tab(text: 'Klub'),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _RemoteAthletesTab(caborId: cabor.id, palette: palette),
+                        _RemoteClubsTab(caborId: cabor.id, palette: palette),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _SliverTabBarDelegate(_buildTabBar(palette)),
-              ),
-            ];
-          },
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _RemoteClubsTab(caborId: cabor?.id, palette: palette),
-              _RemoteAthletesTab(caborId: cabor?.id, palette: palette),
-              _buildIntegrationPlaceholder(),
-            ],
-          ),
-        ),
-        bottomNavigationBar: _buildStickyBottomBar(
-          sportName: sportName,
-          clubCount: clubCount,
-          athleteCount: athleteCount,
-          coachCount: coachCount,
-          verifiedCount: verifiedCount,
-          palette: palette,
-          scopeName: scopeName,
-          canExport: canExport,
-        ),
+            ),
+          );
+        },
       );
     }
 

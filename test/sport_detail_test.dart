@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -265,6 +266,122 @@ void main() {
   );
 
   group('SportDetailPage Widget Tests', () {
+    testWidgets('remote identity retry reloads a failed page', (tester) async {
+      var attempts = 0;
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            currentUserProvider.overrideWithValue(userWithExport),
+            dataRequestContextProvider.overrideWithValue(
+              DataRequestContext(
+                environment: AppEnv.staging,
+                userId: '1',
+                scope: userWithExport.scope,
+                generation: 1,
+              ),
+            ),
+            caborListProvider((
+              offset: 0,
+              limit: 100,
+              source: 'all',
+              sort: 'name',
+            )).overrideWith((ref) async {
+              attempts++;
+              if (attempts == 1) throw StateError('temporary failure');
+              return const PaginatedResult<Cabor>(
+                items: [],
+                limit: 100,
+                offset: 0,
+                total: 0,
+              );
+            }),
+          ],
+          child: const MaterialApp(home: SportDetailPage(sport: '31')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Coba Lagi'));
+      await tester.pumpAndSettle();
+      expect(attempts, 2);
+      expect(find.text('Cabang olahraga tidak ditemukan.'), findsOneWidget);
+    });
+
+    for (final counts in [(clubs: 0, athletes: 2), (clubs: 3, athletes: 0)]) {
+      testWidgets('remote counts remain independent: $counts', (tester) async {
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborByIdProvider(31).overrideWith(
+                (ref) => Cabor(
+                  id: 31,
+                  code: 'CB',
+                  name: 'Cabor Mandiri',
+                  status: 1,
+                  statusLabel: 'Aktif',
+                  totalClub: counts.clubs,
+                  totalAthlete: counts.athletes,
+                ),
+              ),
+              athletePaginationProvider((
+                idCabor: 31,
+                idClub: null,
+              )).overrideWith(
+                () => _TestAthletePaginationController((
+                  idCabor: 31,
+                  idClub: null,
+                )),
+              ),
+              clubPaginationProvider(
+                31,
+              ).overrideWith(() => _TestClubPaginationController(31)),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '31')),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('${counts.clubs}'), findsOneWidget);
+        expect(find.text('${counts.athletes}'), findsOneWidget);
+        expect(find.text('Cari nama atlet...'), findsOneWidget);
+        await tester.tap(find.text('Klub'));
+        await tester.pumpAndSettle();
+        expect(find.text('Cari nama klub...'), findsOneWidget);
+      });
+    }
+    testWidgets('remote direct link waits without zeros then shows not found', (
+      tester,
+    ) async {
+      final pending = Completer<Cabor?>();
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            currentUserProvider.overrideWithValue(userWithExport),
+            caborByIdProvider(999).overrideWith((ref) => pending.future),
+          ],
+          child: const MaterialApp(home: SportDetailPage(sport: '999')),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('0'), findsNothing);
+      expect(find.byType(TabBar), findsNothing);
+      pending.complete(null);
+      await tester.pumpAndSettle();
+      expect(find.text('Cabang olahraga tidak ditemukan.'), findsOneWidget);
+    });
+
     Widget buildSubject({
       String sport = 'Sepak Bola',
       GoRouter? router,
@@ -509,7 +626,7 @@ void main() {
     );
 
     testWidgets(
-      'DataMode.remote: renders dynamic cabor details and integration placeholder tabs',
+      'DataMode.remote: renders contract-backed cabor identity and two tabs',
       (tester) async {
         await tester.binding.setSurfaceSize(const Size(360, 1000));
         addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -558,12 +675,15 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
-              profileSummaryProvider.overrideWith((ref) => remoteSummary),
-              caborPaginationProvider.overrideWith(
-                () => _TestCaborPaginationController(
-                  const CaborPaginationState(items: [sampleCabor], total: 1),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
                 ),
               ),
+              profileSummaryProvider.overrideWith((ref) => remoteSummary),
             ],
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
@@ -578,16 +698,14 @@ void main() {
         expect(find.text('7'), findsOneWidget);
         expect(find.text('64'), findsOneWidget);
 
-        // Tab content displays integration placeholder banner on Tab Pelatih (index 2)
-        await tester.tap(find.text('Pelatih').first);
-        await tester.pumpAndSettle();
-
-        expect(
-          find.text(
-            'Data atlet dan klub untuk cabor ini sedang dalam tahap integrasi sistem SICABOR.',
-          ),
-          findsWidgets,
-        );
+        expect(find.text('FAJI'), findsOneWidget);
+        expect(find.text('Pelatih'), findsNothing);
+        expect(find.textContaining('Berkas Lengkap'), findsNothing);
+        expect(find.byType(BarChart), findsNothing);
+        expect(find.byType(PieChart), findsNothing);
+        expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
+        final tabs = tester.widget<TabBar>(find.byType(TabBar));
+        expect(tabs.tabs.map((tab) => (tab as Tab).text), ['Atlet', 'Klub']);
       },
     );
 
@@ -680,6 +798,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -772,6 +898,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -831,6 +965,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -888,6 +1030,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1001,6 +1151,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1023,6 +1181,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
 
         // Search bar is present
@@ -1086,6 +1246,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1096,6 +1264,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
 
         expect(controller.state.status, isNull);
@@ -1147,6 +1317,14 @@ void main() {
           overrides: [
             appCompositionProvider.overrideWithValue(composition),
             currentUserProvider.overrideWithValue(userWithExport),
+            dataRequestContextProvider.overrideWithValue(
+              DataRequestContext(
+                environment: AppEnv.staging,
+                userId: '1',
+                scope: userWithExport.scope,
+                generation: 1,
+              ),
+            ),
             caborPaginationProvider.overrideWith(
               () => _TestCaborPaginationController(
                 const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1157,6 +1335,8 @@ void main() {
           child: const MaterialApp(home: SportDetailPage(sport: '42')),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Klub').first);
       await tester.pumpAndSettle();
 
       await tester.enterText(find.byType(TextField), 'Garuda');
@@ -1195,6 +1375,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1210,6 +1398,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
 
         expect(
@@ -1247,6 +1437,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1266,6 +1464,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
 
         expect(find.text('Gagal memuat data klub'), findsOneWidget);
@@ -1297,6 +1497,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1320,6 +1528,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
 
         expect(find.text('Gagal memuat data klub'), findsOneWidget);
@@ -1400,6 +1610,14 @@ void main() {
           overrides: [
             appCompositionProvider.overrideWithValue(composition),
             currentUserProvider.overrideWithValue(userWithExport),
+            dataRequestContextProvider.overrideWithValue(
+              DataRequestContext(
+                environment: AppEnv.staging,
+                userId: '1',
+                scope: userWithExport.scope,
+                generation: 1,
+              ),
+            ),
             caborPaginationProvider.overrideWith(
               () => _TestCaborPaginationController(
                 const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1415,6 +1633,8 @@ void main() {
           child: MaterialApp.router(routerConfig: router),
         ),
       );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Klub').first);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('PB Garuda Perkasa'));
@@ -1446,6 +1666,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),
@@ -1462,6 +1690,8 @@ void main() {
             child: const MaterialApp(home: SportDetailPage(sport: '42')),
           ),
         );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Klub').first);
         await tester.pumpAndSettle();
         executedSearches.clear();
 
@@ -1508,6 +1738,14 @@ void main() {
             overrides: [
               appCompositionProvider.overrideWithValue(composition),
               currentUserProvider.overrideWithValue(userWithExport),
+              dataRequestContextProvider.overrideWithValue(
+                DataRequestContext(
+                  environment: AppEnv.staging,
+                  userId: '1',
+                  scope: userWithExport.scope,
+                  generation: 1,
+                ),
+              ),
               caborPaginationProvider.overrideWith(
                 () => _TestCaborPaginationController(
                   const CaborPaginationState(items: [sampleCabor], total: 1),

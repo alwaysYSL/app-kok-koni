@@ -63,6 +63,39 @@ final caborListProvider =
       return result;
     }, retry: (retryCount, error) => null);
 
+/// Resolve direct links through the paginated contract, within the active session.
+final caborByIdProvider = FutureProvider.family<Cabor?, int>((ref, id) async {
+  if (id <= 0) return null;
+  final initialContext = ref.watch(dataRequestContextProvider);
+  if (initialContext == null) {
+    throw const RequestCancelledException(
+      'Sesi tidak aktif atau telah berakhir.',
+    );
+  }
+  var offset = 0;
+  while (true) {
+    final page = await ref.watch(
+      caborListProvider((
+        offset: offset,
+        limit: 100,
+        source: 'all',
+        sort: 'name',
+      )).future,
+    );
+    if (!ref.mounted ||
+        ref.read(dataRequestContextProvider) != initialContext) {
+      throw const RequestCancelledException(
+        'Konteks sesi berubah saat memuat cabor.',
+      );
+    }
+    for (final item in page.items) {
+      if (item.id == id) return item;
+    }
+    if (!page.hasMore || page.items.isEmpty) return null;
+    offset += page.items.length;
+  }
+}, retry: (retryCount, error) => null);
+
 final class CaborPaginationState {
   const CaborPaginationState({
     this.items = const [],

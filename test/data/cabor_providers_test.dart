@@ -115,6 +115,142 @@ void main() {
     generation: 1,
   );
 
+  test('caborById resolves a direct link on the second page', () async {
+    final offsets = <int>[];
+    final container = ProviderContainer(
+      overrides: [
+        dataRequestContextProvider.overrideWithValue(defaultContext),
+        caborServiceProvider.overrideWithValue(
+          MockCaborService(
+            onFetch:
+                ({
+                  int limit = 25,
+                  int offset = 0,
+                  String source = 'all',
+                  String sort = 'name',
+                  RequestCancellation? cancellation,
+                }) async {
+                  offsets.add(offset);
+                  expect(limit, 100);
+                  expect(source, 'all');
+                  expect(sort, 'name');
+                  return PaginatedResult(
+                    items: [
+                      Cabor(
+                        id: offset == 0 ? 1 : 31,
+                        code: 'CB',
+                        name: 'Cabor',
+                        status: 1,
+                        statusLabel: 'Aktif',
+                        totalClub: 0,
+                        totalAthlete: 2,
+                      ),
+                    ],
+                    limit: limit,
+                    offset: offset,
+                    total: 2,
+                  );
+                },
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect((await container.read(caborByIdProvider(31).future))?.id, 31);
+    expect(offsets, [0, 1]);
+  });
+
+  test('caborById stops on an empty page even with remaining total', () async {
+    var calls = 0;
+    final container = ProviderContainer(
+      overrides: [
+        dataRequestContextProvider.overrideWithValue(defaultContext),
+        caborServiceProvider.overrideWithValue(
+          MockCaborService(
+            onFetch:
+                ({
+                  int limit = 25,
+                  int offset = 0,
+                  String source = 'all',
+                  String sort = 'name',
+                  RequestCancellation? cancellation,
+                }) async {
+                  calls++;
+                  return PaginatedResult(
+                    items: const <Cabor>[],
+                    limit: limit,
+                    offset: offset,
+                    total: 200,
+                  );
+                },
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(await container.read(caborByIdProvider(31).future), isNull);
+    expect(calls, 1);
+    expect(await container.read(caborByIdProvider(0).future), isNull);
+    expect(calls, 1);
+  });
+
+  test('caborById does not continue pagination after session ends', () async {
+    final pending = Completer<PaginatedResult<Cabor>>();
+    var calls = 0;
+    final container = ProviderContainer(
+      overrides: [
+        dataRequestContextProvider.overrideWithValue(defaultContext),
+        caborServiceProvider.overrideWithValue(
+          MockCaborService(
+            onFetch:
+                ({
+                  int limit = 25,
+                  int offset = 0,
+                  String source = 'all',
+                  String sort = 'name',
+                  RequestCancellation? cancellation,
+                }) {
+                  calls++;
+                  return pending.future;
+                },
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    final subscription = container.listen(caborByIdProvider(31), (_, _) {});
+    addTearDown(subscription.close);
+    await Future<void>.delayed(Duration.zero);
+    container.updateOverrides([
+      dataRequestContextProvider.overrideWithValue(null),
+      caborServiceProvider.overrideWithValue(
+        container.read(caborServiceProvider),
+      ),
+    ]);
+    await container.pump();
+    pending.complete(
+      const PaginatedResult(
+        items: [
+          Cabor(
+            id: 1,
+            code: 'CB',
+            name: 'Cabor',
+            status: 1,
+            statusLabel: 'Aktif',
+            totalClub: 0,
+            totalAthlete: 1,
+          ),
+        ],
+        limit: 100,
+        offset: 0,
+        total: 2,
+      ),
+    );
+    await container.pump();
+    expect(calls, 1);
+    expect(container.read(caborByIdProvider(31)).hasError, isTrue);
+  });
+
   group('Profile Providers Tests', () {
     test('profileSummaryProvider loads data successfully', () async {
       final container = ProviderContainer(
