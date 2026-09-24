@@ -42,6 +42,12 @@ abstract final class KokColors {
   static const borderGray = Color(0xFFE5E7EB);
 }
 
+abstract final class KokRadii {
+  static const contentTop = 28.0;
+  static const card = 16.0;
+  static const tab = 18.0;
+}
+
 ThemeData kokTheme() => ThemeData(
   useMaterial3: true,
   fontFamily: 'KokSans',
