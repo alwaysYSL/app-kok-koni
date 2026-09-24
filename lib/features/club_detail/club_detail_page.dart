@@ -18,6 +18,7 @@ import '../../data/models/club_detail.dart' as domain_detail;
 import '../../data/providers/athlete_providers.dart';
 import '../../data/providers/club_providers.dart';
 import '../../shared/widgets.dart';
+import '../../shared/detail_header_lip.dart';
 import '../dashboard_decorations.dart';
 import '../detail_pages.dart';
 import 'club_brand_palette.dart';
@@ -356,14 +357,16 @@ class _RemoteClubDetailContent extends StatelessWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF4F6FA),
+        backgroundColor: Colors.white,
         body: NestedScrollView(
           headerSliverBuilder: (sliverContext, innerBoxIsScrolled) {
             return [
               SliverToBoxAdapter(
-                child: _RemoteClubDetailHeader(
-                  detail: detail,
-                  palette: palette,
+                child: DetailHeaderLip(
+                  header: _RemoteClubDetailHeader(
+                    detail: detail,
+                    palette: palette,
+                  ),
                 ),
               ),
               SliverPersistentHeader(
@@ -435,7 +438,7 @@ class _RemoteClubDetailHeader extends StatelessWidget {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 36),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -506,32 +509,14 @@ class _RemoteClubDetailHeader extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.baseline,
-                            textBaseline: TextBaseline.alphabetic,
-                            children: [
-                              Text(
-                                '${detail.totalAthleteInClub}',
-                                style: TextStyle(
-                                  color: palette.foreground,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'TOTAL ANGGOTA',
-                                style: TextStyle(
-                                  color: palette.foreground.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            '${detail.totalAthleteInClub} atlet terdaftar di klub',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: palette.foreground,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -843,7 +828,7 @@ class _RemoteClubInfoTab extends ConsumerWidget {
             icon: Icons.groups_outlined,
             children: [
               Text(
-                '${detail.totalAthleteInClub} Atlet',
+                '${detail.totalAthleteInClub} atlet terdaftar di klub',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -1021,7 +1006,7 @@ class _RemoteClubPengurusTab extends StatelessWidget {
                     border: Border.all(color: const Color(0xFFFDE68A)),
                   ),
                   child: const Text(
-                    'Data Parsial',
+                    'Data belum lengkap',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -1541,7 +1526,7 @@ class _RemoteClubAthletesTabState
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              'Hasil filter wilayah ini: ${state.total} atlet (Total atlet terdaftar di klub: ${widget.club.totalAthleteInClub})',
+              '${state.total} atlet dari kecamatan ini · ${widget.club.totalAthleteInClub} atlet terdaftar di klub',
               style: const TextStyle(
                 fontSize: 12,
                 color: KokColors.muted,

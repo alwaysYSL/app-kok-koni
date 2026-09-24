@@ -314,7 +314,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Dynamic count in AppBar
-      expect(find.text('Klub (2)'), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Klub'), findsOneWidget);
+      expect(find.text('2 klub terdaftar'), findsOneWidget);
 
       // Warning banner
       expect(find.text('Data sebagian terbatas'), findsOneWidget);
@@ -327,15 +328,15 @@ void main() {
       // Club 1 details
       expect(find.text('PB Djarum Garut'), findsOneWidget);
       expect(find.text('Ketua: Budi Santoso'), findsOneWidget);
-      expect(find.text('Jl. Merdeka No. 10'), findsOneWidget);
+      expect(find.text('Sekretariat: Jl. Merdeka No. 10'), findsOneWidget);
       expect(find.text('Bulutangkis'), findsOneWidget);
-      expect(find.text('15 atlet'), findsOneWidget);
+      expect(find.text('15 atlet terdaftar di klub'), findsOneWidget);
 
       // Club 2 details
       expect(find.text('Garuda Muda FC'), findsOneWidget);
       expect(find.text('Kec. Tarogong Kidul'), findsOneWidget);
       expect(find.text('Sepak Bola'), findsOneWidget);
-      expect(find.text('8 atlet'), findsOneWidget);
+      expect(find.text('8 atlet terdaftar di klub'), findsOneWidget);
     });
 
     testWidgets('Tapping status chip updates filter', (tester) async {

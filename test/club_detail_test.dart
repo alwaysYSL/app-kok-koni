@@ -327,6 +327,44 @@ void main() {
   });
 
   group('ClubDetailPage Remote Mode Tests', () {
+    for (final width in [320.0, 390.0]) {
+      testWidgets('remote tabs fit ${width.toInt()} dp with inactive club', (
+        tester,
+      ) async {
+        tester.view.physicalSize = Size(width, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/20',
+            overrides: [
+              clubDetailProvider(
+                20,
+              ).overrideWith((ref) async => sampleRemoteClubDetailComplete),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('BELUM AKTIF'), findsOneWidget);
+        expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
+        expect(find.text('Info'), findsOneWidget);
+        expect(find.text('Pengurus'), findsOneWidget);
+        expect(find.text('Atlet'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.text('Pengurus'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(find.text('Atlet'));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets(
       'renders header, badges, and total counter with kecamatan note',
       (tester) async {
@@ -353,8 +391,8 @@ void main() {
         expect(find.byIcon(Icons.share_outlined), findsOneWidget);
 
         // 3. Counter & Note
-        expect(find.text('42'), findsOneWidget);
-        expect(find.text('TOTAL ANGGOTA'), findsOneWidget);
+        expect(find.text('42 atlet terdaftar di klub'), findsWidgets);
+        expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
         expect(find.text('Termasuk atlet dari kecamatan lain'), findsWidgets);
 
         // 4. Share button action
@@ -441,7 +479,7 @@ void main() {
 
         // 5. Total Anggota section
         expect(find.text('Total Anggota'), findsOneWidget);
-        expect(find.text('42 Atlet'), findsOneWidget);
+        expect(find.text('42 atlet terdaftar di klub'), findsWidgets);
       },
     );
 
@@ -546,7 +584,7 @@ void main() {
         expect(find.text('Berkas belum tersedia'), findsOneWidget);
         expect(find.byTooltip('Salin / Buka tautan berkas SK'), findsNothing);
         expect(find.text('Belum ada data tempat latihan'), findsOneWidget);
-        expect(find.text('0 Atlet'), findsOneWidget);
+        expect(find.text('0 atlet terdaftar di klub'), findsWidgets);
       },
     );
 
@@ -573,7 +611,7 @@ void main() {
 
         // 1. Management Section
         expect(find.text('Struktur Kepengurusan'), findsOneWidget);
-        expect(find.text('Data Parsial'), findsOneWidget);
+        expect(find.text('Data belum lengkap'), findsOneWidget);
         expect(
           find.text(
             'Data kepengurusan ini bersifat parsial atau terbatas dari SICABOR.',
@@ -629,7 +667,7 @@ void main() {
         // Management section should show "Belum tercatat di sistem"
         expect(find.text('Struktur Kepengurusan'), findsOneWidget);
         expect(find.text('Belum tercatat di sistem'), findsWidgets);
-        expect(find.text('Data Parsial'), findsNothing);
+        expect(find.text('Data belum lengkap'), findsNothing);
       },
     );
 
@@ -808,9 +846,7 @@ void main() {
 
         // sampleRemoteClubDetail has totalAthleteInClub: 42, state.total: 2
         expect(
-          find.text(
-            'Hasil filter wilayah ini: 2 atlet (Total atlet terdaftar di klub: 42)',
-          ),
+          find.text('2 atlet dari kecamatan ini · 42 atlet terdaftar di klub'),
           findsOneWidget,
         );
       },

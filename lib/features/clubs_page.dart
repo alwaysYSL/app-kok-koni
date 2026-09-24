@@ -298,13 +298,11 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
       final state = ref.watch(clubPaginationProvider(null));
       final controller = ref.read(clubPaginationProvider(null).notifier);
 
-      final titleText = state.total > 0 ? 'Klub (${state.total})' : 'Klub';
-
       return Scaffold(
         appBar: AppBar(
-          title: Text(
-            titleText,
-            style: const TextStyle(
+          title: const Text(
+            'Klub',
+            style: TextStyle(
               fontSize: 21,
               fontWeight: FontWeight.w700,
               color: Color(0xFF17191D),
@@ -488,6 +486,18 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            if (!state.isLoading && state.error == null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Text(
+                  '${state.total} klub terdaftar',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: KokColors.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             Expanded(child: _buildRemoteBody(context, state, controller)),
@@ -903,7 +913,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                           club.secretariat.address!.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          club.secretariat.address!,
+                          'Sekretariat: ${club.secretariat.address!}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: KokColors.muted,
@@ -998,7 +1008,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '${club.totalAthleteInClub} atlet',
+                          '${club.totalAthleteInClub} atlet terdaftar di klub',
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
