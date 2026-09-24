@@ -266,6 +266,76 @@ void main() {
   );
 
   group('SportDetailPage Widget Tests', () {
+    testWidgets('remote short viewport and keyboard keep both tabs usable', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(640, 360));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            appCompositionProvider.overrideWithValue(composition),
+            currentUserProvider.overrideWithValue(userWithExport),
+            caborByIdProvider(31).overrideWith(
+              (ref) => const Cabor(
+                id: 31,
+                code: 'CB',
+                name: 'Cabor Mandiri',
+                status: 1,
+                statusLabel: 'Aktif',
+                totalClub: 0,
+                totalAthlete: 0,
+              ),
+            ),
+            athletePaginationProvider((idCabor: 31, idClub: null)).overrideWith(
+              () =>
+                  _TestAthletePaginationController((idCabor: 31, idClub: null)),
+            ),
+            clubPaginationProvider(
+              31,
+            ).overrideWith(() => _TestClubPaginationController(31)),
+          ],
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(viewInsets: const EdgeInsets.only(bottom: 160)),
+              child: child!,
+            ),
+            home: const SportDetailPage(sport: '31'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      for (final tab in ['Atlet', 'Klub']) {
+        await tester.ensureVisible(find.text(tab));
+        await tester.tap(find.text(tab));
+        await tester.pumpAndSettle();
+        final search = find.byType(TextField);
+        await tester.ensureVisible(search);
+        await tester.enterText(search, 'test');
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.ensureVisible(
+          find.text(
+            'Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          find
+              .text('Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.')
+              .hitTestable(),
+          findsOneWidget,
+        );
+      }
+      expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
+    });
+
     testWidgets('remote identity retry reloads a failed page', (tester) async {
       var attempts = 0;
       final composition = await _createTestComposition(

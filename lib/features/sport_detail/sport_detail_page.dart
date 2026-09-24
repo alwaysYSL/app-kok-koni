@@ -170,144 +170,177 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
             length: 2,
             child: Scaffold(
               backgroundColor: Colors.white,
-              body: Column(
-                children: [
-                  DetailHeaderLip(
-                    header: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [palette.headerStart, palette.headerEnd],
-                        ),
-                      ),
-                      child: SafeArea(
-                        bottom: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                          child: Column(
-                            children: [
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                                  tooltip: 'Kembali',
-                                  icon: const Icon(
-                                    Icons.chevron_left,
-                                    color: Colors.white,
-                                  ),
-                                  onPressed: () {
-                                    if (context.canPop()) {
-                                      context.pop();
-                                    } else {
-                                      context.go('/sports');
-                                    }
-                                  },
+              body: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Keep search/filter controls and results usable when the keyboard
+                  // or landscape orientation leaves a short viewport.
+                  final height = constraints.maxHeight < 600
+                      ? 600.0
+                      : constraints.maxHeight;
+                  return SingleChildScrollView(
+                    child: SizedBox(
+                      height: height,
+                      child: Column(
+                        children: [
+                          DetailHeaderLip(
+                            header: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    palette.headerStart,
+                                    palette.headerEnd,
+                                  ],
                                 ),
                               ),
-                              Text(
-                                cabor.name,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
+                              child: SafeArea(
+                                bottom: false,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    40,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: IconButton(
+                                          tooltip: 'Kembali',
+                                          icon: const Icon(
+                                            Icons.chevron_left,
+                                            color: Colors.white,
+                                          ),
+                                          onPressed: () {
+                                            if (context.canPop()) {
+                                              context.pop();
+                                            } else {
+                                              context.go('/sports');
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                      Text(
+                                        cabor.name,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      if (cabor.groupName?.trim().isNotEmpty ??
+                                          false)
+                                        Text(
+                                          cabor.groupName!,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      Text(
+                                        scopeName,
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceEvenly,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '${cabor.totalAthlete}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                const Text(
+                                                  'Atlet di kecamatan',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Column(
+                                              children: [
+                                                Text(
+                                                  '${cabor.totalClub}',
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                const Text(
+                                                  'Klub di kecamatan',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    color: Colors.white70,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: palette.softAccent,
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              child: TabBar(
+                                indicatorSize: TabBarIndicatorSize.tab,
+                                dividerColor: Colors.transparent,
+                                labelColor: palette.chartColor,
+                                unselectedLabelColor: KokColors.muted,
+                                indicator: BoxDecoration(
                                   color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
+                                  borderRadius: BorderRadius.circular(24),
                                 ),
-                              ),
-                              if (cabor.groupName?.trim().isNotEmpty ?? false)
-                                Text(
-                                  cabor.groupName!,
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              Text(
-                                scopeName,
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          '${cabor.totalAthlete}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const Text(
-                                          'Atlet di kecamatan',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          '${cabor.totalClub}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                        const Text(
-                                          'Klub di kecamatan',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white70,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                tabs: const [
+                                  Tab(text: 'Atlet'),
+                                  Tab(text: 'Klub'),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: palette.softAccent,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: TabBar(
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: palette.chartColor,
-                        unselectedLabelColor: KokColors.muted,
-                        indicator: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        tabs: const [
-                          Tab(text: 'Atlet'),
-                          Tab(text: 'Klub'),
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _RemoteAthletesTab(
+                                  caborId: cabor.id,
+                                  palette: palette,
+                                ),
+                                _RemoteClubsTab(
+                                  caborId: cabor.id,
+                                  palette: palette,
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        _RemoteAthletesTab(caborId: cabor.id, palette: palette),
-                        _RemoteClubsTab(caborId: cabor.id, palette: palette),
-                      ],
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           );
