@@ -393,7 +393,11 @@ void main() {
         // 3. Counter & Note
         expect(find.text('42 atlet terdaftar di klub'), findsWidgets);
         expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
-        expect(find.text('Termasuk atlet dari kecamatan lain'), findsWidgets);
+        expect(
+          find.text('Cakupan klub dapat meliputi kecamatan lain'),
+          findsWidgets,
+        );
+        expect(find.text('Termasuk atlet dari kecamatan lain'), findsNothing);
 
         // 4. Share button action
         await tester.tap(find.byIcon(Icons.share_outlined));
@@ -585,6 +589,11 @@ void main() {
         expect(find.byTooltip('Salin / Buka tautan berkas SK'), findsNothing);
         expect(find.text('Belum ada data tempat latihan'), findsOneWidget);
         expect(find.text('0 atlet terdaftar di klub'), findsWidgets);
+        expect(
+          find.text('Cakupan klub dapat meliputi kecamatan lain'),
+          findsWidgets,
+        );
+        expect(find.text('Termasuk atlet dari kecamatan lain'), findsNothing);
       },
     );
 

@@ -520,7 +520,7 @@ class _RemoteClubDetailHeader extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Termasuk atlet dari kecamatan lain',
+                            'Cakupan klub dapat meliputi kecamatan lain',
                             style: TextStyle(
                               color: palette.foreground.withValues(alpha: 0.75),
                               fontSize: 11,
@@ -837,7 +837,7 @@ class _RemoteClubInfoTab extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Termasuk atlet dari kecamatan lain',
+                'Cakupan klub dapat meliputi kecamatan lain',
                 style: TextStyle(fontSize: 12, color: KokColors.muted),
               ),
             ],

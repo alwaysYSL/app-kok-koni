@@ -492,7 +492,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                 child: Text(
-                  '${state.total} klub terdaftar',
+                  '${state.total} klub ditemukan',
                   style: const TextStyle(
                     fontSize: 13,
                     color: KokColors.muted,
@@ -927,7 +927,7 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
                           .isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Kec. ${club.secretariat.subdistrictName}',
+                          'Sekretariat: Kec. ${club.secretariat.subdistrictName}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: KokColors.muted,

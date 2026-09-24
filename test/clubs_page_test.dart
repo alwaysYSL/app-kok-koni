@@ -315,7 +315,7 @@ void main() {
 
       // Dynamic count in AppBar
       expect(find.widgetWithText(AppBar, 'Klub'), findsOneWidget);
-      expect(find.text('2 klub terdaftar'), findsOneWidget);
+      expect(find.text('2 klub ditemukan'), findsOneWidget);
 
       // Warning banner
       expect(find.text('Data sebagian terbatas'), findsOneWidget);
@@ -334,7 +334,7 @@ void main() {
 
       // Club 2 details
       expect(find.text('Garuda Muda FC'), findsOneWidget);
-      expect(find.text('Kec. Tarogong Kidul'), findsOneWidget);
+      expect(find.text('Sekretariat: Kec. Tarogong Kidul'), findsOneWidget);
       expect(find.text('Sepak Bola'), findsOneWidget);
       expect(find.text('8 atlet terdaftar di klub'), findsOneWidget);
     });
