@@ -67,6 +67,16 @@ password123
 | `kt.bllimbangan` | `password123` | **Balubur Limbangan** (ID: `1714`) | Aktif | 17 Cabor, 0 Klub, 159 Atlet (Kontingen terdaftar) |
 | `kt.tarogongkidul` | `password123` | **Tarogong Kidul** (ID: `1729`) | Aktif | 28 Cabor, 12 Klub, 290 Atlet |
 
+Angka ringkasan dihitung dari club beralamat sekretariat dan atlet berdomisili di kecamatan akun. Cabor adalah gabungan unik kedua sumber; anggota club dihitung dari seluruh domisili, sehingga angka pada detail club bisa melebihi hasil filter atlet di kecamatan akun.
+
+| Akun | Cabor (gabungan / club / atlet) | Club / atlet / atlet tanpa club | State UI yang diuji |
+| :--- | :--- | :--- | :--- |
+| `kt.garutkota` | 32 / 5 / 31 | 10 / 361 / 355 | Daftar kaya data, cabor hanya dari club, club nonaktif, anggota lintas kecamatan, logo lokal dan URL gambar gagal |
+| `kt.bllimbangan` | 17 / 0 / 17 | 0 / 159 / 159 | Daftar club kosong yang sah; cabor dan atlet tetap terisi; seluruh atlet tanpa club |
+| `kt.tarogongkidul` | 28 / 8 / 26 | 12 / 290 / 280 | Cabor gabungan melampaui sumber atlet; club Gateball dan Petanque tanpa atlet lokal; anggota club lintas kecamatan |
+
+Gambar lokal memakai `GET /mock-media/logo-koni.png` dan `GET /mock-media/mascot.png` dengan respons `image/png`. Ini berkas statis untuk mock, bukan endpoint API KOK. URL gambar dibangun dari header `Host` request, sehingga `10.0.2.2`, localhost, dan alamat LAN tetap mengarah ke server yang sedang dipakai. Beberapa `logo` tetap `null` dan logo BAJA FIGHT ACADEMY tetap mengarah ke URL yang gagal agar fallback UI bisa diuji.
+
 ### Akun Khusus Pengujian Error (Negative Testing)
 
 | Username | Password | Skenario Pengujian | Ekspektasi Response |

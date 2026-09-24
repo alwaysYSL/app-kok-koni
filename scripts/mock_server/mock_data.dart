@@ -15,7 +15,7 @@ class MockAccount {
   final int districtId;
   final String districtName;
   final Map<String, dynamic>? kontingen;
-  final Map<String, int> summary;
+  final Map<String, int> _summary;
   final List<String> dataNotes;
 
   const MockAccount({
@@ -32,13 +32,16 @@ class MockAccount {
     this.districtId = 126,
     this.districtName = 'Garut',
     this.kontingen,
-    this.summary = const {},
+    this._summary = const {},
     this.dataNotes = const [],
   });
 
   bool get isActive => status == 1;
   bool get isKok => type == 'admin_kok';
   bool get hasSubdistrict => subdistrictId != null;
+  Map<String, int> get summary => isActive && isKok && hasSubdistrict
+      ? MockData.summaryForSubdistrict(subdistrictId!)
+      : _summary;
 }
 
 /// Representation of a sport category (Cabang Olahraga).
@@ -120,11 +123,11 @@ class MockClub {
     this.totalAthleteInClub = 0,
   });
 
-  Map<String, dynamic> toListJson() => {
+  Map<String, dynamic> toListJson({String? mediaOrigin}) => {
     'id': id,
     'code': code,
     'name': name,
-    'logo': logo,
+    'logo': MockData.mediaUrl(logo, mediaOrigin),
     'cabor': {'id': caborId, 'code': caborCode, 'name': caborName},
     'head_name': headName,
     'phone': phone,
@@ -143,8 +146,8 @@ class MockClub {
     'total_athlete_in_club': totalAthleteInClub,
   };
 
-  Map<String, dynamic> toDetailJson() => {
-    ...toListJson(),
+  Map<String, dynamic> toDetailJson({String? mediaOrigin}) => {
+    ...toListJson(mediaOrigin: mediaOrigin),
     'training': {
       'address': trainingAddress,
       'subdistrict_id': trainingSubdistrictId,
@@ -251,7 +254,7 @@ class MockAthlete {
     this.dateCreated = '2024-01-01',
   });
 
-  Map<String, dynamic> toListJson() => {
+  Map<String, dynamic> toListJson({String? mediaOrigin}) => {
     'id': id,
     'code': code,
     'name': name,
@@ -260,7 +263,7 @@ class MockAthlete {
     'pob': pob,
     'dob': dob,
     'age': age,
-    'photo': photo,
+    'photo': MockData.mediaUrl(photo, mediaOrigin),
     'status': status,
     'status_label': statusLabel,
     'cabor': {'id': caborId, 'code': caborCode, 'name': caborName},
@@ -276,8 +279,8 @@ class MockAthlete {
     },
   };
 
-  Map<String, dynamic> toDetailJson() => {
-    ...toListJson(),
+  Map<String, dynamic> toDetailJson({String? mediaOrigin}) => {
+    ...toListJson(mediaOrigin: mediaOrigin),
     'phone': phone,
     'email': email,
     'height': height,
@@ -289,6 +292,32 @@ class MockAthlete {
 
 /// In-memory Mock Data Store & Response Builder for SICABOR.
 class MockData {
+  static Map<String, int> summaryForSubdistrict(int subdistrictId) {
+    final localClubs = clubs
+        .where((c) => c.secretariatSubdistrictId == subdistrictId)
+        .toList();
+    final localAthletes = athletes
+        .where((a) => a.domicileSubdistrictId == subdistrictId)
+        .toList();
+    final clubCabors = localClubs.map((c) => c.caborId).toSet();
+    final athleteCabors = localAthletes.map((a) => a.caborId).toSet();
+    return {
+      'total_cabor': {...clubCabors, ...athleteCabors}.length,
+      'total_cabor_from_club': clubCabors.length,
+      'total_cabor_from_athlete': athleteCabors.length,
+      'total_club': localClubs.length,
+      'total_athlete': localAthletes.length,
+      'total_athlete_without_club': localAthletes
+          .where((a) => a.clubId == null)
+          .length,
+    };
+  }
+
+  static String? mediaUrl(String? value, String? mediaOrigin) =>
+      value != null && mediaOrigin != null && value.startsWith('/mock-media/')
+      ? '$mediaOrigin$value'
+      : value;
+
   static final List<String> _defaultDataNotes = [
     'Cabor tidak memiliki data kecamatan sendiri; daftar ini diturunkan dari cabor yang memiliki club atau atlet di kecamatan ini.',
     'Jumlah cabor adalah gabungan unik dari cabor club dan cabor atlet.',
@@ -313,14 +342,6 @@ class MockData {
       districtId: 126,
       districtName: 'Garut',
       kontingen: null,
-      summary: const {
-        'total_cabor': 32,
-        'total_cabor_from_club': 5,
-        'total_cabor_from_athlete': 31,
-        'total_club': 10,
-        'total_athlete': 361,
-        'total_athlete_without_club': 355,
-      },
       dataNotes: _defaultDataNotes,
     ),
     MockAccount(
@@ -341,14 +362,6 @@ class MockData {
         'code': 'KGPK-0044',
         'name': 'Balubur Limbangan',
       },
-      summary: const {
-        'total_cabor': 17,
-        'total_cabor_from_club': 0,
-        'total_cabor_from_athlete': 17,
-        'total_club': 0,
-        'total_athlete': 159,
-        'total_athlete_without_club': 159,
-      },
       dataNotes: _defaultDataNotes,
     ),
     MockAccount(
@@ -365,14 +378,6 @@ class MockData {
       districtId: 126,
       districtName: 'Garut',
       kontingen: const {'id': 4, 'code': 'KGPK-0045', 'name': 'Tarogong Kidul'},
-      summary: const {
-        'total_cabor': 28,
-        'total_cabor_from_club': 8,
-        'total_cabor_from_athlete': 26,
-        'total_club': 12,
-        'total_athlete': 290,
-        'total_athlete_without_club': 280,
-      },
       dataNotes: _defaultDataNotes,
     ),
     const MockAccount(
@@ -389,7 +394,6 @@ class MockData {
       districtId: 126,
       districtName: 'Garut',
       kontingen: null,
-      summary: {},
       dataNotes: [],
     ),
     const MockAccount(
@@ -406,7 +410,6 @@ class MockData {
       districtId: 126,
       districtName: 'Garut',
       kontingen: null,
-      summary: {},
       dataNotes: [],
     ),
     const MockAccount(
@@ -423,7 +426,6 @@ class MockData {
       districtId: 126,
       districtName: 'Garut',
       kontingen: null,
-      summary: {},
       dataNotes: [],
     ),
   ];
@@ -435,6 +437,7 @@ class MockData {
       code: 'KGCB-0001',
       name: 'ATLETIK',
       groupName: 'PASI',
+      logo: '/mock-media/logo-koni.png',
     ),
     const MockCabor(
       id: 2,
@@ -657,6 +660,7 @@ class MockData {
       id: 30,
       code: 'KGCL-0030',
       name: 'PADEPOKAN PENCAK SILAT GAJAH PUTIH',
+      logo: '/mock-media/logo-koni.png',
       caborId: 14,
       caborCode: 'KGCB-0015',
       caborName: 'PENCAK SILAT',
@@ -843,7 +847,8 @@ class MockData {
       totalAthleteInClub: 0,
     ),
 
-    // Tarogong Kidul Clubs (12 clubs)
+    // Tarogong Kidul Clubs (12 clubs across 8 cabors; Gateball and Petanque
+    // have clubs but no local athletes, making the union 28).
     const MockClub(
       id: 50,
       code: 'KGCL-0050',
@@ -973,10 +978,10 @@ class MockData {
     const MockClub(
       id: 56,
       code: 'KGCL-0056',
-      name: 'KODRAT TAROGONG KIDUL',
-      caborId: 19,
-      caborCode: 'KGCB-0020',
-      caborName: 'TARUNG DERAJAT',
+      name: 'GATEBALL TAROGONG KIDUL',
+      caborId: 27,
+      caborCode: 'KGCB-0028',
+      caborName: 'GATEBALL',
       headName: 'Kang Yayan',
       phone: '081355443322',
       email: 'kodrat.tk@gmail.com',
@@ -994,10 +999,10 @@ class MockData {
     const MockClub(
       id: 57,
       code: 'KGCL-0057',
-      name: 'CHESS CLUB TAROGONG',
-      caborId: 5,
-      caborCode: 'KGCB-0005',
-      caborName: 'CATUR',
+      name: 'PETANQUE CLUB TAROGONG',
+      caborId: 28,
+      caborCode: 'KGCB-0029',
+      caborName: 'PETANQUE',
       headName: 'Dadan Ramdani',
       phone: '087788990011',
       email: 'chess.tarogong@gmail.com',
@@ -1015,10 +1020,10 @@ class MockData {
     const MockClub(
       id: 58,
       code: 'KGCL-0058',
-      name: 'PATRIOT FOOTBALL ACADEMY',
-      caborId: 16,
-      caborCode: 'KGCB-0017',
-      caborName: 'SEPAK BOLA',
+      name: 'PATRIOT BASKET ACADEMY',
+      caborId: 2,
+      caborCode: 'KGCB-0002',
+      caborName: 'BOLA BASKET',
       headName: 'Sandi Suhendar',
       phone: '081277665544',
       email: 'patriotfa@gmail.com',
@@ -1036,10 +1041,10 @@ class MockData {
     const MockClub(
       id: 59,
       code: 'KGCL-0059',
-      name: 'TAROGONG SILAT MANDIRI',
-      caborId: 14,
-      caborCode: 'KGCB-0015',
-      caborName: 'PENCAK SILAT',
+      name: 'TAROGONG BASKET MANDIRI',
+      caborId: 2,
+      caborCode: 'KGCB-0002',
+      caborName: 'BOLA BASKET',
       headName: 'Maman Suratman',
       phone: '082211445577',
       email: 'tsm.silat@gmail.com',
@@ -1057,10 +1062,10 @@ class MockData {
     const MockClub(
       id: 60,
       code: 'KGCL-0060',
-      name: 'GARUT ARCHERY SQUAD',
-      caborId: 12,
-      caborCode: 'KGCB-0013',
-      caborName: 'PANAHAN',
+      name: 'GARUT VOLLEY SQUAD',
+      caborId: 3,
+      caborCode: 'KGCB-0003',
+      caborName: 'BOLA VOLI',
       headName: 'Irfan Hakim',
       phone: '085733221199',
       email: 'archery.garut@gmail.com',
@@ -1078,10 +1083,10 @@ class MockData {
     const MockClub(
       id: 61,
       code: 'KGCL-0061',
-      name: 'TAROGONG TENNIS CLUB',
-      caborId: 20,
-      caborCode: 'KGCB-0021',
-      caborName: 'TENIS LAPANGAN',
+      name: 'TAROGONG AQUATIC CLUB',
+      caborId: 15,
+      caborCode: 'KGCB-0016',
+      caborName: 'RENANG',
       headName: 'Tono Hartono',
       phone: '081399001144',
       email: 'tennis.tarogong@gmail.com',
@@ -1121,7 +1126,7 @@ class MockData {
         pob: 'Garut',
         dob: '2005-08-03',
         age: 21,
-        photo: 'https://sicabor.test/alassets/upload/profile/default.jpg',
+        photo: '/mock-media/mascot.png',
         status: 1,
         statusLabel: 'Aktif',
         caborId: 13,
@@ -1270,6 +1275,9 @@ class MockData {
     ];
 
     var athleteId = 2378;
+    // Six local memberships in total; one Garut athlete belongs to a
+    // Tarogong club, while a Tarogong athlete belongs to a Garut club.
+    const garutMembershipByIndex = {3: 51, 13: 30, 17: 31, 44: 30};
     // 3 athletes already added for Garut Kota (total 361 needed, so 358 more)
     for (var i = 0; i < 358; i++) {
       final isMale = i % 2 == 0;
@@ -1297,7 +1305,13 @@ class MockData {
           caborId: cabor.id,
           caborCode: cabor.code,
           caborName: cabor.name,
-          clubId: null,
+          clubId: garutMembershipByIndex[i],
+          clubCode: garutMembershipByIndex[i] == null
+              ? null
+              : clubs.firstWhere((c) => c.id == garutMembershipByIndex[i]).code,
+          clubName: garutMembershipByIndex[i] == null
+              ? null
+              : clubs.firstWhere((c) => c.id == garutMembershipByIndex[i]).name,
           domicileSubdistrictId: 1728,
           domicileSubdistrictName: 'Garut Kota',
           domicileVillage: village,
@@ -1387,6 +1401,18 @@ class MockData {
       'KERKOF',
       'TAROGONG',
     ];
+    const tarogongMembershipByIndex = {
+      1: 52,
+      3: 51,
+      13: 30,
+      21: 50,
+      27: 52,
+      29: 51,
+      47: 50,
+      73: 50,
+      99: 50,
+      125: 50,
+    };
     for (var i = 0; i < 290; i++) {
       final isMale = i % 2 == 0;
       final firstName = isMale
@@ -1414,7 +1440,17 @@ class MockData {
           caborId: cabor.id,
           caborCode: cabor.code,
           caborName: cabor.name,
-          clubId: null,
+          clubId: tarogongMembershipByIndex[i],
+          clubCode: tarogongMembershipByIndex[i] == null
+              ? null
+              : clubs
+                    .firstWhere((c) => c.id == tarogongMembershipByIndex[i])
+                    .code,
+          clubName: tarogongMembershipByIndex[i] == null
+              ? null
+              : clubs
+                    .firstWhere((c) => c.id == tarogongMembershipByIndex[i])
+                    .name,
           domicileSubdistrictId: 1729,
           domicileSubdistrictName: 'Tarogong Kidul',
           domicileVillage: village,
@@ -1503,6 +1539,7 @@ class MockData {
   /// Builds cabor list response JSON for GET /api/v1/kok/cabor.
   static Map<String, dynamic> buildCaborListJson(
     MockAccount account, {
+    String? mediaOrigin,
     String source = 'all',
     int limit = 25,
     int offset = 0,
@@ -1543,7 +1580,7 @@ class MockData {
           'code': cabor.code,
           'name': cabor.name,
           'group_name': cabor.groupName,
-          'logo': cabor.logo,
+          'logo': mediaUrl(cabor.logo, mediaOrigin),
           'status': cabor.status,
           'status_label': cabor.statusLabel,
           'total_club': totalClubsInSubdistrict,
@@ -1603,6 +1640,7 @@ class MockData {
   /// Builds club list response JSON for GET /api/v1/kok/club.
   static Map<String, dynamic> buildClubListJson(
     MockAccount account, {
+    String? mediaOrigin,
     int limit = 25,
     int offset = 0,
     int? idCabor,
@@ -1644,7 +1682,7 @@ class MockData {
         ? <Map<String, dynamic>>[]
         : filtered
               .sublist(clampedOffset, end)
-              .map((c) => c.toListJson())
+              .map((c) => c.toListJson(mediaOrigin: mediaOrigin))
               .toList();
 
     return {
@@ -1665,6 +1703,7 @@ class MockData {
   static Map<String, dynamic>? buildClubDetailJson(
     int id, {
     MockAccount? account,
+    String? mediaOrigin,
   }) {
     MockClub? found;
     for (final club in clubs) {
@@ -1690,7 +1729,7 @@ class MockData {
         'district_id': found.secretariatDistrictId,
         'district_name': found.secretariatDistrictName,
       },
-      'data': found.toDetailJson(),
+      'data': found.toDetailJson(mediaOrigin: mediaOrigin),
     };
   }
 
@@ -1778,6 +1817,7 @@ class MockData {
   /// Builds athlete list response JSON for GET /api/v1/kok/athlete.
   static Map<String, dynamic> buildAthleteListJson(
     MockAccount account, {
+    String? mediaOrigin,
     int limit = 25,
     int offset = 0,
     int? idCabor,
@@ -1824,7 +1864,7 @@ class MockData {
         ? <Map<String, dynamic>>[]
         : filtered
               .sublist(clampedOffset, end)
-              .map((a) => a.toListJson())
+              .map((a) => a.toListJson(mediaOrigin: mediaOrigin))
               .toList();
 
     final meta = <String, dynamic>{
@@ -1861,6 +1901,7 @@ class MockData {
   static Map<String, dynamic>? buildAthleteDetailJson(
     int id, {
     MockAccount? account,
+    String? mediaOrigin,
   }) {
     MockAthlete? found;
     for (final athlete in athletes) {
@@ -1886,7 +1927,7 @@ class MockData {
         'district_id': found.domicileDistrictId,
         'district_name': found.domicileDistrictName,
       },
-      'data': found.toDetailJson(),
+      'data': found.toDetailJson(mediaOrigin: mediaOrigin),
     };
   }
 }

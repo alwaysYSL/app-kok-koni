@@ -2,6 +2,76 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../scripts/mock_server/mock_data.dart';
 
 void main() {
+  test('active KOK summaries and club memberships match fixture rows', () {
+    const expectedSummaries = {
+      'kt.garutkota': [32, 5, 31, 10, 361, 355],
+      'kt.bllimbangan': [17, 0, 17, 0, 159, 159],
+      'kt.tarogongkidul': [28, 8, 26, 12, 290, 280],
+    };
+    for (final account in MockData.accounts.where(
+      (a) => a.isActive && a.isKok && a.hasSubdistrict,
+    )) {
+      final localClubs = MockData.clubs
+          .where((c) => c.secretariatSubdistrictId == account.subdistrictId)
+          .toList();
+      final localAthletes = MockData.athletes
+          .where((a) => a.domicileSubdistrictId == account.subdistrictId)
+          .toList();
+      final clubCabors = localClubs.map((c) => c.caborId).toSet();
+      final athleteCabors = localAthletes.map((a) => a.caborId).toSet();
+      final summary = account.summary;
+      expect(
+        [
+          summary['total_cabor'],
+          summary['total_cabor_from_club'],
+          summary['total_cabor_from_athlete'],
+          summary['total_club'],
+          summary['total_athlete'],
+          summary['total_athlete_without_club'],
+        ],
+        expectedSummaries[account.username],
+        reason: account.username,
+      );
+      expect(
+        summary['total_club'],
+        localClubs.length,
+        reason: account.username,
+      );
+      expect(
+        summary['total_athlete'],
+        localAthletes.length,
+        reason: account.username,
+      );
+      expect(
+        summary['total_athlete_without_club'],
+        localAthletes.where((a) => a.clubId == null).length,
+        reason: account.username,
+      );
+      expect(
+        summary['total_cabor_from_club'],
+        clubCabors.length,
+        reason: account.username,
+      );
+      expect(
+        summary['total_cabor_from_athlete'],
+        athleteCabors.length,
+        reason: account.username,
+      );
+      expect(
+        summary['total_cabor'],
+        {...clubCabors, ...athleteCabors}.length,
+        reason: account.username,
+      );
+    }
+    for (final club in MockData.clubs) {
+      expect(
+        club.totalAthleteInClub,
+        MockData.athletes.where((a) => a.clubId == club.id).length,
+        reason: club.name,
+      );
+    }
+  });
+
   group('MockData Accounts', () {
     test(
       'contains valid accounts for garut kota, limbangan, and tarogong kidul',

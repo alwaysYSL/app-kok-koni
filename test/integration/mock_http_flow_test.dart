@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/core/auth/data/secure_key_val_store.dart';
@@ -68,6 +69,57 @@ void main() {
         secureStore: secureStore,
       );
     });
+
+    test(
+      'mock image URLs load from the requested host and keep fallbacks',
+      () async {
+        final login = await composition.authRepository.login(
+          username: 'kt.garutkota',
+          password: 'password123',
+          staySignedIn: true,
+        );
+        final client = HttpClient();
+        addTearDown(client.close);
+
+        Future<Map<String, dynamic>> fetch(String path) async {
+          final request = await client.get('127.0.0.1', serverPort, path);
+          request.headers.set('Authorization', 'Bearer ${login.accessToken}');
+          final response = await request.close();
+          expect(response.statusCode, HttpStatus.ok);
+          return jsonDecode(await utf8.decodeStream(response))
+              as Map<String, dynamic>;
+        }
+
+        Future<void> expectPng(String url) async {
+          final uri = Uri.parse(url);
+          expect(uri.host, '127.0.0.1');
+          expect(uri.port, serverPort);
+          final response = await (await client.getUrl(uri)).close();
+          expect(response.statusCode, HttpStatus.ok);
+          expect(response.headers.contentType?.mimeType, 'image/png');
+          final bytes = await response.fold<List<int>>(
+            <int>[],
+            (out, chunk) => out..addAll(chunk),
+          );
+          expect(bytes.take(8).toList(), [137, 80, 78, 71, 13, 10, 26, 10]);
+        }
+
+        final cabor = await fetch('/api/v1/kok/cabor?limit=100');
+        final cabors = cabor['data'] as List;
+        await expectPng(
+          (cabors.firstWhere((c) => c['id'] == 1) as Map)['logo'] as String,
+        );
+        expect(cabors.any((c) => c['logo'] == null), isTrue);
+
+        final club = await fetch('/api/v1/kok/club/detail/30');
+        await expectPng(club['data']['logo'] as String);
+        final failedClub = await fetch('/api/v1/kok/club/detail/29');
+        expect(failedClub['data']['logo'], contains('sicabor.test'));
+
+        final athlete = await fetch('/api/v1/kok/athlete/detail/2375');
+        await expectPng(athlete['data']['photo'] as String);
+      },
+    );
 
     test(
       'Login & retrieve profile summary for kt.garutkota over real HTTP',
@@ -285,7 +337,7 @@ void main() {
 
         // Verify Cabor list isolation
         final tkCabors = await composition.caborService.fetchCaborList();
-        expect(tkCabors.total, 26);
+        expect(tkCabors.total, 28);
 
         // Verify Club list isolation
         final tkClubs = await composition.clubService.fetchClubList();

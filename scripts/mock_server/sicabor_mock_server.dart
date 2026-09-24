@@ -74,7 +74,25 @@ class SicaborMockServer {
     try {
       final path = _normalizePath(request.uri.path);
 
-      if (path == '/api/auth' || path == '/auth') {
+      if (path == '/mock-media/logo-koni.png' ||
+          path == '/mock-media/mascot.png') {
+        if (request.method != 'GET') {
+          response.statusCode = HttpStatus.methodNotAllowed;
+          await response.close();
+        } else {
+          response.headers.contentType = ContentType('image', 'png');
+          final file = path.endsWith('logo-koni.png')
+              ? File('assets/branding/logo-koni.png')
+              : File('assets/branding/mascot.png');
+          await file.openRead().pipe(response);
+        }
+        _logRequest(
+          request,
+          response.statusCode,
+          stopwatch.elapsedMilliseconds,
+        );
+        return;
+      } else if (path == '/api/auth' || path == '/auth') {
         await _handleAuth(request, response);
       } else if (path.startsWith('/api/v1/kok') || _isKokPathAlias(path)) {
         await _handleProtectedKok(request, response, path);
@@ -273,6 +291,8 @@ class SicaborMockServer {
 
     final path = _canonicalKokPath(rawPath);
     final params = request.uri.queryParameters;
+    final mediaOrigin =
+        'http://${request.headers.value(HttpHeaders.hostHeader)}';
 
     // Route: /profile
     if (path == '/profile') {
@@ -290,6 +310,7 @@ class SicaborMockServer {
 
       final json = MockData.buildCaborListJson(
         account,
+        mediaOrigin: mediaOrigin,
         limit: limit,
         offset: offset,
         source: source,
@@ -310,6 +331,7 @@ class SicaborMockServer {
 
       final json = MockData.buildClubListJson(
         account,
+        mediaOrigin: mediaOrigin,
         limit: limit,
         offset: offset,
         idCabor: idCabor,
@@ -330,7 +352,11 @@ class SicaborMockServer {
         return;
       }
 
-      final json = MockData.buildClubDetailJson(id, account: account);
+      final json = MockData.buildClubDetailJson(
+        id,
+        account: account,
+        mediaOrigin: mediaOrigin,
+      );
       if (json == null) {
         _sendClubNotFound(response);
       } else {
@@ -398,6 +424,7 @@ class SicaborMockServer {
 
       final json = MockData.buildAthleteListJson(
         account,
+        mediaOrigin: mediaOrigin,
         limit: limit,
         offset: offset,
         idCabor: idCabor,
@@ -420,7 +447,11 @@ class SicaborMockServer {
         return;
       }
 
-      final json = MockData.buildAthleteDetailJson(id, account: account);
+      final json = MockData.buildAthleteDetailJson(
+        id,
+        account: account,
+        mediaOrigin: mediaOrigin,
+      );
       if (json == null) {
         _sendAthleteNotFound(response);
       } else {
