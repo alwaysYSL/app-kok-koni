@@ -1,7 +1,7 @@
 # Rancangan polish UI KOK berbasis kontrak SICABOR
 
 Tanggal: 24 September 2026
-Status: Menunggu tinjauan pengguna sebelum rencana implementasi
+Status: Disetujui pengguna pada 24 September 2026
 
 ## Latar dan tujuan
 
@@ -101,4 +101,4 @@ Mock server tetap replika kontrak SICABOR. Tidak ada endpoint pencarian gabungan
 4. Rapikan Anggota KOK, Akun, dan seluruh loading/empty/error states.
 5. Lengkapi fixture mock dan verifikasi kontrak serta screenshot pada beberapa skenario akun.
 
-Rincian langkah kode, pembagian perubahan, dan perintah pengujian akan dibuat pada rencana implementasi setelah dokumen ini disetujui.
+Rincian langkah kode, pembagian perubahan, dan perintah pengujian dicatat dalam rencana implementasi di `docs/archive/plans/`.
