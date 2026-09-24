@@ -19,13 +19,16 @@ class AthleteListPage extends ConsumerStatefulWidget {
 }
 
 class _AthleteListPageState extends ConsumerState<AthleteListPage> {
-  final _search = TextEditingController();
+  late final TextEditingController _search;
   final _scroll = ScrollController();
   Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    _search = TextEditingController(
+      text: ref.read(athletePaginationProvider(_scope)).search ?? '',
+    );
     Future.microtask(() {
       if (mounted) {
         ref.read(athletePaginationProvider(_scope).notifier).loadFirstPage();

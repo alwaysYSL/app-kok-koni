@@ -242,6 +242,56 @@ void main() {
     expect(find.text('Tidak ada atlet yang sesuai filter.'), findsOneWidget);
   });
 
+  testWidgets(
+    'reopening directory restores the active server search in the field',
+    (tester) async {
+      final service = _AthleteService(
+        ({required offset, required limit, sex, status, search}) =>
+            PaginatedResult(
+              items: search == 'Atlet 9' ? [_athlete(9)] : [_athlete(1)],
+              limit: limit,
+              offset: offset,
+              total: 1,
+            ),
+      );
+      final container = await _pumpDirectory(tester, service);
+      await tester.enterText(
+        find.byKey(const ValueKey('athlete-search')),
+        'Atlet 9',
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('athlete-list')),
+          matching: find.text('Atlet 9'),
+        ),
+        findsOneWidget,
+      );
+
+      container.read(routerProvider).go('/home');
+      await tester.pumpAndSettle();
+      container.read(routerProvider).go('/athletes');
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const ValueKey('athlete-search')))
+            .controller!
+            .text,
+        'Atlet 9',
+      );
+      expect(find.byTooltip('Hapus pencarian'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('athlete-list')),
+          matching: find.text('Atlet 9'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('gender and status chips apply server filters', (tester) async {
     final service = _AthleteService(
       ({required offset, required limit, sex, status, search}) =>
