@@ -1,6 +1,6 @@
 # Status proyek
 
-Terakhir diperbarui: 23 September 2026.
+Terakhir diperbarui: 25 September 2026.
 
 ## Ringkasan
 
@@ -131,10 +131,18 @@ Label “SELESAI” pada milestone di bawah menyatakan seluruh implementasi, pen
   - Penjelasan komparasi total anggota klub lintas kecamatan vs atlet lokal hasil filter kecamatan.
   - Integrasi `url_launcher` untuk membuka tautan berkas SK di peramban eksternal (`LaunchMode.externalApplication`) disertai fallback salin tautan ke clipboard.
 
-### Hasil Pengujian & Verifikasi Kualitas
-- **Automated Test Suite**: 854 unit, widget, dan integration test lulus (100% pass rate, 0 failed, 1 skipped).
-- **Static Analysis**: `flutter analyze --no-pub` bersih (0 issues / 0 warnings).
-- **Code Formatting**: `dart format` 100% konsisten dan bersih di seluruh file (`lib`, `test`, `scripts/mock_server`).
+### Polish UI berbasis kontrak SICABOR
+- Beranda, Cabor, Klub, Atlet, dan Akun mode remote memakai data kecamatan dari API KOK; komponen UI dan alur HTTP mock diuji secara lokal.
+- Halaman Anggota KOK tetap tersedia dengan penjelasan bahwa data resmi belum tersedia melalui kontrak API saat ini.
+- Perubahan tampilan mencakup transisi header membulat, kartu direktori dan detail, serta keadaan kosong dan fallback gambar. Pemeriksaan visual pasca-login pada emulator Android belum tuntas; jangan tafsirkan hasil tes widget sebagai persetujuan visual seluruh layar.
+- Validasi terhadap server resmi tetap menunggu URL HTTPS dan kredensial uji yang aktif.
+
+### Hasil Pengujian & Verifikasi Kualitas (25 September 2026)
+- **Automated Test Suite**: `flutter test --no-pub` selesai dengan 891 lulus, 1 dilewati, 0 gagal.
+- **Alur HTTP Mock**: `flutter test test/integration/mock_http_flow_test.dart` selesai dengan 9 lulus, 0 gagal.
+- **Static Analysis**: `flutter analyze --no-pub` melaporkan `No issues found!`.
+- **Code Formatting**: `dart format --output=none --set-exit-if-changed lib test scripts/mock_server` memeriksa 176 file, 0 berubah.
+- **Batas QA Visual**: Android AVD dapat dijalankan dan layar login tertangkap pada sekitar 320/390 dp. Login manual dari emulator ke mock lokal masih menerima HTTP 401 pada `/api/auth`, walau POST kredensial yang sama dari host menerima HTTP 200. Beranda dan layar setelah login untuk Garut Kota/Balubur Limbangan belum dapat diverifikasi melalui screenshot emulator pada sesi ini.
 
 ---
 
