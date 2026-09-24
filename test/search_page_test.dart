@@ -11,7 +11,6 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
-import 'package:kok_app/shared/remote_feature_placeholder.dart';
 
 import 'test_composition.dart';
 
@@ -30,6 +29,27 @@ Widget createSearchTestApp({
     initialLocation: '/search',
     routes: [
       GoRoute(path: '/search', builder: (_, _) => const GlobalSearchPage()),
+      GoRoute(
+        path: '/sports',
+        builder: (_, _) {
+          onNavigated?.call('/sports');
+          return const Scaffold(body: Text('Sports Directory'));
+        },
+      ),
+      GoRoute(
+        path: '/clubs',
+        builder: (_, _) {
+          onNavigated?.call('/clubs');
+          return const Scaffold(body: Text('Clubs Directory'));
+        },
+      ),
+      GoRoute(
+        path: '/athletes',
+        builder: (_, _) {
+          onNavigated?.call('/athletes');
+          return const Scaffold(body: Text('Athletes Directory'));
+        },
+      ),
       GoRoute(
         path: '/home',
         builder: (_, _) => const Scaffold(body: Text('Home Page')),
@@ -248,32 +268,39 @@ void main() {
       expect(find.textContaining('DITEMUKAN'), findsOneWidget);
     });
 
-    testWidgets('renders RemoteFeaturePlaceholder in remote data mode', (
-      tester,
-    ) async {
-      final remoteComposition = buildTestAppComposition(
-        profile: const DeploymentProfile(
-          environment: AppEnv.staging,
-          authMode: AuthMode.remote,
-          dataMode: DataMode.remote,
-          apiBaseUrl: 'https://sicabor.test/api/v1/kok',
-        ),
-      );
+    for (final destination in <String, String>{
+      'Jelajahi Cabor': '/sports',
+      'Cari Klub': '/clubs',
+      'Cari Atlet': '/athletes',
+    }.entries) {
+      testWidgets('remote search opens ${destination.value} directory', (
+        tester,
+      ) async {
+        final remoteComposition = buildTestAppComposition(
+          profile: const DeploymentProfile(
+            environment: AppEnv.staging,
+            authMode: AuthMode.remote,
+            dataMode: DataMode.remote,
+            apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+          ),
+        );
+        String? navigatedRoute;
+        await tester.pumpWidget(
+          createSearchTestApp(
+            appComposition: remoteComposition,
+            onNavigated: (route) => navigatedRoute = route,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        createSearchTestApp(appComposition: remoteComposition),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.byType(RemoteFeaturePlaceholder), findsOneWidget);
-      expect(find.text('Pencarian'), findsOneWidget);
-      expect(find.text('Pencarian Global'), findsOneWidget);
-      expect(
-        find.textContaining('Pencarian lintas entitas belum tersedia'),
-        findsOneWidget,
-      );
-      expect(find.byIcon(Icons.search_off_rounded), findsOneWidget);
-      expect(find.byType(TextField), findsNothing);
-    });
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('Jelajahi Cabor'), findsOneWidget);
+        expect(find.text('Cari Klub'), findsOneWidget);
+        expect(find.text('Cari Atlet'), findsOneWidget);
+        await tester.tap(find.text(destination.key));
+        await tester.pumpAndSettle();
+        expect(navigatedRoute, destination.value);
+      });
+    }
   });
 }

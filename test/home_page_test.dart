@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kok_app/core/auth/data/auth_token_storage.dart';
@@ -534,6 +535,161 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Coba Lagi'), findsNothing);
+    },
+  );
+  final remoteSummary = ProfileSummary(
+    scope: const SicaborScope(
+      subdistrictId: 10,
+      subdistrictName: 'Garut Kota',
+      districtId: 126,
+      districtName: 'Kabupaten Garut',
+    ),
+    member: const SicaborMember(
+      id: 9,
+      username: 'kok.garut',
+      name: 'Ibu Sari',
+      type: 'admin_kok',
+      status: 1,
+      statusLabel: 'Koordinator Aktif',
+    ),
+    totalCabor: 5,
+    totalCaborFromClub: 0,
+    totalCaborFromAthlete: 3,
+    totalClub: 0,
+    totalAthlete: 12,
+    totalAthleteWithoutClub: 12,
+    dataNotes: const ['Catatan pertama', 'Catatan kedua'],
+  );
+
+  for (final destination in <String, String>{
+    'Jelajahi Cabor': '/sports',
+    'Cari Klub': '/clubs',
+    'Cari Atlet': '/athletes',
+  }.entries) {
+    testWidgets('remote Beranda opens ${destination.value} directory', (
+      tester,
+    ) async {
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+      String? route;
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(path: '/home', builder: (_, _) => const HomePage()),
+          GoRoute(
+            path: '/sports',
+            builder: (_, _) {
+              route = '/sports';
+              return const Scaffold(body: Text('Sports Directory'));
+            },
+          ),
+          GoRoute(
+            path: '/clubs',
+            builder: (_, _) {
+              route = '/clubs';
+              return const Scaffold(body: Text('Clubs Directory'));
+            },
+          ),
+          GoRoute(
+            path: '/athletes',
+            builder: (_, _) {
+              route = '/athletes';
+              return const Scaffold(body: Text('Athletes Directory'));
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeHomeAuthController(cecepUser),
+            ),
+            profileSummaryProvider.overrideWith((ref) => remoteSummary),
+            appCompositionProvider.overrideWithValue(composition),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jelajahi Cabor'), findsOneWidget);
+      expect(find.text('Cari Klub'), findsOneWidget);
+      expect(find.text('Cari Atlet'), findsOneWidget);
+      expect(find.textContaining('Ibu Sari'), findsWidgets);
+      expect(find.textContaining('Pak Cecep'), findsNothing);
+      expect(find.textContaining('terverifikasi'), findsNothing);
+      expect(find.textContaining('Terakhir Dimuat'), findsNothing);
+      expect(find.text('0'), findsOneWidget);
+      await tester.ensureVisible(find.text(destination.key));
+      await tester.tap(find.text(destination.key));
+      await tester.pumpAndSettle();
+      expect(route, destination.value);
+    });
+  }
+
+  testWidgets(
+    'remote Beranda uses neutral account identity and expandable ordered notes',
+    (tester) async {
+      final composition = await _createTestComposition(
+        dataMode: DataMode.remote,
+      );
+      final emptyUser = UserPrincipal(
+        id: '9',
+        username: 'kok',
+        fullName: '',
+        roleTitle: '',
+        scope: cecepUser.scope,
+      );
+      final emptySummary = ProfileSummary(
+        scope: const SicaborScope(
+          subdistrictId: 11,
+          subdistrictName: 'Limbangan',
+          districtId: 126,
+          districtName: 'Kabupaten Garut',
+        ),
+        member: const SicaborMember(
+          id: 9,
+          username: 'kok.limbangan',
+          name: '',
+          type: 'admin_kok',
+          status: 1,
+          statusLabel: '',
+        ),
+        totalCabor: 2,
+        totalCaborFromClub: 0,
+        totalCaborFromAthlete: 1,
+        totalClub: 0,
+        totalAthlete: 3,
+        totalAthleteWithoutClub: 3,
+        dataNotes: const ['Catatan pertama', 'Catatan kedua'],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWith(
+              () => _FakeHomeAuthController(emptyUser),
+            ),
+            profileSummaryProvider.overrideWith((ref) => emptySummary),
+            appCompositionProvider.overrideWithValue(composition),
+          ],
+          child: const MaterialApp(home: HomePage()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('KOK Limbangan'), findsOneWidget);
+      expect(find.textContaining('Akun KOK'), findsWidgets);
+      expect(find.textContaining('Pak Asep'), findsNothing);
+      expect(find.text('Catatan Data Server'), findsOneWidget);
+      expect(find.text('Catatan pertama'), findsNothing);
+      await tester.ensureVisible(find.text('Catatan Data Server'));
+      await tester.tap(find.text('Catatan Data Server'));
+      await tester.pumpAndSettle();
+      expect(find.text('Catatan pertama'), findsOneWidget);
+      expect(find.text('Catatan kedua'), findsOneWidget);
     },
   );
 }

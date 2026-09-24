@@ -81,11 +81,33 @@ class _GlobalSearchPageState extends ConsumerState<GlobalSearchPage> {
             bottom: BorderSide(color: Color(0xFFE5E7EB), width: 1),
           ),
         ),
-        body: const RemoteFeaturePlaceholder(
-          featureName: 'Pencarian Global',
-          description:
-              'Pencarian lintas entitas belum tersedia di mode server SICABOR.\n\nAnda dapat mencari data secara langsung pada masing-masing menu: Cabang Olahraga, Atlet, dan Klub.',
-          icon: Icons.search_off_rounded,
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text(
+              'Pilih direktori untuk mencari data',
+              style: TextStyle(color: KokColors.muted, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.sports_rounded),
+              title: const Text('Jelajahi Cabor'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/sports'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.groups_rounded),
+              title: const Text('Cari Klub'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.go('/clubs'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_search_rounded),
+              title: const Text('Cari Atlet'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/athletes'),
+            ),
+          ],
         ),
       );
     }

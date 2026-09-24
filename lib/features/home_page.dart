@@ -63,17 +63,15 @@ class HomePage extends ConsumerWidget {
             summary.scope.subdistrictName,
           );
 
-          final adminName =
-              user?.fullName ??
-              (summary.member.name.isNotEmpty
-                  ? summary.member.name
-                  : 'Pak Asep');
-
-          final adminRole =
-              user?.roleTitle ??
-              (summary.member.statusLabel.isNotEmpty
-                  ? summary.member.statusLabel
-                  : 'Koordinator Kecamatan');
+          final memberName = summary.member.name.trim();
+          final principalName = user?.fullName.trim() ?? '';
+          final adminName = isDemo
+              ? (principalName.isNotEmpty ? principalName : memberName)
+              : (memberName.isNotEmpty ? memberName : principalName);
+          final displayName = adminName.isNotEmpty ? adminName : 'Akun KOK';
+          final adminRole = isDemo
+              ? (user?.roleTitle ?? summary.member.statusLabel)
+              : summary.member.statusLabel.trim();
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -143,7 +141,9 @@ class HomePage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '$adminName · $adminRole',
+                                  adminRole.isEmpty
+                                      ? displayName
+                                      : '$displayName · $adminRole',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: Colors.white70,
@@ -172,7 +172,7 @@ class HomePage extends ConsumerWidget {
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  _getInitials(adminName),
+                                  _getInitials(displayName),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w700,
@@ -186,7 +186,10 @@ class HomePage extends ConsumerWidget {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      _HomeSearchBar(onTap: () => context.push('/search')),
+                      if (isDemo)
+                        _HomeSearchBar(onTap: () => context.push('/search'))
+                      else
+                        const _HomeDirectoryActions(),
                     ],
                   ),
                 ),
@@ -216,7 +219,10 @@ class HomePage extends ConsumerWidget {
                         ],
                         if (summary.dataNotes.isNotEmpty) ...[
                           const SizedBox(height: 12),
-                          _DataNotesSection(dataNotes: summary.dataNotes),
+                          _DataNotesSection(
+                            dataNotes: summary.dataNotes,
+                            initiallyExpanded: isDemo,
+                          ),
                         ],
                         if (isDemo && snapshot != null) ...[
                           _buildDemoAttentionAndClubs(context, snapshot),
@@ -614,28 +620,20 @@ class _KontingenCard extends StatelessWidget {
 }
 
 class _DataNotesSection extends StatelessWidget {
-  const _DataNotesSection({required this.dataNotes});
+  const _DataNotesSection({
+    required this.dataNotes,
+    required this.initiallyExpanded,
+  });
 
   final List<String> dataNotes;
+  final bool initiallyExpanded;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 8, bottom: 8),
-          child: Text(
-            'Catatan Data Server',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: KokColors.cardTitle,
-            ),
-          ),
-        ),
-        ...dataNotes.map(
+    final notes = dataNotes
+        .map(
           (note) => Container(
+            width: double.infinity,
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -665,10 +663,107 @@ class _DataNotesSection extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ],
+        )
+        .toList();
+    const title = Text(
+      'Catatan Data Server',
+      style: TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w700,
+        color: KokColors.cardTitle,
+      ),
+    );
+    if (initiallyExpanded) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 8, bottom: 8),
+            child: title,
+          ),
+          ...notes,
+        ],
+      );
+    }
+    return ExpansionTile(
+      title: title,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 4),
+      children: notes,
     );
   }
+}
+
+class _HomeDirectoryActions extends StatelessWidget {
+  const _HomeDirectoryActions();
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _DirectoryAction(
+        label: 'Jelajahi Cabor',
+        icon: Icons.sports_rounded,
+        onTap: () => context.go('/sports'),
+      ),
+      const SizedBox(height: 8),
+      _DirectoryAction(
+        label: 'Cari Klub',
+        icon: Icons.groups_rounded,
+        onTap: () => context.go('/clubs'),
+      ),
+      const SizedBox(height: 8),
+      _DirectoryAction(
+        label: 'Cari Atlet',
+        icon: Icons.person_search_rounded,
+        onTap: () => context.push('/athletes'),
+      ),
+    ],
+  );
+}
+
+class _DirectoryAction extends StatelessWidget {
+  const _DirectoryAction({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, color: KokColors.bluePrimary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: KokColors.cardTitle,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: KokColors.muted,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _MetricColumn extends StatelessWidget {
