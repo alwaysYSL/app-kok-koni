@@ -16,6 +16,7 @@ import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
+import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1081,6 +1082,56 @@ void main() {
   });
 
   group('ProfilePage Remote Mode Tests', () {
+    testWidgets('remote account omits contingent when profile has none', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      await pumpProfilePage(
+        tester,
+        preferences: prefs,
+        composition: buildRemoteTestComposition(),
+        profileSummary: ProfileSummary(
+          scope: testProfileSummary.scope,
+          member: testProfileSummary.member,
+          totalCabor: 5,
+          totalCaborFromClub: 4,
+          totalCaborFromAthlete: 5,
+          totalClub: 12,
+          totalAthlete: 48,
+          totalAthleteWithoutClub: 3,
+        ),
+      );
+
+      expect(find.text('Kontingen Garut Kota'), findsNothing);
+      expect(find.text('Pak Asep'), findsOneWidget);
+    });
+
+    testWidgets('expired remote session never displays a sample identity', (
+      tester,
+    ) async {
+      final prefs = await SharedPreferences.getInstance();
+      final authController = _SwitchableProfileAuthController(testUser);
+      await pumpProfilePage(
+        tester,
+        preferences: prefs,
+        composition: buildRemoteTestComposition(),
+        authController: authController,
+        profileSummaryOverride: (_) => Future.error(
+          const RequestCancelledException(
+            'Sesi tidak aktif atau telah berakhir.',
+          ),
+        ),
+      );
+      authController.setUser(null);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Pak Asep'), findsNothing);
+      expect(find.text('Kecamatan Garut Kota'), findsNothing);
+      expect(find.text('Sesi tidak aktif'), findsOneWidget);
+      expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
+      expect(find.text('Fitur tidak tersedia untuk peran ini'), findsOneWidget);
+    });
+
     testWidgets(
       'renders executive profile card with user info and kontingen name from profileSummaryProvider',
       (tester) async {
@@ -1106,7 +1157,7 @@ void main() {
     );
 
     testWidgets(
-      'renders remote data summary card with total stats and data notes',
+      'remote account shows identity status without duplicate dashboard totals or invented sync time',
       (tester) async {
         final prefs = await SharedPreferences.getInstance();
         final remoteComposition = buildRemoteTestComposition();
@@ -1118,21 +1169,13 @@ void main() {
           profileSummary: testProfileSummary,
         );
 
-        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+        expect(find.text('STATUS AKUN'), findsOneWidget);
         expect(find.text('Data Terhubung SICABOR'), findsOneWidget);
-
-        // 4 metric tiles
-        expect(find.text('Total Cabor'), findsOneWidget);
-        expect(find.text('5 Cabor'), findsOneWidget);
-        expect(find.text('Total Klub'), findsOneWidget);
-        expect(find.text('12 Klub'), findsOneWidget);
-        expect(find.text('Total Atlet'), findsOneWidget);
-        expect(find.text('48 Atlet'), findsOneWidget);
-        expect(find.text('Total Atlet Belum Ada Klub'), findsOneWidget);
-        expect(find.text('3 Atlet'), findsOneWidget);
-
-        // Data note
-        expect(find.text('Data atlet dalam proses verifikasi'), findsOneWidget);
+        expect(find.text('Koordinator Kecamatan'), findsOneWidget);
+        expect(find.text('Total Cabor'), findsNothing);
+        expect(find.text('Total Klub'), findsNothing);
+        expect(find.text('Total Atlet'), findsNothing);
+        expect(find.textContaining('Terakhir sinkron'), findsNothing);
       },
     );
 
@@ -1221,10 +1264,10 @@ void main() {
           ),
           findsOneWidget,
         );
-        expect(find.text('5 Cabor'), findsNWidgets(2));
-        expect(find.text('12 Klub'), findsNWidgets(2));
-        expect(find.text('48 Atlet'), findsNWidgets(2));
-        expect(find.text('3 Atlet'), findsNWidgets(2));
+        expect(find.text('5 Cabor'), findsOneWidget);
+        expect(find.text('12 Klub'), findsOneWidget);
+        expect(find.text('48 Atlet'), findsOneWidget);
+        expect(find.text('3 Atlet'), findsOneWidget);
 
         // Copy button in modal
         expect(find.text('Salin Teks Rekapitulasi'), findsOneWidget);

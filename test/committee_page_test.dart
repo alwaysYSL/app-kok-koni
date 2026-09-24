@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kok_app/core/auth/domain/user_principal.dart';
+import 'package:kok_app/core/auth/data/dto/sicabor_profile_response.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/data/models.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
+import 'package:kok_app/data/models/profile_summary.dart';
+import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/features/committee_page.dart';
 import 'package:kok_app/shared/widgets.dart';
@@ -17,6 +20,7 @@ Widget buildTestableWidget({
   required Widget child,
   KokSnapshot? snapshot,
   AppComposition? appComposition,
+  ProfileSummary? profileSummary,
   GoRouter? router,
 }) {
   final snap =
@@ -75,6 +79,8 @@ Widget buildTestableWidget({
     snapshotProvider.overrideWith((_) async => snap),
     if (appComposition != null)
       appCompositionProvider.overrideWithValue(appComposition),
+    if (profileSummary != null)
+      profileSummaryProvider.overrideWith((_) async => profileSummary),
   ];
 
   return ProviderScope(
@@ -88,6 +94,7 @@ Future<void> pumpCommitteePage(
   Widget child = const CommitteePage(),
   KokSnapshot? snapshot,
   AppComposition? appComposition,
+  ProfileSummary? profileSummary,
   GoRouter? router,
 }) async {
   tester.view.physicalSize = const Size(390, 1000);
@@ -110,6 +117,7 @@ Future<void> pumpCommitteePage(
       child: child,
       snapshot: snapshot,
       appComposition: appComposition,
+      profileSummary: profileSummary,
       router: appRouter,
     ),
   );
@@ -364,34 +372,60 @@ void main() {
     },
   );
 
-  testWidgets('renders RemoteFeaturePlaceholder in remote data mode', (
-    tester,
-  ) async {
-    final remoteComposition = buildTestAppComposition(
-      profile: const DeploymentProfile(
-        environment: AppEnv.staging,
-        authMode: AuthMode.remote,
-        dataMode: DataMode.remote,
-        apiBaseUrl: 'https://sicabor.test/api/v1/kok',
-      ),
-    );
+  testWidgets(
+    'remote committee shows official-data status and account subdistrict',
+    (tester) async {
+      final remoteComposition = buildTestAppComposition(
+        profile: const DeploymentProfile(
+          environment: AppEnv.staging,
+          authMode: AuthMode.remote,
+          dataMode: DataMode.remote,
+          apiBaseUrl: 'https://sicabor.test/api/v1/kok',
+        ),
+      );
 
-    await pumpCommitteePage(
-      tester,
-      child: const CommitteePage(),
-      appComposition: remoteComposition,
-    );
+      await pumpCommitteePage(
+        tester,
+        child: const CommitteePage(),
+        appComposition: remoteComposition,
+        profileSummary: const ProfileSummary(
+          scope: SicaborScope(
+            districtId: 17,
+            districtName: 'Garut',
+            subdistrictId: 1701,
+            subdistrictName: 'Garut Kota',
+          ),
+          member: SicaborMember(
+            id: 1,
+            username: 'account',
+            name: 'Pak Asep',
+            type: 'KOK',
+            status: 1,
+            statusLabel: 'Aktif',
+          ),
+          totalCabor: 5,
+          totalCaborFromClub: 4,
+          totalCaborFromAthlete: 5,
+          totalClub: 12,
+          totalAthlete: 48,
+          totalAthleteWithoutClub: 3,
+        ),
+      );
 
-    expect(find.byType(RemoteFeaturePlaceholder), findsOneWidget);
-    expect(find.text('Anggota KOK'), findsWidgets);
-    expect(find.text('Susunan Anggota KOK'), findsOneWidget);
-    expect(
-      find.text(
-        'Data susunan anggota KOK belum tersedia di server SICABOR. Hubungi admin kabupaten untuk informasi lebih lanjut.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.byIcon(Icons.group_off_outlined), findsOneWidget);
-    expect(find.byType(CommitteeMemberCard), findsNothing);
-  });
+      expect(find.byType(RemoteFeaturePlaceholder), findsOneWidget);
+      expect(find.text('Kepengurusan KOK'), findsWidgets);
+      expect(find.text('Garut Kota'), findsOneWidget);
+      expect(
+        find.text(
+          'Data susunan pengurus KOK resmi belum tersedia di aplikasi.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Pak Asep'), findsNothing);
+      expect(find.textContaining('Terakhir sinkron'), findsNothing);
+      expect(find.textContaining('Periode'), findsNothing);
+      expect(find.byIcon(Icons.group_off_outlined), findsOneWidget);
+      expect(find.byType(CommitteeMemberCard), findsNothing);
+    },
+  );
 }

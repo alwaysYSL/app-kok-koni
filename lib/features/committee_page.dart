@@ -5,6 +5,7 @@ import '../core/composition/app_composition.dart';
 import '../core/config/deployment_profile.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
+import '../data/providers/profile_providers.dart';
 import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
 
@@ -335,11 +336,12 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
   @override
   Widget build(BuildContext context) {
     if (_isRemoteMode(ref)) {
+      final profile = ref.watch(profileSummaryProvider);
       return Scaffold(
         backgroundColor: KokColors.background,
         appBar: AppBar(
           title: const Text(
-            'Anggota KOK',
+            'Kepengurusan KOK',
             style: TextStyle(
               fontSize: 21,
               fontWeight: FontWeight.w700,
@@ -365,11 +367,37 @@ class _CommitteePageState extends ConsumerState<CommitteePage> {
             },
           ),
         ),
-        body: const RemoteFeaturePlaceholder(
-          featureName: 'Susunan Anggota KOK',
-          description:
-              'Data susunan anggota KOK belum tersedia di server SICABOR. Hubungi admin kabupaten untuk informasi lebih lanjut.',
-          icon: Icons.group_off_outlined,
+        body: profile.when(
+          data: (summary) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                child: Text(
+                  summary.scope.subdistrictName.trim().isEmpty
+                      ? 'Kecamatan belum tersedia pada akun ini'
+                      : summary.scope.subdistrictName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: KokColors.navy,
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: RemoteFeaturePlaceholder(
+                  featureName: 'Kepengurusan KOK',
+                  description:
+                      'Data susunan pengurus KOK resmi belum tersedia di aplikasi.',
+                  icon: Icons.group_off_outlined,
+                ),
+              ),
+            ],
+          ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) {
+            final presentation = describeRemoteError(error);
+            return Center(child: Text(presentation.message));
+          },
         ),
       );
     }

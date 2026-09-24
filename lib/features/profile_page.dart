@@ -112,7 +112,7 @@ class ProfilePage extends ConsumerWidget {
               ),
             )
           else ...[
-            _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
+            _buildSectionHeader('STATUS AKUN'),
             if (profileSummaryAsync != null)
               profileSummaryAsync.when(
                 data: (summaryData) =>
@@ -904,7 +904,7 @@ class _ExecutiveProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user?.fullName ?? 'Pak Asep';
+    final name = user?.fullName ?? 'Sesi tidak aktif';
     final initials = user != null
         ? user!.fullName
               .split(' ')
@@ -913,11 +913,12 @@ class _ExecutiveProfileCard extends StatelessWidget {
               .take(2)
               .join()
               .toUpperCase()
-        : 'PA';
-    final roleTitle = user?.roleTitle ?? 'Koordinator Kecamatan';
-    final scopeName = user?.scope.name ?? 'Kecamatan Garut Kota';
-    final subtitle =
-        '$roleTitle · ${scopeName.replaceFirst('Kecamatan ', 'Kec. ')}';
+        : '?';
+    final roleTitle = user?.roleTitle;
+    final scopeName = user?.scope.name;
+    final subtitle = user == null
+        ? 'Masuk kembali untuk melihat identitas akun'
+        : '$roleTitle · ${scopeName!.replaceFirst('Kecamatan ', 'Kec. ')}';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -992,32 +993,34 @@ class _ExecutiveProfileCard extends StatelessWidget {
                         spacing: 8,
                         runSpacing: 6,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFF59E0B),
-                                width: 1,
+                          if (user != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFF59E0B),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                user?.scope.type == AccessScopeType.county
+                                    ? 'AKSES KABUPATEN'
+                                    : 'AKSES READ-ONLY',
+                                style: const TextStyle(
+                                  color: Color(0xFFFBBF24),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              user?.scope.type == AccessScopeType.county
-                                  ? 'AKSES KABUPATEN'
-                                  : 'AKSES READ-ONLY',
-                              style: const TextStyle(
-                                color: Color(0xFFFBBF24),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                              ),
-                            ),
-                          ),
-                          if (kontingenName != null &&
+                          if (user != null &&
+                              kontingenName != null &&
                               kontingenName!.trim().isNotEmpty)
                             Container(
                               constraints: const BoxConstraints(maxWidth: 200),
@@ -1147,83 +1150,16 @@ class _RemoteDataSummaryCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: KokColors.background,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Column(
-              children: [
-                _MetricRow(
-                  label: 'Total Cabor',
-                  value: '${summary.totalCabor} Cabor',
-                  icon: Icons.emoji_events_outlined,
-                  iconColor: KokColors.blue,
-                ),
-                const Divider(height: 16, color: Color(0xFFE5E7EB)),
-                _MetricRow(
-                  label: 'Total Klub',
-                  value: '${summary.totalClub} Klub',
-                  icon: Icons.shield_outlined,
-                  iconColor: const Color(0xFF059669),
-                ),
-                const Divider(height: 16, color: Color(0xFFE5E7EB)),
-                _MetricRow(
-                  label: 'Total Atlet',
-                  value: '${summary.totalAthlete} Atlet',
-                  icon: Icons.directions_run_rounded,
-                  iconColor: const Color(0xFF4338CA),
-                ),
-                const Divider(height: 16, color: Color(0xFFE5E7EB)),
-                _MetricRow(
-                  label: 'Total Atlet Belum Ada Klub',
-                  value: '${summary.totalAthleteWithoutClub} Atlet',
-                  icon: Icons.person_search_outlined,
-                  iconColor: const Color(0xFFD97706),
-                ),
-              ],
+          Text(
+            summary.member.statusLabel.trim().isEmpty
+                ? 'Status akun belum tersedia'
+                : summary.member.statusLabel,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: KokColors.cardTitle,
             ),
           ),
-          if (summary.dataNotes.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            for (final note in summary.dataNotes)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 6),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.info_outline_rounded,
-                      size: 16,
-                      color: Color(0xFFB45309),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        note,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF92400E),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
         ],
       ),
     );
