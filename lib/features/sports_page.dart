@@ -9,7 +9,6 @@ import '../data/providers/cabor_providers.dart';
 import '../data/providers/profile_providers.dart';
 import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
-import 'sport_detail/sport_brand_palette.dart';
 
 class SportsPage extends ConsumerStatefulWidget {
   const SportsPage({super.key});
@@ -19,7 +18,16 @@ class SportsPage extends ConsumerStatefulWidget {
 }
 
 class _SportsPageState extends ConsumerState<SportsPage> {
-  bool _isExpanded = false;
+  static const sourceOptions = [
+    ('Semua', 'all'),
+    ('Ada Klub', 'club'),
+    ('Ada Atlet', 'athlete'),
+  ];
+  static const sortOptions = [
+    ('Nama', 'name'),
+    ('Atlet', 'athlete'),
+    ('Klub', 'club'),
+  ];
 
   @override
   void initState() {
@@ -55,25 +63,6 @@ class _SportsPageState extends ConsumerState<SportsPage> {
         contextScope?.name ??
         'KONI Garut';
 
-    final totalSports = caborState.total > 0
-        ? caborState.total
-        : (summary?.totalCabor ?? caborState.items.length);
-
-    final totalAthletes =
-        summary?.totalAthlete ??
-        caborState.items.fold<int>(0, (sum, c) => sum + c.totalAthlete);
-
-    final sortedCabors = List<Cabor>.from(caborState.items)
-      ..sort((a, b) {
-        final cmp = b.totalAthlete.compareTo(a.totalAthlete);
-        if (cmp != 0) return cmp;
-        return a.name.compareTo(b.name);
-      });
-
-    final maxCount = caborState.items.fold<int>(1, (max, c) {
-      return c.totalAthlete > max ? c.totalAthlete : max;
-    });
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cabang Olahraga'),
@@ -105,36 +94,50 @@ class _SportsPageState extends ConsumerState<SportsPage> {
               children: [
                 // 1. Header Ringkas
                 _buildCompactHeader(
-                  totalSports: totalSports,
-                  totalAthletes: totalAthletes,
+                  totalSports: caborState.total,
                   scopeName: scopeName,
                 ),
                 const SizedBox(height: 14),
-
-                // 2. Kartu Sebaran Atlet Horizontal
-                if (caborState.items.isNotEmpty) ...[
-                  _buildHorizontalDistributionCard(
-                    context,
-                    sortedCabors,
-                    maxCount,
-                    loadedCount: caborState.items.length,
-                    totalCount: caborState.total > 0
-                        ? caborState.total
-                        : (summary?.totalCabor ?? caborState.items.length),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // 3. Direktori Cabor
-                const Text(
-                  'Direktori cabor',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: KokColors.cardTitle,
-                  ),
+                const Text('Sumber cabor'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (label, value) in sourceOptions)
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: caborState.source == value,
+                        onSelected: (_) => ref
+                            .read(caborPaginationProvider.notifier)
+                            .loadFirstPage(
+                              source: value,
+                              sort: caborState.sort,
+                            ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 14),
+                const Text('Urutkan'),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (label, value) in sortOptions)
+                      ChoiceChip(
+                        label: Text(label),
+                        selected: caborState.sort == value,
+                        onSelected: (_) => ref
+                            .read(caborPaginationProvider.notifier)
+                            .loadFirstPage(
+                              source: caborState.source,
+                              sort: value,
+                            ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
 
                 if (caborState.isLoading && caborState.items.isEmpty)
                   const Padding(
@@ -166,7 +169,10 @@ class _SportsPageState extends ConsumerState<SportsPage> {
                               FilledButton(
                                 onPressed: () => ref
                                     .read(caborPaginationProvider.notifier)
-                                    .loadFirstPage(),
+                                    .loadFirstPage(
+                                      source: caborState.source,
+                                      sort: caborState.sort,
+                                    ),
                                 child: const Text('Coba lagi'),
                               ),
                             ],
@@ -282,7 +288,6 @@ class _SportsPageState extends ConsumerState<SportsPage> {
 
   Widget _buildCompactHeader({
     required int totalSports,
-    required int totalAthletes,
     required String scopeName,
   }) {
     return Padding(
@@ -295,15 +300,6 @@ class _SportsPageState extends ConsumerState<SportsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Cabang Olahraga',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: KokColors.cardTitle,
-                  ),
-                ),
-                const SizedBox(height: 2),
                 Text(
                   scopeName,
                   style: const TextStyle(
@@ -322,7 +318,7 @@ class _SportsPageState extends ConsumerState<SportsPage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              '$totalSports Cabor · $totalAthletes Atlet',
+              '$totalSports Cabor',
               style: const TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
@@ -330,151 +326,6 @@ class _SportsPageState extends ConsumerState<SportsPage> {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHorizontalDistributionCard(
-    BuildContext context,
-    List<Cabor> sortedCabors,
-    int maxCount, {
-    required int loadedCount,
-    required int totalCount,
-  }) {
-    final displayedCabors = _isExpanded
-        ? sortedCabors
-        : sortedCabors.take(5).toList();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'SEBARAN ATLET PER CABANG OLAHRAGA',
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w700,
-              color: KokColors.textSecondary,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Berdasarkan cabor yang sudah dimuat ($loadedCount dari $totalCount)',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: KokColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 14),
-          ...displayedCabors.map((cabor) {
-            final count = cabor.totalAthlete;
-            final palette = SportBrandPaletteResolver.resolve(cabor.name);
-            final ratio = maxCount > 0
-                ? (count / maxCount).clamp(0.0, 1.0)
-                : 0.0;
-
-            return InkWell(
-              onTap: () => context.push('/sport/${cabor.id}'),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 92,
-                      child: Text(
-                        _displaySportName(cabor.name),
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                          color: KokColors.cardTitle,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F4F6),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
-                          FractionallySizedBox(
-                            widthFactor: ratio < 0.04 && count > 0
-                                ? 0.04
-                                : ratio,
-                            child: Container(
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: palette.chartColor,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    SizedBox(
-                      width: 60,
-                      child: Text(
-                        '$count atlet',
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: KokColors.cardTitle,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-          if (sortedCabors.length > 5) ...[
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () => setState(() => _isExpanded = !_isExpanded),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Center(
-                  child: Text(
-                    _isExpanded
-                        ? 'Sembunyikan ▴'
-                        : 'Tampilkan ${sortedCabors.length - 5} cabor lainnya ▾',
-                    style: const TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: KokColors.bluePrimary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

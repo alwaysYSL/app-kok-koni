@@ -209,6 +209,21 @@ void main() {
         expect(page4.hasMore, isFalse);
       });
 
+      test('sorts demo cabors by athlete count before pagination', () async {
+        final service = DemoCaborService(
+          demoRepo: demoRepo,
+          currentScopeProvider: () => scope,
+        );
+
+        final result = await service.fetchCaborList(sort: 'athlete', limit: 2);
+
+        expect(result.total, 5);
+        expect(result.items.map((cabor) => cabor.name), [
+          'PENCAK SILAT',
+          'SEPAK BOLA',
+        ]);
+      });
+
       test('respects RequestCancellation when cancelled', () async {
         final cancellationController = RequestCancellationController()
           ..cancel('User cancelled');

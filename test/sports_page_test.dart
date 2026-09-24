@@ -29,7 +29,13 @@ class FakeCaborService implements CaborService {
   final List<Cabor> allCabors;
   final bool shouldThrow;
   final Object? errorToThrow;
-  final Future<PaginatedResult<Cabor>> Function(int limit, int offset)? onFetch;
+  final Future<PaginatedResult<Cabor>> Function(
+    int limit,
+    int offset,
+    String source,
+    String sort,
+  )?
+  onFetch;
 
   @override
   Future<PaginatedResult<Cabor>> fetchCaborList({
@@ -40,7 +46,7 @@ class FakeCaborService implements CaborService {
     RequestCancellation? cancellation,
   }) async {
     if (onFetch != null) {
-      return onFetch!(limit, offset);
+      return onFetch!(limit, offset, source, sort);
     }
     if (errorToThrow != null) {
       throw errorToThrow!;
@@ -144,6 +150,13 @@ void main() {
       ProfileSummary? summary = defaultSummary,
       bool shouldThrow = false,
       Object? errorToThrow,
+      Future<PaginatedResult<Cabor>> Function(
+        int limit,
+        int offset,
+        String source,
+        String sort,
+      )?
+      onFetch,
       String? Function(String route)? onNavigated,
       UserPrincipal? user,
     }) {
@@ -151,6 +164,7 @@ void main() {
         allCabors: cabors ?? sampleCabors,
         shouldThrow: shouldThrow,
         errorToThrow: errorToThrow,
+        onFetch: onFetch,
       );
 
       final router = GoRouter(
@@ -200,46 +214,76 @@ void main() {
         await tester.pumpWidget(buildSubject());
         await tester.pumpAndSettle();
 
-        expect(find.text('Cabang Olahraga'), findsWidgets);
+        expect(find.text('Cabang Olahraga'), findsOneWidget);
         expect(find.text('Cabang Olahraga Aktif'), findsNothing);
         expect(find.text('Kecamatan Garut Kota'), findsOneWidget);
-        expect(find.text('5 Cabor · 120 Atlet'), findsOneWidget);
+        expect(find.text('5 Cabor'), findsOneWidget);
         expect(find.text('DIREKTORI CABANG OLAHRAGA'), findsNothing);
       },
     );
 
-    testWidgets(
-      'renders horizontal athlete distribution bars with full names and counts',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('filters the directory to cabors with clubs', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        await tester.pumpWidget(buildSubject());
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSubject());
+      await tester.pumpAndSettle();
 
-        // Verify distribution chart header and loaded scope caption
-        expect(find.text('SEBARAN ATLET PER CABANG OLAHRAGA'), findsOneWidget);
-        expect(
-          find.text('Berdasarkan cabor yang sudah dimuat (5 dari 5)'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('5 dari 5'), findsOneWidget);
+      await tester.tap(find.text('Ada Klub'));
+      await tester.pump();
 
-        // Verify full sport names are rendered in the distribution card
-        expect(find.text('Pencak Silat'), findsWidgets);
-        expect(find.text('Sepak Bola'), findsWidgets);
-        expect(find.text('Bulu Tangkis'), findsWidgets);
-        expect(find.text('Bola Voli'), findsWidgets);
-        expect(find.text('Renang'), findsWidgets);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SportsPage)),
+      );
+      expect(container.read(caborPaginationProvider).source, 'club');
+      expect(find.text('SEBARAN ATLET PER CABANG OLAHRAGA'), findsNothing);
+    });
 
-        // Verify athlete count labels
-        expect(find.text('44 atlet'), findsOneWidget);
-        expect(find.text('34 atlet'), findsOneWidget);
-        expect(find.text('22 atlet'), findsOneWidget);
-        expect(find.text('14 atlet'), findsOneWidget);
-        expect(find.text('6 atlet'), findsOneWidget);
-      },
-    );
+    testWidgets('sort selection requests athlete order', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(buildSubject());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Atlet').first);
+      await tester.pump();
+
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SportsPage)),
+      );
+      expect(container.read(caborPaginationProvider).sort, 'athlete');
+    });
+
+    testWidgets('shows zero scoped cabors after selecting Ada Klub', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        buildSubject(
+          onFetch: (limit, offset, source, sort) async {
+            final items = source == 'club' ? <Cabor>[] : sampleCabors;
+            return PaginatedResult<Cabor>(
+              items: items,
+              limit: limit,
+              offset: offset,
+              total: items.length,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Pencak Silat'), findsOneWidget);
+
+      await tester.tap(find.text('Ada Klub'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('0 Cabor'), findsOneWidget);
+      expect(find.text('Pencak Silat'), findsNothing);
+      expect(find.text('Belum ada cabang olahraga terdaftar.'), findsOneWidget);
+    });
 
     testWidgets(
       'displays cabor cards with groupName, metric chips, and logo or avatar',
@@ -286,26 +330,6 @@ void main() {
       expect(find.text('Detail ID: 3'), findsOneWidget);
     });
 
-    testWidgets('tapping horizontal distribution bar navigates to /sport/:id', (
-      tester,
-    ) async {
-      await tester.binding.setSurfaceSize(const Size(360, 1000));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      String? navigatedRoute;
-      await tester.pumpWidget(
-        buildSubject(onNavigated: (route) => navigatedRoute = route),
-      );
-      await tester.pumpAndSettle();
-
-      // Tap Sepak Bola distribution row (id = 2)
-      await tester.tap(find.text('Sepak Bola').first);
-      await tester.pumpAndSettle();
-
-      expect(navigatedRoute, '/sport/2');
-      expect(find.text('Detail ID: 2'), findsOneWidget);
-    });
-
     testWidgets(
       'renders dynamic territory scope title when profileSummary has custom scope',
       (tester) async {
@@ -340,43 +364,39 @@ void main() {
         await tester.pumpWidget(buildSubject(summary: customSummary));
         await tester.pumpAndSettle();
 
-        expect(find.text('Cabang Olahraga'), findsWidgets);
+        expect(find.text('Cabang Olahraga'), findsOneWidget);
         expect(find.text('Cabang Olahraga Aktif'), findsNothing);
         expect(find.text('Kecamatan Tarogong Kidul'), findsOneWidget);
         expect(find.text('Kecamatan Garut Kota'), findsNothing);
       },
     );
 
-    testWidgets(
-      'distribution chart displays loaded scope correctly for partial paginated list',
-      (tester) async {
-        await tester.binding.setSurfaceSize(const Size(360, 1000));
-        addTearDown(() => tester.binding.setSurfaceSize(null));
+    testWidgets('header uses API total for a partial paginated list', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(360, 1000));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-        final fortyCabors = List.generate(
-          40,
-          (i) => Cabor(
-            id: i + 1,
-            code: 'CB-${(i + 1).toString().padLeft(3, '0')}',
-            name: 'Cabor ${i + 1}',
-            groupName: 'GROUP ${i + 1}',
-            status: 1,
-            statusLabel: 'Aktif',
-            totalClub: (i % 5) + 1,
-            totalAthlete: (40 - i) * 2,
-          ),
-        );
+      final fortyCabors = List.generate(
+        40,
+        (i) => Cabor(
+          id: i + 1,
+          code: 'CB-${(i + 1).toString().padLeft(3, '0')}',
+          name: 'Cabor ${i + 1}',
+          groupName: 'GROUP ${i + 1}',
+          status: 1,
+          statusLabel: 'Aktif',
+          totalClub: (i % 5) + 1,
+          totalAthlete: (40 - i) * 2,
+        ),
+      );
 
-        await tester.pumpWidget(buildSubject(cabors: fortyCabors));
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(buildSubject(cabors: fortyCabors));
+      await tester.pumpAndSettle();
 
-        expect(
-          find.text('Berdasarkan cabor yang sudah dimuat (25 dari 40)'),
-          findsOneWidget,
-        );
-        expect(find.textContaining('25 dari 40'), findsOneWidget);
-      },
-    );
+      expect(find.text('40 Cabor'), findsOneWidget);
+      expect(find.text('SEBARAN ATLET PER CABANG OLAHRAGA'), findsNothing);
+    });
 
     testWidgets('infinite scroll triggers loadMore when scrolled to bottom', (
       tester,
@@ -503,7 +523,7 @@ void main() {
         var callCount = 0;
         final fakeService = FakeCaborService(
           allCabors: sampleCabors,
-          onFetch: (limit, offset) async {
+          onFetch: (limit, offset, source, sort) async {
             callCount++;
             if (callCount == 1) {
               throw Exception('Network error');

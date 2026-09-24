@@ -58,12 +58,30 @@ final class DemoCaborService implements CaborService {
       );
     }
 
-    final pageItems = caborList.skip(offset).take(limit).toList();
+    final filteredCabors = caborList
+        .where(
+          (cabor) => switch (source) {
+            'club' => cabor.totalClub > 0,
+            'athlete' => cabor.totalAthlete > 0,
+            _ => true,
+          },
+        )
+        .toList();
+    filteredCabors.sort((a, b) {
+      final comparison = switch (sort) {
+        'athlete' => b.totalAthlete.compareTo(a.totalAthlete),
+        'club' => b.totalClub.compareTo(a.totalClub),
+        _ => a.name.compareTo(b.name),
+      };
+      return comparison != 0 ? comparison : a.name.compareTo(b.name);
+    });
+
+    final pageItems = filteredCabors.skip(offset).take(limit).toList();
     return PaginatedResult<Cabor>(
       items: pageItems,
       limit: limit,
       offset: offset,
-      total: caborList.length,
+      total: filteredCabors.length,
     );
   }
 }
