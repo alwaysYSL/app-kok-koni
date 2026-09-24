@@ -646,7 +646,7 @@ void main() {
       pob: 'Tarogong',
       dob: '20-10-2004',
       age: 22,
-      photoUrl: '',
+      photoUrl: 'invalid-photo-url',
       status: 1,
       statusLabel: 'Aktif',
       cabor: AthleteCabor(id: 2, code: 'SILAT', name: 'Pencak Silat'),
@@ -688,7 +688,7 @@ void main() {
         // 2. Profile identity
         expect(find.text('Budi Setiawan'), findsOneWidget);
         expect(find.text('ID · ATL-101'), findsOneWidget);
-        expect(find.text('aktif'), findsOneWidget);
+        expect(find.text('Aktif'), findsOneWidget);
 
         // 3. Detail rows
         expect(find.text('Klub'), findsOneWidget);
@@ -744,7 +744,11 @@ void main() {
 
         expect(find.text('Siti Rahma'), findsOneWidget);
         expect(find.text('ID · ATL-102'), findsOneWidget);
-        expect(find.text('Belum terdaftar di klub'), findsOneWidget);
+        expect(find.text('Klub belum tercatat'), findsOneWidget);
+        expect(find.text('Aktif'), findsOneWidget);
+        expect(find.text('Pencak Silat'), findsOneWidget);
+        expect(find.textContaining('Berkas Lengkap'), findsNothing);
+        expect(find.text('KELENGKAPAN BERKAS'), findsNothing);
         expect(find.text('Tarogong Kidul, Kabupaten Garut'), findsOneWidget);
         expect(find.text('Hubungi pengurus klub'), findsNothing);
 

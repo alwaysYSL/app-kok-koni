@@ -378,7 +378,7 @@ class _RemoteProfileCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    detail.statusLabel.toLowerCase(),
+                    detail.statusLabel,
                     style: TextStyle(
                       color: isActive
                           ? const Color(0xFF059669)
@@ -396,7 +396,7 @@ class _RemoteProfileCard extends StatelessWidget {
               _buildDetailRow(
                 icon: Icons.groups_outlined,
                 label: 'Klub',
-                value: detail.club?.name ?? 'Belum terdaftar di klub',
+                value: detail.club?.name ?? 'Klub belum tercatat',
                 palette: palette,
               ),
               if (detail.club != null && detail.club!.code.isNotEmpty)
