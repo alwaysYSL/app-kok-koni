@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -627,6 +628,11 @@ void main() {
         // Ketuk tombol rekapitulasi data wilayah
         final rekapButton = find.text('Rekap Data Kecamatan');
         await tester.scrollUntilVisible(rekapButton, 200);
+        await Scrollable.ensureVisible(
+          tester.element(rekapButton),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(rekapButton);
         await tester.pumpAndSettle();
 

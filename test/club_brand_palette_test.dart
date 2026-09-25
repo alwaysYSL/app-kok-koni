@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kok_app/data/models.dart';
@@ -25,6 +27,51 @@ Club club({
 );
 
 void main() {
+  test('logo sampler ignores white and transparent pixels', () {
+    final pixels = Uint8List.fromList([
+      255,
+      255,
+      255,
+      255,
+      0,
+      0,
+      255,
+      0,
+      202,
+      24,
+      43,
+      255,
+      201,
+      25,
+      43,
+      255,
+    ]);
+    expect(
+      ClubLogoColorSampler.dominantFromRgba(pixels),
+      const Color(0xFFCA192B),
+    );
+    expect(
+      ClubLogoColorSampler.dominantFromRgba(
+        Uint8List.fromList([255, 255, 255, 255, 0, 0, 0, 0]),
+      ),
+      isNull,
+    );
+  });
+
+  test('remote club palette uses logo color or KOK blue fallback', () {
+    final fallback = ClubBrandPaletteResolver.resolveFromLogoColor(null);
+    expect(fallback.headerStart, const Color(0xFF1B4F9E));
+
+    final branded = ClubBrandPaletteResolver.resolveFromLogoColor(
+      const Color(0xFFC9192B),
+    );
+    expect(branded.headerStart, const Color(0xFFC9192B));
+    expect(
+      contrast(branded.foreground, branded.headerStart),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   test('parses RGB and ARGB hex safely', () {
     expect(
       ClubBrandPaletteResolver.tryParseHex('#5B566E'),

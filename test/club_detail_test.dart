@@ -327,6 +327,82 @@ void main() {
   });
 
   group('ClubDetailPage Remote Mode Tests', () {
+    testWidgets('club title and back action stay above tabs after scrolling', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        createRemoteTestApp(
+          initialLocation: '/club/10',
+          overrides: [
+            clubDetailProvider(
+              10,
+            ).overrideWith((ref) async => sampleRemoteClubDetail),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(NestedScrollView), const Offset(0, -500));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('club-compact-header')), findsOneWidget);
+      expect(
+        find
+            .descendant(
+              of: find.byKey(const Key('club-compact-header')),
+              matching: find.text('PB Garuda Perkasa'),
+            )
+            .hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Info').hitTestable(), findsOneWidget);
+      expect(find.byTooltip('Kembali').hitTestable(), findsOneWidget);
+    });
+
+    testWidgets('club athlete search scrolls beneath the sticky tabs', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        createRemoteTestApp(
+          initialLocation: '/club/10',
+          overrides: [
+            clubDetailProvider(
+              10,
+            ).overrideWith((ref) async => sampleRemoteClubDetail),
+            athletePaginationProvider((idCabor: null, idClub: 10)).overrideWith(
+              () => _TestAthletePaginationController(
+                (idCabor: null, idClub: 10),
+                AthletePaginationState(
+                  items: List.filled(20, sampleAthlete1),
+                  total: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Atlet'));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -700));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField).hitTestable(), findsNothing);
+      expect(
+        find
+            .descendant(
+              of: find.byKey(const Key('club-compact-header')),
+              matching: find.text('PB Garuda Perkasa'),
+            )
+            .hitTestable(),
+        findsOneWidget,
+      );
+      expect(find.text('Atlet').hitTestable(), findsOneWidget);
+    });
+
     for (final width in [320.0, 390.0]) {
       testWidgets('remote tabs fit ${width.toInt()} dp with inactive club', (
         tester,
@@ -387,8 +463,8 @@ void main() {
         expect(find.text('AKTIF'), findsOneWidget);
 
         // 2. Action buttons
-        expect(find.byIcon(Icons.chevron_left), findsOneWidget);
-        expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.chevron_left), findsWidgets);
+        expect(find.byIcon(Icons.share_outlined), findsWidgets);
 
         // 3. Counter & Note
         expect(find.text('42 atlet terdaftar di klub'), findsWidgets);
@@ -400,7 +476,7 @@ void main() {
         expect(find.text('Termasuk atlet dari kecamatan lain'), findsNothing);
 
         // 4. Share button action
-        await tester.tap(find.byIcon(Icons.share_outlined));
+        await tester.tap(find.byIcon(Icons.share_outlined).first);
         await tester.pump();
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
@@ -1254,7 +1330,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byIcon(Icons.chevron_left));
+      await tester.tap(find.byIcon(Icons.chevron_left).first);
       await tester.pumpAndSettle();
 
       expect(clubsReached, isTrue);

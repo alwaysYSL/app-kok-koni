@@ -18,6 +18,9 @@ import 'package:kok_app/core/config/deployment_profile.dart';
 import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/demo_kok_repository.dart';
 import 'package:kok_app/data/models/profile_summary.dart';
+import 'package:kok_app/data/models/club.dart' as domain;
+import 'package:kok_app/data/models/paginated_result.dart';
+import 'package:kok_app/data/providers/club_providers.dart';
 import 'package:kok_app/data/providers/profile_providers.dart';
 import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/services/demo/demo_athlete_service.dart';
@@ -256,7 +259,7 @@ void main() {
   );
 
   testWidgets(
-    'HomePage menampilkan kartu Catatan Data Server jika dataNotes tersedia',
+    'HomePage menampilkan kartu Catatan Data SICABOR jika dataNotes tersedia',
     (tester) async {
       final composition = await _createTestComposition();
 
@@ -275,7 +278,7 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Catatan Data Server'), findsOneWidget);
+      expect(find.text('Catatan Data SICABOR'), findsOneWidget);
       expect(
         find.text('Sinkronisasi SICABOR aktif per 2026-09-20.'),
         findsOneWidget,
@@ -561,6 +564,116 @@ void main() {
     dataNotes: const ['Catatan pertama', 'Catatan kedua'],
   );
 
+  const previewParams = (
+    offset: 0,
+    limit: 3,
+    idCabor: null,
+    status: null,
+    search: null,
+    sort: 'name',
+  );
+
+  testWidgets('remote Beranda shows actual club previews', (tester) async {
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    const club = domain.Club(
+      id: 21,
+      code: 'KLUB-021',
+      name: 'PB Garuda Muda',
+      cabor: domain.ClubCabor(id: 1, code: 'BDM', name: 'Bulutangkis'),
+      status: 1,
+      statusLabel: 'Aktif',
+      secretariat: domain.ClubAddress(
+        subdistrictId: 10,
+        subdistrictName: 'Garut Kota',
+        districtId: 126,
+        districtName: 'Kabupaten Garut',
+      ),
+      totalAthleteInClub: 5,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          clubListProvider(previewParams).overrideWith(
+            (ref) async => const PaginatedResult<domain.Club>(
+              items: [club],
+              limit: 3,
+              offset: 0,
+              total: 1,
+            ),
+          ),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('PB Garuda Muda'), findsOneWidget);
+    expect(find.text('Bulutangkis'), findsOneWidget);
+    expect(find.text('Catatan Data SICABOR'), findsOneWidget);
+  });
+
+  testWidgets('remote Beranda shows an empty club preview locally', (
+    tester,
+  ) async {
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          clubListProvider(previewParams).overrideWith(
+            (ref) async => const PaginatedResult<domain.Club>(
+              items: [],
+              limit: 3,
+              offset: 0,
+              total: 0,
+            ),
+          ),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Belum ada klub yang tercatat di kecamatan ini.'),
+      findsOneWidget,
+    );
+    expect(find.text('361'), findsNothing);
+    expect(find.text('Catatan Data SICABOR'), findsOneWidget);
+  });
+
+  testWidgets('club preview failure leaves the Beranda summary visible', (
+    tester,
+  ) async {
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          clubListProvider(
+            previewParams,
+          ).overrideWith((ref) async => throw Exception('preview unavailable')),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Data SICABOR'), findsOneWidget);
+    expect(find.text('Klub di Kecamatan'), findsOneWidget);
+    expect(find.text('Catatan Data SICABOR'), findsOneWidget);
+  });
+
   testWidgets('remote Beranda metric captions stay inside columns at 320 dp', (
     tester,
   ) async {
@@ -594,74 +707,76 @@ void main() {
     expect(athleteCaption.height, greaterThanOrEqualTo(24));
   });
 
-  for (final destination in <String, String>{
-    'Jelajahi Cabor': '/sports',
-    'Cari Klub': '/clubs',
-    'Cari Atlet': '/athletes',
-  }.entries) {
-    testWidgets('remote Beranda opens ${destination.value} directory', (
-      tester,
-    ) async {
-      final composition = await _createTestComposition(
-        dataMode: DataMode.remote,
-      );
-      String? route;
-      final router = GoRouter(
-        initialLocation: '/home',
-        routes: [
-          GoRoute(path: '/home', builder: (_, _) => const HomePage()),
-          GoRoute(
-            path: '/sports',
-            builder: (_, _) {
-              route = '/sports';
-              return const Scaffold(body: Text('Sports Directory'));
-            },
+  testWidgets('remote Beranda places a club preview before SICABOR notes', (
+    tester,
+  ) async {
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
           ),
-          GoRoute(
-            path: '/clubs',
-            builder: (_, _) {
-              route = '/clubs';
-              return const Scaffold(body: Text('Clubs Directory'));
-            },
-          ),
-          GoRoute(
-            path: '/athletes',
-            builder: (_, _) {
-              route = '/athletes';
-              return const Scaffold(body: Text('Athletes Directory'));
-            },
-          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          appCompositionProvider.overrideWithValue(composition),
         ],
-      );
-      addTearDown(router.dispose);
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWith(
-              () => _FakeHomeAuthController(cecepUser),
-            ),
-            profileSummaryProvider.overrideWith((ref) => remoteSummary),
-            appCompositionProvider.overrideWithValue(composition),
-          ],
-          child: MaterialApp.router(routerConfig: router),
-        ),
-      );
-      await tester.pumpAndSettle();
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Jelajahi Cabor'), findsOneWidget);
-      expect(find.text('Cari Klub'), findsOneWidget);
-      expect(find.text('Cari Atlet'), findsOneWidget);
-      expect(find.textContaining('Ibu Sari'), findsWidgets);
-      expect(find.textContaining('Pak Cecep'), findsNothing);
-      expect(find.textContaining('terverifikasi'), findsNothing);
-      expect(find.textContaining('Terakhir Dimuat'), findsNothing);
-      expect(find.text('0'), findsOneWidget);
-      await tester.ensureVisible(find.text(destination.key));
-      await tester.tap(find.text(destination.key));
-      await tester.pumpAndSettle();
-      expect(route, destination.value);
-    });
-  }
+    expect(find.text('Klub di Kecamatan'), findsOneWidget);
+    expect(find.text('Catatan Data SICABOR'), findsOneWidget);
+    expect(find.text('Jelajahi Cabor'), findsNothing);
+    expect(find.text('Cari Atlet'), findsNothing);
+  });
+
+  testWidgets('remote Beranda preview links to the club directory', (
+    tester,
+  ) async {
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    String? route;
+    final router = GoRouter(
+      initialLocation: '/home',
+      routes: [
+        GoRoute(path: '/home', builder: (_, _) => const HomePage()),
+        GoRoute(
+          path: '/clubs',
+          builder: (_, _) {
+            route = '/clubs';
+            return const Scaffold(body: Text('Clubs Directory'));
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Klub di Kecamatan'), findsOneWidget);
+    expect(find.text('Jelajahi Cabor'), findsNothing);
+    expect(find.text('Cari Atlet'), findsNothing);
+    expect(find.textContaining('Ibu Sari'), findsWidgets);
+    expect(find.textContaining('Pak Cecep'), findsNothing);
+    expect(find.textContaining('terverifikasi'), findsNothing);
+    expect(find.textContaining('Terakhir Dimuat'), findsNothing);
+    expect(find.text('0'), findsOneWidget);
+    await tester.ensureVisible(find.text('Lihat semua ›'));
+    await tester.tap(find.text('Lihat semua ›'));
+    await tester.pumpAndSettle();
+    expect(route, '/clubs');
+  });
 
   testWidgets(
     'remote Beranda uses neutral account identity and expandable ordered notes',
@@ -716,10 +831,12 @@ void main() {
       expect(find.text('KOK Limbangan'), findsOneWidget);
       expect(find.textContaining('Akun KOK'), findsWidgets);
       expect(find.textContaining('Pak Asep'), findsNothing);
-      expect(find.text('Catatan Data Server'), findsOneWidget);
+      expect(find.text('Catatan Data SICABOR'), findsOneWidget);
       expect(find.text('Catatan pertama'), findsNothing);
-      await tester.ensureVisible(find.text('Catatan Data Server'));
-      await tester.tap(find.text('Catatan Data Server'));
+      await tester.ensureVisible(find.text('Catatan Data SICABOR'));
+      await tester.drag(find.byType(ListView), const Offset(0, -260));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Catatan Data SICABOR'));
       await tester.pumpAndSettle();
       expect(find.text('Catatan pertama'), findsOneWidget);
       expect(find.text('Catatan kedua'), findsOneWidget);

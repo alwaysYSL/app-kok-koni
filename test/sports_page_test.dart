@@ -246,7 +246,9 @@ void main() {
       await tester.pumpWidget(buildSubject());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Atlet').first);
+      await tester.tap(find.text('Urutkan'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Atlet').last);
       await tester.pump();
 
       final container = ProviderScope.containerOf(

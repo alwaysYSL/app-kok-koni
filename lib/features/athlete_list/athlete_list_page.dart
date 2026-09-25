@@ -297,13 +297,28 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         itemCount:
             state.items.length +
-            ((state.isLoadingMore || state.loadMoreError != null) ? 1 : 0),
+            ((state.isLoadingMore ||
+                    state.loadMoreError != null ||
+                    !state.hasMore)
+                ? 1
+                : 0),
         itemBuilder: (context, index) {
           if (index == state.items.length) {
             if (state.isLoadingMore) {
               return const Padding(
                 padding: EdgeInsets.all(16),
                 child: Center(child: CircularProgressIndicator.adaptive()),
+              );
+            }
+            if (state.loadMoreError == null) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child: Text(
+                    'Semua atlet telah ditampilkan',
+                    style: TextStyle(color: KokColors.muted, fontSize: 12),
+                  ),
+                ),
               );
             }
             final error = describeRemoteError(state.loadMoreError!);
@@ -348,6 +363,8 @@ class _AthleteCard extends StatelessWidget {
                 : Image.network(
                     athlete.photoUrl,
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) =>
+                        progress == null ? child : _avatarFallback(),
                     errorBuilder: (_, _, _) => _avatarFallback(),
                   ),
           ),

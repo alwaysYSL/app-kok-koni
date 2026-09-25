@@ -1,7 +1,49 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
 import '../../data/models.dart';
+
+abstract final class ClubLogoColorSampler {
+  static Color? dominantFromRgba(Uint8List rgba) {
+    if (rgba.length < 4) return null;
+    final buckets = <int, (int count, int red, int green, int blue)>{};
+    final pixelCount = rgba.length ~/ 4;
+    final step = (pixelCount ~/ 12000).clamp(1, pixelCount);
+    for (var pixel = 0; pixel < pixelCount; pixel += step) {
+      final offset = pixel * 4;
+      final r = rgba[offset];
+      final g = rgba[offset + 1];
+      final b = rgba[offset + 2];
+      final a = rgba[offset + 3];
+      final maxChannel = [r, g, b].reduce((a, b) => a > b ? a : b);
+      final minChannel = [r, g, b].reduce((a, b) => a < b ? a : b);
+      if (a < 128 ||
+          minChannel > 235 ||
+          maxChannel < 50 ||
+          maxChannel - minChannel < 24) {
+        continue;
+      }
+      final bucket = ((r ~/ 32) << 6) | ((g ~/ 32) << 3) | (b ~/ 32);
+      final previous = buckets[bucket] ?? (0, 0, 0, 0);
+      buckets[bucket] = (
+        previous.$1 + 1,
+        previous.$2 + r,
+        previous.$3 + g,
+        previous.$4 + b,
+      );
+    }
+    if (buckets.isEmpty) return null;
+    final winner = buckets.values.reduce((a, b) => a.$1 >= b.$1 ? a : b);
+    return Color.fromARGB(
+      255,
+      (winner.$2 / winner.$1).round(),
+      (winner.$3 / winner.$1).round(),
+      (winner.$4 / winner.$1).round(),
+    );
+  }
+}
 
 @immutable
 class ClubBrandPalette {
@@ -23,6 +65,26 @@ class ClubBrandPalette {
 }
 
 abstract final class ClubBrandPaletteResolver {
+  static ClubBrandPalette resolveFromLogoColor(Color? logoColor) {
+    final start = logoColor ?? KokColors.blue;
+    final end = logoColor == null ? KokColors.navy : _darken(start, 0.22);
+    final safePair = _ensureHeaderPair(start, end);
+    return ClubBrandPalette(
+      headerStart: safePair.$1,
+      headerEnd: safePair.$2,
+      foreground: safePair.$3,
+      selectedTab: _ensureContrast(safePair.$2, safePair.$3),
+      softAccent: Color.alphaBlend(
+        safePair.$1.withValues(alpha: .12),
+        Colors.white,
+      ),
+      fallbackAvatar: Color.alphaBlend(
+        safePair.$3.withValues(alpha: .16),
+        safePair.$1,
+      ),
+    );
+  }
+
   static const Map<String, (Color, Color)> _demoPalettes = {
     'garuda': (Color(0xFF5B566E), Color(0xFF11294B)),
     'pb': (Color(0xFFA51D2A), Color(0xFF670A13)),

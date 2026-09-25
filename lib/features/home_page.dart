@@ -9,6 +9,8 @@ import '../core/config/deployment_profile.dart';
 import '../core/theme.dart';
 import '../data/models.dart';
 import '../data/models/profile_summary.dart';
+import '../data/models/club.dart' as domain;
+import '../data/providers/club_providers.dart';
 import '../data/providers/profile_providers.dart';
 import '../data/providers/snapshot_provider.dart';
 import '../shared/widgets.dart';
@@ -22,6 +24,15 @@ bool _isDemoDataMode(WidgetRef ref) {
     return true;
   }
 }
+
+const _homeClubParams = (
+  offset: 0,
+  limit: 3,
+  idCabor: null,
+  status: null,
+  search: null,
+  sort: 'name',
+);
 
 String _formatSubdistrictTitle(String name) {
   if (name.trim().isEmpty) return 'KOK Kecamatan';
@@ -76,6 +87,7 @@ class HomePage extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(profileSummaryProvider);
+              if (!isDemo) ref.invalidate(clubListProvider(_homeClubParams));
               if (isDemo) {
                 ref.invalidate(snapshotProvider);
               }
@@ -187,9 +199,7 @@ class HomePage extends ConsumerWidget {
                       ),
                       const SizedBox(height: 14),
                       if (isDemo)
-                        _HomeSearchBar(onTap: () => context.push('/search'))
-                      else
-                        const _HomeDirectoryActions(),
+                        _HomeSearchBar(onTap: () => context.push('/search')),
                     ],
                   ),
                 ),
@@ -217,6 +227,7 @@ class HomePage extends ConsumerWidget {
                           const SizedBox(height: 12),
                           _KontingenCard(kontingen: summary.kontingen!),
                         ],
+                        if (!isDemo) const _RemoteClubPreviewSection(),
                         if (summary.dataNotes.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           _DataNotesSection(
@@ -619,6 +630,123 @@ class _KontingenCard extends StatelessWidget {
   }
 }
 
+class _RemoteClubPreviewSection extends ConsumerWidget {
+  const _RemoteClubPreviewSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final preview = ref.watch(clubListProvider(_homeClubParams));
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SectionHead('Klub di Kecamatan', onTap: () => context.go('/clubs')),
+          preview.when(
+            loading: () => const Surface(
+              child: Center(child: CircularProgressIndicator.adaptive()),
+            ),
+            error: (error, _) {
+              final presentation = describeRemoteError(error);
+              return Surface(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(presentation.message),
+                    if (presentation.canRetry)
+                      TextButton(
+                        onPressed: () =>
+                            ref.invalidate(clubListProvider(_homeClubParams)),
+                        child: const Text('Coba lagi'),
+                      ),
+                  ],
+                ),
+              );
+            },
+            data: (result) {
+              if (result.items.isEmpty) {
+                return const Surface(
+                  child: Text('Belum ada klub yang tercatat di kecamatan ini.'),
+                );
+              }
+              return Column(
+                children: [
+                  for (final club in result.items.take(3))
+                    _ClubPreviewTile(club: club),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ClubPreviewTile extends StatelessWidget {
+  const _ClubPreviewTile({required this.club});
+
+  final domain.Club club;
+
+  @override
+  Widget build(BuildContext context) => Surface(
+    onTap: () => context.push('/club/${club.id}'),
+    child: Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: club.logoUrl?.trim().isNotEmpty == true
+                ? Image.network(
+                    club.logoUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => const _ClubPreviewFallback(),
+                  )
+                : const _ClubPreviewFallback(),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                club.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                club.cabor.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: KokColors.muted),
+              ),
+            ],
+          ),
+        ),
+        const Icon(Icons.chevron_right, color: KokColors.muted, size: 20),
+      ],
+    ),
+  );
+}
+
+class _ClubPreviewFallback extends StatelessWidget {
+  const _ClubPreviewFallback();
+
+  @override
+  Widget build(BuildContext context) => const ColoredBox(
+    color: KokColors.pale,
+    child: Center(child: Icon(Icons.apartment_rounded, color: KokColors.blue)),
+  );
+}
+
 class _DataNotesSection extends StatelessWidget {
   const _DataNotesSection({
     required this.dataNotes,
@@ -637,16 +765,16 @@ class _DataNotesSection extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: const Color(0xFFF0FDF4),
+              color: KokColors.pale,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBBF7D0)),
+              border: Border.all(color: KokColors.borderGray),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Icon(
                   Icons.info_outline_rounded,
-                  color: Color(0xFF15803D),
+                  color: KokColors.blue,
                   size: 20,
                 ),
                 const SizedBox(width: 10),
@@ -655,7 +783,7 @@ class _DataNotesSection extends StatelessWidget {
                     note,
                     style: const TextStyle(
                       fontSize: 12.5,
-                      color: Color(0xFF166534),
+                      color: KokColors.ink,
                       height: 1.4,
                     ),
                   ),
@@ -666,7 +794,7 @@ class _DataNotesSection extends StatelessWidget {
         )
         .toList();
     const title = Text(
-      'Catatan Data Server',
+      'Catatan Data SICABOR',
       style: TextStyle(
         fontSize: 15,
         fontWeight: FontWeight.w700,
@@ -691,79 +819,6 @@ class _DataNotesSection extends StatelessWidget {
       children: notes,
     );
   }
-}
-
-class _HomeDirectoryActions extends StatelessWidget {
-  const _HomeDirectoryActions();
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _DirectoryAction(
-        label: 'Jelajahi Cabor',
-        icon: Icons.sports_rounded,
-        onTap: () => context.go('/sports'),
-      ),
-      const SizedBox(height: 8),
-      _DirectoryAction(
-        label: 'Cari Klub',
-        icon: Icons.groups_rounded,
-        onTap: () => context.go('/clubs'),
-      ),
-      const SizedBox(height: 8),
-      _DirectoryAction(
-        label: 'Cari Atlet',
-        icon: Icons.person_search_rounded,
-        onTap: () => context.push('/athletes'),
-      ),
-    ],
-  );
-}
-
-class _DirectoryAction extends StatelessWidget {
-  const _DirectoryAction({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(12),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Icon(icon, color: KokColors.bluePrimary, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: KokColors.cardTitle,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              size: 14,
-              color: KokColors.muted,
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
 }
 
 class _MetricColumn extends StatelessWidget {

@@ -440,7 +440,7 @@ void main() {
         });
         await pumpProfilePage(tester, preferences: prefs);
 
-        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+        expect(find.text('DATA & UTILITAS'), findsOneWidget);
         expect(
           find.text('Terakhir dimuat: 14:30 · 3 entri data (Mode Demo)'),
           findsOneWidget,
@@ -498,7 +498,7 @@ void main() {
         });
         await pumpProfilePage(tester, preferences: prefs);
 
-        expect(find.text('UTILITAS KOORDINATOR'), findsOneWidget);
+        expect(find.text('DATA & UTILITAS'), findsOneWidget);
         expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
         expect(
           find.text('Ringkasan cabor, klub, dan atlet untuk laporan'),
@@ -613,7 +613,7 @@ void main() {
         final prefs = await SharedPreferences.getInstance();
         await pumpProfilePage(tester, preferences: prefs);
 
-        expect(find.text('PENGATURAN & APLIKASI'), findsOneWidget);
+        expect(find.text('APLIKASI'), findsOneWidget);
         expect(find.text('Pengaturan Aplikasi'), findsOneWidget);
         expect(find.text('Preferensi sesi & memori nomor SK'), findsOneWidget);
 
@@ -850,7 +850,7 @@ void main() {
         expect(find.textContaining('data SICABOR aktif'), findsNothing);
 
         // Honest labels MUST exist
-        expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+        expect(find.text('DATA & UTILITAS'), findsOneWidget);
         expect(
           find.textContaining('Data demo lokal—belum terhubung dengan SICABOR'),
           findsWidgets,
@@ -875,7 +875,7 @@ void main() {
 
       expect(find.text('Akun'), findsOneWidget);
       expect(find.text('Pak Asep'), findsOneWidget);
-      expect(find.text('STATUS DATA KEOLAHRAGAAN'), findsOneWidget);
+      expect(find.text('DATA & UTILITAS'), findsOneWidget);
       expect(find.textContaining('entri data'), findsOneWidget);
     });
 
@@ -1177,7 +1177,7 @@ void main() {
           profileSummary: testProfileSummary,
         );
 
-        expect(find.text('STATUS AKUN'), findsOneWidget);
+        expect(find.text('DATA & UTILITAS'), findsOneWidget);
         expect(find.text('Data Terhubung SICABOR'), findsOneWidget);
         expect(find.text('Koordinator Kecamatan'), findsOneWidget);
         expect(find.text('Total Cabor'), findsNothing);
@@ -1257,7 +1257,7 @@ void main() {
           profileSummary: testProfileSummary,
         );
 
-        expect(find.text('UTILITAS KOORDINATOR'), findsOneWidget);
+        expect(find.text('DATA & UTILITAS'), findsOneWidget);
         expect(find.text('Rekap Data Kecamatan'), findsOneWidget);
 
         // Tap Rekap Data Kecamatan
@@ -1316,7 +1316,7 @@ void main() {
       );
 
       expect(find.text('Rekap Data Kecamatan'), findsNothing);
-      expect(find.text('UTILITAS KOORDINATOR'), findsNothing);
+      expect(find.text('DATA & UTILITAS'), findsOneWidget);
       expect(find.text('Rekapitulasi Data KOK Garut Kota'), findsNothing);
       expect(find.text('Salin Teks Rekapitulasi'), findsNothing);
     });

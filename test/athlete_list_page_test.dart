@@ -239,6 +239,15 @@ void main() {
     );
     expect(find.text('Atlet 26'), findsOneWidget);
     expect(find.text('26 atlet'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Semua atlet telah ditampilkan'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('athlete-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Semua atlet telah ditampilkan'), findsOneWidget);
   });
 
   testWidgets('timeout on next page shows guidance and allows manual retry', (

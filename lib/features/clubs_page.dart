@@ -861,177 +861,165 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
   }
 
   Widget _buildRemoteClubCard(BuildContext context, domain.Club club) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Surface(
-        onTap: () => context.push('/club/${club.id}'),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: KokColors.pale,
-                  backgroundImage:
-                      (club.logoUrl != null && club.logoUrl!.isNotEmpty)
-                      ? NetworkImage(club.logoUrl!)
-                      : null,
-                  child: (club.logoUrl == null || club.logoUrl!.isEmpty)
-                      ? Text(
-                          club.name.isNotEmpty ? club.name[0] : 'K',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: KokColors.blue,
-                          ),
+    return Surface(
+      onTap: () => context.push('/club/${club.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: club.logoUrl != null && club.logoUrl!.isNotEmpty
+                      ? Image.network(
+                          club.logoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _clubLogoFallback(club.name),
                         )
-                      : null,
+                      : _clubLogoFallback(club.name),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      club.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: KokColors.cardTitle,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (club.secretariat.address != null &&
+                        club.secretariat.address!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
                       Text(
-                        club.name,
+                        'Sekretariat: ${club.secretariat.address!}',
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: KokColors.cardTitle,
+                          fontSize: 12,
+                          color: KokColors.muted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (club.headName != null &&
-                          club.headName!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Ketua: ${club.headName}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: KokColors.muted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    ] else if (club.secretariat.subdistrictName.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Sekretariat: Kec. ${club.secretariat.subdistrictName}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: KokColors.muted,
                         ),
-                      ],
-                      if (club.secretariat.address != null &&
-                          club.secretariat.address!.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Sekretariat: ${club.secretariat.address!}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: KokColors.muted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ] else if (club
-                          .secretariat
-                          .subdistrictName
-                          .isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          'Sekretariat: Kec. ${club.secretariat.subdistrictName}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: KokColors.muted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.chevron_right,
-                  color: KokColors.muted,
-                  size: 20,
-                ),
-              ],
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: DashedDivider(color: Color(0xFFE5E7EB)),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: KokColors.pale,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          club.cabor.name,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: KokColors.blue,
-                          ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: KokColors.muted, size: 20),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: DashedDivider(color: Color(0xFFE5E7EB)),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: KokColors.pale,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        club.cabor.name,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: KokColors.blue,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: club.status == 1
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        club.statusLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                           color: club.status == 1
-                              ? const Color(0xFFDCFCE7)
-                              : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          club.statusLabel,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: club.status == 1
-                                ? const Color(0xFF16A34A)
-                                : KokColors.textSecondary,
-                          ),
+                              ? const Color(0xFF16A34A)
+                              : KokColors.textSecondary,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${club.totalAthleteInClub} atlet terdaftar di klub',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: KokColors.textSecondary,
-                          ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        '${club.totalAthleteInClub} atlet terdaftar di klub',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: KokColors.textSecondary,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+
+  Widget _clubLogoFallback(String name) => ColoredBox(
+    color: KokColors.pale,
+    child: Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'K',
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: KokColors.blue,
+        ),
+      ),
+    ),
+  );
 }
 
 class FilterChipDropdown extends StatelessWidget {

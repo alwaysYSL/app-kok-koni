@@ -100,9 +100,8 @@ class ProfilePage extends ConsumerWidget {
               builder: (data) => Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionHeader('STATUS DATA KEOLAHRAGAAN'),
+                  _buildSectionHeader('DATA & UTILITAS'),
                   _SyncStatusCard(data: data),
-                  _buildSectionHeader('UTILITAS KOORDINATOR'),
                   _MenuTile(
                     icon: Icons.summarize_outlined,
                     iconBg: const Color(0xFFE8F0FE),
@@ -124,7 +123,7 @@ class ProfilePage extends ConsumerWidget {
               ),
             )
           else ...[
-            _buildSectionHeader('STATUS AKUN'),
+            _buildSectionHeader('DATA & UTILITAS'),
             if (profileSummaryAsync != null)
               profileSummaryAsync.when(
                 data: (summaryData) =>
@@ -180,7 +179,6 @@ class ProfilePage extends ConsumerWidget {
                 },
               ),
             if (user?.hasPermission('reports:export') ?? false) ...[
-              _buildSectionHeader('UTILITAS KOORDINATOR'),
               _MenuTile(
                 icon: Icons.summarize_outlined,
                 iconBg: const Color(0xFFE8F0FE),
@@ -192,13 +190,15 @@ class ProfilePage extends ConsumerWidget {
               ),
             ],
           ],
-          _buildSectionHeader('PENGATURAN & APLIKASI'),
+          _buildSectionHeader('APLIKASI'),
           _MenuTile(
             icon: Icons.settings_outlined,
             iconBg: const Color(0xFFEDE9FE),
             iconColor: const Color(0xFF6D28D9),
             title: 'Pengaturan Aplikasi',
-            subtitle: 'Preferensi sesi & memori nomor SK',
+            subtitle: isDemoData
+                ? 'Preferensi sesi & memori nomor SK'
+                : 'Preferensi sesi & username',
             onTap: () => showModalBottomSheet<void>(
               context: context,
               showDragHandle: true,

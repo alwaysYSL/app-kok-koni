@@ -327,7 +327,7 @@ void main() {
 
       // Club 1 details
       expect(find.text('PB Djarum Garut'), findsOneWidget);
-      expect(find.text('Ketua: Budi Santoso'), findsOneWidget);
+      expect(find.text('Ketua: Budi Santoso'), findsNothing);
       expect(find.text('Sekretariat: Jl. Merdeka No. 10'), findsOneWidget);
       expect(find.text('Bulutangkis'), findsOneWidget);
       expect(find.text('15 atlet terdaftar di klub'), findsOneWidget);

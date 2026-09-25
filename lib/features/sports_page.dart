@@ -118,24 +118,50 @@ class _SportsPageState extends ConsumerState<SportsPage> {
                   ],
                 ),
                 const SizedBox(height: 14),
-                const Text('Urutkan'),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final (label, value) in sortOptions)
-                      ChoiceChip(
-                        label: Text(label),
-                        selected: caborState.sort == value,
-                        onSelected: (_) => ref
-                            .read(caborPaginationProvider.notifier)
-                            .loadFirstPage(
-                              source: caborState.source,
-                              sort: value,
-                            ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: PopupMenuButton<String>(
+                    tooltip: 'Urutkan cabor',
+                    onSelected: (value) => ref
+                        .read(caborPaginationProvider.notifier)
+                        .loadFirstPage(source: caborState.source, sort: value),
+                    itemBuilder: (context) => [
+                      for (final (label, value) in sortOptions)
+                        PopupMenuItem(value: value, child: Text(label)),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
                       ),
-                  ],
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: const Color(0xFFDDE3EE)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.sort_rounded, size: 18),
+                          const SizedBox(width: 8),
+                          const Text('Urutkan'),
+                          const SizedBox(width: 6),
+                          Text(
+                            sortOptions
+                                .firstWhere(
+                                  (option) => option.$2 == caborState.sort,
+                                )
+                                .$1,
+                            style: const TextStyle(
+                              color: KokColors.bluePrimary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Icon(Icons.arrow_drop_down_rounded),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
 

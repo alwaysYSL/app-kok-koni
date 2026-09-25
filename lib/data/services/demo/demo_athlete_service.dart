@@ -126,7 +126,7 @@ final class DemoAthleteService implements AthleteService {
 
     // Check in current scope's snapshot
     for (final person in snapshot.people) {
-      if (_resolvePersonId(person) == id || person.id == id.toString()) {
+      if (resolvePersonId(person) == id || person.id == id.toString()) {
         return _mapToAthleteDetail(person, snapshot, sports);
       }
     }
@@ -141,7 +141,7 @@ final class DemoAthleteService implements AthleteService {
     return null;
   }
 
-  static int _resolvePersonId(SportPerson person) {
+  static int resolvePersonId(SportPerson person) {
     final parsed = int.tryParse(person.id);
     if (parsed != null) return parsed;
     if (person.id.startsWith('ATL-')) {
@@ -156,7 +156,7 @@ final class DemoAthleteService implements AthleteService {
     KokSnapshot snapshot,
     List<String> sports,
   ) {
-    final personId = _resolvePersonId(person);
+    final personId = resolvePersonId(person);
     final club = _findClub(snapshot.clubs, person.clubId);
 
     final AthleteCabor athleteCabor;

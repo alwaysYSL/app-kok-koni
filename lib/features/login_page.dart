@@ -287,6 +287,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width <= 320;
     final authState = ref.watch(authControllerProvider);
     final displayedError =
         _error ?? (authState is AuthSignedOut ? authState.errorMessage : null);
@@ -311,7 +312,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   children: [
                     LoginHeaderDecoration(
-                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                      padding: EdgeInsets.fromLTRB(
+                        20,
+                        compact ? 14 : 24,
+                        20,
+                        compact ? 18 : 28,
+                      ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -324,36 +330,36 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               children: [
                                 Image.asset(
                                   'assets/branding/mascot.png',
-                                  width: 72,
-                                  height: 88,
+                                  width: compact ? 60 : 72,
+                                  height: compact ? 72 : 88,
                                   semanticLabel: 'Maskot domba Garut kiri',
                                 ),
-                                const SizedBox(width: 14),
+                                SizedBox(width: compact ? 10 : 14),
                                 Image.asset(
                                   'assets/branding/logo-koni.png',
-                                  width: 104,
-                                  height: 114,
+                                  width: compact ? 88 : 104,
+                                  height: compact ? 98 : 114,
                                   semanticLabel: 'Logo KONI Garut',
                                 ),
-                                const SizedBox(width: 14),
+                                SizedBox(width: compact ? 10 : 14),
                                 Transform.flip(
                                   flipX: true,
                                   child: Image.asset(
                                     'assets/branding/mascot.png',
-                                    width: 72,
-                                    height: 88,
+                                    width: compact ? 60 : 72,
+                                    height: compact ? 72 : 88,
                                     semanticLabel: 'Maskot domba Garut kanan',
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 18),
-                          const Text(
+                          SizedBox(height: compact ? 12 : 18),
+                          Text(
                             'Selamat Datang!',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 26,
+                              fontSize: compact ? 23 : 26,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                             ),
@@ -379,7 +385,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             top: Radius.circular(32),
                           ),
                         ),
-                        padding: const EdgeInsets.fromLTRB(28, 30, 28, 24),
+                        padding: EdgeInsets.fromLTRB(
+                          compact ? 20 : 28,
+                          compact ? 24 : 30,
+                          compact ? 20 : 28,
+                          24,
+                        ),
                         child: AutofillGroup(
                           child: Form(
                             key: _form,

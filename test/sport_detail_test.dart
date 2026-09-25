@@ -311,6 +311,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      expect(find.byType(NestedScrollView), findsOneWidget);
+      expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
+      await tester.drag(find.byType(NestedScrollView), const Offset(0, -320));
+      await tester.pumpAndSettle();
       for (final tab in ['Atlet', 'Klub']) {
         await tester.ensureVisible(find.text(tab));
         await tester.tap(find.text(tab));
@@ -324,16 +328,15 @@ void main() {
             'Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.',
           ),
         );
-        await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(
-          find
-              .text('Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.')
-              .hitTestable(),
+          find.text(
+            'Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.',
+          ),
           findsOneWidget,
         );
       }
-      expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
+      expect(find.byKey(const Key('detail-header-lip')), findsNothing);
     });
 
     testWidgets('remote identity retry reloads a failed page', (tester) async {

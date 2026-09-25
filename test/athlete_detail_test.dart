@@ -126,6 +126,24 @@ void main() {
   });
 
   group('AthleteDetailPage Widget Tests', () {
+    testWidgets('demo directory numeric athlete ID opens its detail', (
+      tester,
+    ) async {
+      final repo = DemoKokRepository();
+      final data = await tester.runAsync(() => repo.fetchScope(garutScope));
+      expect(data, isNotNull);
+      final person = data!.people.firstWhere((p) => p.id == 'voli-atlet-0');
+      final numericId = person.id.hashCode & 0x7fffffff;
+
+      await tester.pumpWidget(
+        createTestApp(snapshot: data, initialLocation: '/person/$numericId'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data tidak ditemukan'), findsNothing);
+      expect(find.text(person.name), findsWidgets);
+    });
+
     testWidgets(
       'renders Voli Bina Muda athlete with dynamic amber/gold club brand palette',
       (tester) async {
@@ -712,6 +730,10 @@ void main() {
         expect(find.text('Berat Badan'), findsOneWidget);
         expect(find.text('O'), findsOneWidget);
         expect(find.text('Golongan Darah'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('physical-body-vector')),
+          findsOneWidget,
+        );
 
         // 5. Kontak & Alamat
         expect(find.text('KONTAK & ALAMAT'), findsOneWidget);

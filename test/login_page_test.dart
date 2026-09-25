@@ -54,6 +54,38 @@ AppComposition _demoComposition(SharedPreferences preferences) {
 }
 
 void main() {
+  testWidgets('remote login remains usable at 320 dp', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final composition = AppComposition.fromProfile(
+      const DeploymentProfile(
+        environment: AppEnv.staging,
+        authMode: AuthMode.remote,
+        dataMode: DataMode.remote,
+        apiBaseUrl: 'https://api.example.test',
+      ),
+      preferences: prefs,
+      secureStore: _LoginSecureStore(),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appCompositionProvider.overrideWithValue(composition)],
+        child: const MaterialApp(home: LoginPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Masuk'));
+    expect(find.text('Username'), findsOneWidget);
+    expect(find.text('Masuk'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('LoginPage merender form, checkbox, dan opsi akun demo', (
     tester,
   ) async {

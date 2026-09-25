@@ -453,6 +453,11 @@ void main() {
     container.read(routerProvider).go('/profile');
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Keluar dari Akun')),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Keluar dari Akun'));
     await tester.pumpAndSettle();
     expect(find.text('Keluar dari Akun?'), findsOneWidget);
@@ -661,6 +666,11 @@ void main() {
         container.read(routerProvider).go('/profile');
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await Scrollable.ensureVisible(
+          tester.element(find.text('Keluar dari Akun')),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Keluar dari Akun'));
         await tester.pumpAndSettle();
         expect(find.text('Keluar dari Akun?'), findsOneWidget);
@@ -758,6 +768,11 @@ void main() {
         container.read(routerProvider).go('/profile');
         await tester.pumpAndSettle();
         await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await Scrollable.ensureVisible(
+          tester.element(find.text('Keluar dari Akun')),
+          alignment: 0.5,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Keluar dari Akun'));
         await tester.pumpAndSettle();
         expect(find.text('Keluar dari Akun?'), findsOneWidget);

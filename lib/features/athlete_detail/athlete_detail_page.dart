@@ -7,6 +7,7 @@ import '../../core/composition/app_composition.dart';
 import '../../core/config/deployment_profile.dart';
 import '../../core/network/api_exceptions.dart';
 import '../../core/theme.dart';
+import '../../data/services/demo/demo_athlete_service.dart';
 import '../../data/models.dart';
 import '../../data/models/athlete.dart';
 import '../../data/models/athlete_detail.dart';
@@ -15,6 +16,7 @@ import '../../shared/widgets.dart';
 import '../club_detail/club_brand_palette.dart';
 import '../detail_pages.dart';
 import '../sport_detail/sport_brand_palette.dart';
+import 'body_silhouette.dart';
 
 typedef PersonDetailPage = AthleteDetailPage;
 
@@ -116,7 +118,13 @@ class AthleteDetailPage extends ConsumerWidget {
 
     return DataView(
       builder: (data) {
-        final matches = data.people.where((p) => p.id == id);
+        final numericId = int.tryParse(id);
+        final matches = data.people.where(
+          (p) =>
+              p.id == id ||
+              (numericId != null &&
+                  DemoAthleteService.resolvePersonId(p) == numericId),
+        );
         if (matches.isEmpty) return const MissingPage();
 
         final person = matches.first;
@@ -570,44 +578,38 @@ class _RemotePhysicalDataSection extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-            ),
+          Surface(
+            padding: const EdgeInsets.fromLTRB(12, 16, 16, 16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                const BodySilhouette(key: ValueKey('physical-body-vector')),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: _buildStatBox(
-                    label: 'Tinggi Badan',
-                    value: detail.height != null ? '${detail.height} cm' : '-',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatBox(
-                    label: 'Berat Badan',
-                    value: detail.weight != null ? '${detail.weight} kg' : '-',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatBox(
-                    label: 'Golongan Darah',
-                    value:
-                        detail.bloodType != null &&
-                            detail.bloodType!.trim().isNotEmpty
-                        ? detail.bloodType!.trim()
-                        : '-',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _metric(
+                        label: 'Tinggi Badan',
+                        value: detail.height != null
+                            ? '${detail.height} cm'
+                            : '—',
+                      ),
+                      const SizedBox(height: 10),
+                      _metric(
+                        label: 'Berat Badan',
+                        value: detail.weight != null
+                            ? '${detail.weight} kg'
+                            : '—',
+                      ),
+                      const SizedBox(height: 10),
+                      _metric(
+                        label: 'Golongan Darah',
+                        value: detail.bloodType?.trim().isNotEmpty == true
+                            ? detail.bloodType!.trim()
+                            : '—',
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -618,39 +620,38 @@ class _RemotePhysicalDataSection extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox({required String label, required String value}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: KokColors.cardTitle,
+  Widget _metric({required String label, required String value}) => Row(
+    children: [
+      Container(width: 17, height: 1.5, color: KokColors.blueMedium),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: KokColors.muted,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF6B7280),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: KokColors.cardTitle,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ],
+  );
 }
 
 class _RemoteContactAddressSection extends StatelessWidget {
