@@ -785,21 +785,27 @@ class _ClubsPageState extends ConsumerState<ClubsPage> {
     }
 
     if (state.items.isEmpty) {
+      final hasActiveFilter =
+          (state.search?.trim().isNotEmpty ?? false) || state.status != null;
       return RefreshIndicator(
         onRefresh: () => controller.refresh(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
           child: EmptyState(
-            message: 'Tidak ada klub yang sesuai dengan filter.',
-            onReset: () {
-              _remoteDebounceTimer?.cancel();
-              _remoteSearch.clear();
-              controller.updateSearch(null);
-              controller.updateStatusFilter(null);
-              controller.updateSort('name');
-              setState(() {});
-            },
+            message: hasActiveFilter
+                ? 'Tidak ada klub yang sesuai dengan filter.'
+                : 'Belum ada klub tercatat di kecamatan ini.',
+            onReset: hasActiveFilter
+                ? () {
+                    _remoteDebounceTimer?.cancel();
+                    _remoteSearch.clear();
+                    controller.updateSearch(null);
+                    controller.updateStatusFilter(null);
+                    controller.updateSort('name');
+                    setState(() {});
+                  }
+                : null,
           ),
         ),
       );

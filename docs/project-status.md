@@ -134,15 +134,16 @@ Label “SELESAI” pada milestone di bawah menyatakan seluruh implementasi, pen
 ### Polish UI berbasis kontrak SICABOR
 - Beranda, Cabor, Klub, Atlet, dan Akun mode remote memakai data kecamatan dari API KOK; komponen UI dan alur HTTP mock diuji secara lokal.
 - Halaman Anggota KOK tetap tersedia dengan penjelasan bahwa data resmi belum tersedia melalui kontrak API saat ini.
-- Perubahan tampilan mencakup transisi header membulat, kartu direktori dan detail, serta keadaan kosong dan fallback gambar. Pemeriksaan visual pasca-login pada emulator Android belum tuntas; jangan tafsirkan hasil tes widget sebagai persetujuan visual seluruh layar.
+- Perubahan tampilan mencakup transisi header membulat, kartu direktori dan detail, serta keadaan kosong dan fallback gambar. Pemeriksaan langsung Flutter web terhadap mock lokal pada lebar 320 dan 390 dp mencakup Garut Kota dan Balubur Limbangan; 36 tangkapan layar halaman setelah login dibuat dan ditinjau. Label metrik Beranda pada 320 dp dan pesan daftar Klub tanpa data diperbaiki setelah pemeriksaan tersebut.
 - Validasi terhadap server resmi tetap menunggu URL HTTPS dan kredensial uji yang aktif.
 
 ### Hasil Pengujian & Verifikasi Kualitas (25 September 2026)
-- **Automated Test Suite**: `flutter test --no-pub` selesai dengan 891 lulus, 1 dilewati, 0 gagal.
+- **Automated Test Suite**: `flutter test --no-pub` selesai dengan 892 lulus, 1 dilewati, 0 gagal.
 - **Alur HTTP Mock**: `flutter test test/integration/mock_http_flow_test.dart` selesai dengan 9 lulus, 0 gagal.
 - **Static Analysis**: `flutter analyze --no-pub` melaporkan `No issues found!`.
 - **Code Formatting**: `dart format --output=none --set-exit-if-changed lib test scripts/mock_server` memeriksa 176 file, 0 berubah.
-- **Batas QA Visual**: Android AVD dapat dijalankan dan layar login tertangkap pada sekitar 320/390 dp. Login manual dari emulator ke mock lokal masih menerima HTTP 401 pada `/api/auth`, walau POST kredensial yang sama dari host menerima HTTP 200. Beranda dan layar setelah login untuk Garut Kota/Balubur Limbangan belum dapat diverifikasi melalui screenshot emulator pada sesi ini.
+- **QA Visual Browser**: Capture Flutter web mode remote di 320/390 dp untuk kedua kecamatan meliputi Beranda, daftar/detail Cabor, daftar Klub, daftar/detail Atlet, Anggota KOK, dan Akun. Detail Klub serta fallback logo diverifikasi dengan data Garut Kota; Balubur Limbangan tidak memiliki Klub pada fixture mock. Transisi header membulat dan keadaan kosong juga diperiksa. Bukti dan path capture tercatat pada laporan Task 10.
+- **Batas QA Visual**: Capture browser belum membuktikan tampilan pada perangkat Android fisik. Uji emulator pasca-login dihentikan sesuai perubahan arah QA; validasi perangkat nyata dan API resmi masih diperlukan.
 
 ---
 

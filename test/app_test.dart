@@ -524,6 +524,8 @@ void main() {
       // Go back to home and tap 'lihat semua >' on Perlu Perhatian
       container.read(routerProvider).go('/home');
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('lihat semua >').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('lihat semua >').first);
       await tester.pumpAndSettle();
       expect(find.text('Perlu Perhatian (13)'), findsOneWidget);

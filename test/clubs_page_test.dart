@@ -585,57 +585,67 @@ void main() {
       expect(lastSort, 'status');
     });
 
-    testWidgets('Empty state is displayed when items list is empty', (
-      tester,
-    ) async {
-      final mockService = MockClubService(
-        onFetchList:
-            ({
-              int limit = 25,
-              int offset = 0,
-              int? idCabor,
-              int? status,
-              String? search,
-              String sort = 'name',
-              RequestCancellation? cancellation,
-            }) async {
-              return const PaginatedResult(
-                items: [],
-                limit: 25,
-                offset: 0,
-                total: 0,
-              );
-            },
-      );
+    testWidgets(
+      'Remote empty clubs distinguish no data from filtered results',
+      (tester) async {
+        final mockService = MockClubService(
+          onFetchList:
+              ({
+                int limit = 25,
+                int offset = 0,
+                int? idCabor,
+                int? status,
+                String? search,
+                String sort = 'name',
+                RequestCancellation? cancellation,
+              }) async {
+                return const PaginatedResult(
+                  items: [],
+                  limit: 25,
+                  offset: 0,
+                  total: 0,
+                );
+              },
+        );
 
-      final composition = _createTestComposition(
-        dataMode: DataMode.remote,
-        clubService: mockService,
-      );
-
-      await tester.pumpWidget(
-        _buildTestApp(
-          child: const ClubsPage(),
-          composition: composition,
+        final composition = _createTestComposition(
+          dataMode: DataMode.remote,
           clubService: mockService,
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
 
-      expect(
-        find.text('Tidak ada klub yang sesuai dengan filter.'),
-        findsOneWidget,
-      );
-      expect(find.text('Reset filter'), findsOneWidget);
+        await tester.pumpWidget(
+          _buildTestApp(
+            child: const ClubsPage(),
+            composition: composition,
+            clubService: mockService,
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Tapping reset filter resets search and filters
-      await tester.tap(find.text('Reset filter'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Tidak ada klub yang sesuai dengan filter.'),
-        findsOneWidget,
-      );
-    });
+        expect(
+          find.text('Belum ada klub tercatat di kecamatan ini.'),
+          findsOneWidget,
+        );
+        expect(find.text('Reset filter'), findsNothing);
+
+        await tester.enterText(find.byType(TextField).first, 'tidak ada');
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Tidak ada klub yang sesuai dengan filter.'),
+          findsOneWidget,
+        );
+        expect(find.text('Reset filter'), findsOneWidget);
+
+        await tester.tap(find.text('Reset filter'));
+        await tester.pumpAndSettle();
+        expect(
+          find.text('Belum ada klub tercatat di kecamatan ini.'),
+          findsOneWidget,
+        );
+        expect(find.text('Reset filter'), findsNothing);
+      },
+    );
 
     testWidgets('Error state is displayed with retry button on error', (
       tester,

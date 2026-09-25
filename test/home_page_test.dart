@@ -561,6 +561,39 @@ void main() {
     dataNotes: const ['Catatan pertama', 'Catatan kedua'],
   );
 
+  testWidgets('remote Beranda metric captions stay inside columns at 320 dp', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final composition = await _createTestComposition(dataMode: DataMode.remote);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith(
+            () => _FakeHomeAuthController(cecepUser),
+          ),
+          profileSummaryProvider.overrideWith((ref) => remoteSummary),
+          appCompositionProvider.overrideWithValue(composition),
+        ],
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final caborCaption = tester.getRect(
+      find.text('0 Cabor dengan klub · 3 Cabor dengan atlet'),
+    );
+    final clubCaption = tester.getRect(find.text('Klub Terdaftar'));
+    final athleteCaption = tester.getRect(find.text('Atlet Mandiri'));
+    expect(caborCaption.right, lessThanOrEqualTo(clubCaption.left));
+    expect(clubCaption.right, lessThanOrEqualTo(athleteCaption.left));
+    expect(clubCaption.height, greaterThanOrEqualTo(24));
+    expect(athleteCaption.height, greaterThanOrEqualTo(24));
+  });
+
   for (final destination in <String, String>{
     'Jelajahi Cabor': '/sports',
     'Cari Klub': '/clubs',

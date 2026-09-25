@@ -802,12 +802,13 @@ class _MetricColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            subtext,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+        Text(
+          subtext,
+          softWrap: true,
+          style: const TextStyle(
+            fontSize: 11,
+            height: 1.2,
+            color: Color(0xFF64748B),
           ),
         ),
       ],
