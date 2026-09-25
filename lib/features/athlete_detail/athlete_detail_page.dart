@@ -265,22 +265,7 @@ class _RemoteHeaderAndCardSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.share_outlined,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Tautan profil ${detail.name} disalin ke clipboard.',
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  const SizedBox(width: 48),
                 ],
               ),
             ),

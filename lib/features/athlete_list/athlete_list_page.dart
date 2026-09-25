@@ -38,6 +38,9 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
   }
 
   void _onScroll() {
+    if (ref.read(athletePaginationProvider(_scope)).loadMoreError != null) {
+      return;
+    }
     if (_scroll.hasClients &&
         _scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
       ref.read(athletePaginationProvider(_scope).notifier).loadMore();
@@ -224,9 +227,19 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
                 child: Center(child: CircularProgressIndicator.adaptive()),
               );
             }
-            return TextButton(
-              onPressed: controller.loadMore,
-              child: const Text('Gagal memuat atlet berikutnya · Coba lagi'),
+            final error = describeRemoteError(state.loadMoreError!);
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(error.message, textAlign: TextAlign.center),
+                  if (error.canRetry)
+                    TextButton(
+                      onPressed: controller.loadMore,
+                      child: const Text('Coba Lagi'),
+                    ),
+                ],
+              ),
             );
           }
           return _AthleteCard(athlete: state.items[index]);

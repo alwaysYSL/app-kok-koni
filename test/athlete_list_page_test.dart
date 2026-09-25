@@ -7,6 +7,7 @@ import 'package:kok_app/core/auth/domain/user_principal.dart';
 import 'package:kok_app/core/auth/presentation/auth_controller.dart';
 import 'package:kok_app/core/composition/app_composition.dart';
 import 'package:kok_app/core/config/deployment_profile.dart';
+import 'package:kok_app/core/network/api_exceptions.dart';
 import 'package:kok_app/data/models/athlete.dart';
 import 'package:kok_app/data/models/athlete_detail.dart';
 import 'package:kok_app/data/models/paginated_result.dart';
@@ -215,6 +216,130 @@ void main() {
     expect(find.text('Atlet 26'), findsOneWidget);
     expect(find.text('26 atlet'), findsOneWidget);
   });
+
+  testWidgets('timeout on next page shows guidance and allows manual retry', (
+    tester,
+  ) async {
+    var nextPageCalls = 0;
+    final service = _AthleteService(({
+      required offset,
+      required limit,
+      sex,
+      status,
+      search,
+    }) {
+      if (offset == 0) {
+        return PaginatedResult(
+          items: List.generate(25, (i) => _athlete(i + 1)),
+          limit: limit,
+          offset: offset,
+          total: 26,
+        );
+      }
+      nextPageCalls++;
+      if (nextPageCalls == 1) throw const ApiTimeoutException();
+      return PaginatedResult(
+        items: [_athlete(26)],
+        limit: limit,
+        offset: offset,
+        total: 26,
+      );
+    });
+    final container = await _pumpDirectory(tester, service);
+    await tester.drag(
+      find.byKey(const ValueKey('athlete-list')),
+      const Offset(0, -2000),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      container
+          .read(athletePaginationProvider((idCabor: null, idClub: null)))
+          .loadMoreError,
+      isA<ApiTimeoutException>(),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Koneksi ke server terganggu.'),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('athlete-list')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Koneksi ke server terganggu.'), findsOneWidget);
+    expect(find.text('Coba Lagi'), findsOneWidget);
+    await tester.tap(find.text('Coba Lagi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Koneksi ke server terganggu.'), findsNothing);
+    expect(nextPageCalls, 2);
+  });
+
+  testWidgets(
+    'NO_SUBDISTRICT on next page shows server guidance without retry',
+    (tester) async {
+      var nextPageCalls = 0;
+      final service = _AthleteService(({
+        required offset,
+        required limit,
+        sex,
+        status,
+        search,
+      }) {
+        if (offset == 0) {
+          return PaginatedResult(
+            items: List.generate(25, (i) => _athlete(i + 1)),
+            limit: limit,
+            offset: offset,
+            total: 26,
+          );
+        }
+        nextPageCalls++;
+        throw const ForbiddenException(
+          'Akses ditolak',
+          'NO_SUBDISTRICT',
+          'Akun belum terikat pada kecamatan.',
+        );
+      });
+      final container = await _pumpDirectory(tester, service);
+      await tester.drag(
+        find.byKey(const ValueKey('athlete-list')),
+        const Offset(0, -2000),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        container
+            .read(athletePaginationProvider((idCabor: null, idClub: null)))
+            .loadMoreError,
+        isA<ForbiddenException>(),
+      );
+      await tester.scrollUntilVisible(
+        find.text(
+          'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+        ),
+        200,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('athlete-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      expect(
+        find.text(
+          'Akun belum terikat pada kecamatan. Hubungi admin kabupaten.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Coba Lagi'), findsNothing);
+      await tester.drag(
+        find.byKey(const ValueKey('athlete-list')),
+        const Offset(0, 100),
+      );
+      await tester.drag(
+        find.byKey(const ValueKey('athlete-list')),
+        const Offset(0, -100),
+      );
+      await tester.pumpAndSettle();
+      expect(nextPageCalls, 1);
+    },
+  );
 
   testWidgets('search waits 500 ms and displays an empty result', (
     tester,

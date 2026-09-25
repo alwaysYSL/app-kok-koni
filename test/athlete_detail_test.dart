@@ -683,7 +683,7 @@ void main() {
         // 1. Header & Title
         expect(find.text('Detail Atlet'), findsOneWidget);
         expect(find.byIcon(Icons.chevron_left), findsOneWidget);
-        expect(find.byIcon(Icons.share_outlined), findsOneWidget);
+        expect(find.byIcon(Icons.share_outlined), findsNothing);
 
         // 2. Profile identity
         expect(find.text('Budi Setiawan'), findsOneWidget);
@@ -846,7 +846,9 @@ void main() {
       expect(sportsReached, isTrue);
     });
 
-    testWidgets('tapping share button shows SnackBar feedback', (tester) async {
+    testWidgets('remote athlete detail has no unsupported share action', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         createRemoteTestApp(
           initialLocation: '/person/101',
@@ -858,14 +860,8 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-
-      await tester.tap(find.byIcon(Icons.share_outlined));
-      await tester.pump();
-
-      expect(
-        find.text('Tautan profil Budi Setiawan disalin ke clipboard.'),
-        findsOneWidget,
-      );
+      expect(find.byIcon(Icons.share_outlined), findsNothing);
+      expect(find.textContaining('disalin ke clipboard'), findsNothing);
     });
   });
 }
