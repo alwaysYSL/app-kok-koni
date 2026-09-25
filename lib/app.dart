@@ -94,8 +94,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/committee',
-                builder: (_, s) => const CommitteePage(),
+                path: '/athletes',
+                builder: (_, s) => const AthleteListPage(),
               ),
             ],
           ),
@@ -118,7 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/person/:id',
         builder: (_, s) => AthleteDetailPage(id: s.pathParameters['id']!),
       ),
-      GoRoute(path: '/athletes', builder: (_, _) => const AthleteListPage()),
+      GoRoute(path: '/committee', builder: (_, _) => const CommitteePage()),
       GoRoute(
         path: '/attention',
         builder: (_, s) => AttentionPage(type: s.uri.queryParameters['type']),
@@ -181,9 +181,9 @@ class _NavigationShell extends StatelessWidget {
           label: 'Klub',
         ),
         NavigationDestination(
-          icon: Icon(Icons.groups_outlined),
-          selectedIcon: Icon(Icons.groups),
-          label: 'Anggota',
+          icon: Icon(Icons.directions_run_outlined),
+          selectedIcon: Icon(Icons.directions_run),
+          label: 'Atlet',
         ),
         NavigationDestination(
           icon: Icon(Icons.person_outline),

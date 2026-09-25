@@ -353,6 +353,13 @@ void main() {
       );
       expect(find.text('Keluar dari Akun'), findsOneWidget);
 
+      await tester.scrollUntilVisible(
+        find.text('Keluar dari Akun'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -48));
+      await tester.pump();
       await tester.tap(find.text('Keluar dari Akun'));
       await tester.pumpAndSettle();
       expect(find.text('Keluar dari Akun?'), findsOneWidget);
@@ -668,6 +675,8 @@ void main() {
 
         // Scroll to Keluar button
         await tester.scrollUntilVisible(find.text('Keluar dari Akun'), 200);
+        await tester.drag(find.byType(ListView), const Offset(0, -120));
+        await tester.pumpAndSettle();
         expect(find.text('Keluar dari Akun'), findsOneWidget);
 
         // Tap Keluar dari Akun

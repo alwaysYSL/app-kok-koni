@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
 import '../../data/models/athlete.dart';
 import '../../data/providers/athlete_providers.dart';
-import '../../shared/remote_error_presentation.dart';
+import '../../shared/widgets.dart';
 
 const _scope = (idCabor: null, idClub: null);
 
@@ -59,6 +59,110 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
     setState(() {});
   }
 
+  Future<void> _showFilters(
+    AthletePaginationState current,
+    AthletePaginationController controller,
+  ) async {
+    String? draftSex = current.sex;
+    int? draftStatus = current.status;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setDraft) => SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Filter Atlet',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Jenis kelamin',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final option in const [
+                      (label: 'Semua', value: null),
+                      (label: 'Laki-Laki', value: 'l'),
+                      (label: 'Perempuan', value: 'p'),
+                    ])
+                      ChoiceChip(
+                        label: Text(option.label),
+                        selected: draftSex == option.value,
+                        onSelected: (_) =>
+                            setDraft(() => draftSex = option.value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Status',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final option in const [
+                      (label: 'Semua status', value: null),
+                      (label: 'Aktif', value: 1),
+                      (label: 'Belum Aktif', value: 0),
+                    ])
+                      ChoiceChip(
+                        label: Text(option.label),
+                        selected: draftStatus == option.value,
+                        onSelected: (_) =>
+                            setDraft(() => draftStatus = option.value),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => setDraft(() {
+                        draftSex = null;
+                        draftStatus = null;
+                      }),
+                      child: const Text('Reset'),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          controller.updateFilters(
+                            sex: draftSex,
+                            status: draftStatus,
+                          );
+                          Navigator.of(sheetContext).pop();
+                        },
+                        child: const Text('Terapkan'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -75,12 +179,8 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
     return Scaffold(
       backgroundColor: KokColors.background,
       appBar: AppBar(
-        title: const Text('Daftar Atlet'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/home'),
-        ),
+        title: const Text('Atlet'),
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,52 +215,31 @@ class _AthleteListPageState extends ConsumerState<AthleteListPage> {
               ),
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
             child: Row(
               children: [
-                for (final option in const [
-                  (label: 'Semua gender', value: null),
-                  (label: 'Laki-Laki', value: 'l'),
-                  (label: 'Perempuan', value: 'p'),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      label: Text(option.label),
-                      selected: state.sex == option.value,
-                      onSelected: (_) =>
-                          controller.updateSexFilter(option.value),
+                Expanded(
+                  child: Text(
+                    '${state.total} atlet',
+                    style: const TextStyle(
+                      color: KokColors.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                const SizedBox(width: 8),
-                for (final option in const [
-                  (label: 'Semua status', value: null),
-                  (label: 'Aktif', value: 1),
-                  (label: 'Belum Aktif', value: 0),
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      label: Text(option.label),
-                      selected: state.status == option.value,
-                      onSelected: (_) =>
-                          controller.updateStatusFilter(option.value),
-                    ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showFilters(state, controller),
+                  icon: Icon(
+                    Icons.tune_rounded,
+                    color: state.sex != null || state.status != null
+                        ? KokColors.blue
+                        : KokColors.muted,
                   ),
+                  label: const Text('Filter'),
+                ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-            child: Text(
-              '${state.total} atlet',
-              style: const TextStyle(
-                color: KokColors.muted,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
           if (state.hasFilterWarning)
@@ -255,66 +334,62 @@ class _AthleteCard extends StatelessWidget {
   final Athlete athlete;
 
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(bottom: 8),
-    color: Colors.white,
-    child: InkWell(
-      onTap: () => context.push('/person/${athlete.id}'),
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ClipOval(
-              child: SizedBox(
-                width: 44,
-                height: 44,
-                child: athlete.photoUrl.isEmpty
-                    ? _avatarFallback()
-                    : Image.network(
-                        athlete.photoUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => _avatarFallback(),
-                      ),
+  Widget build(BuildContext context) => Surface(
+    onTap: () => context.push('/person/${athlete.id}'),
+    padding: const EdgeInsets.all(14),
+    child: Row(
+      children: [
+        ClipOval(
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: athlete.photoUrl.isEmpty
+                ? _avatarFallback()
+                : Image.network(
+                    athlete.photoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => _avatarFallback(),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                athlete.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: KokColors.cardTitle,
+                  height: 1.25,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 3),
+              Text(
+                athlete.club?.name ?? 'Klub belum tercatat',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: KokColors.muted, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
                 children: [
-                  Text(
-                    athlete.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    athlete.club?.name ?? 'Klub belum tercatat',
-                    style: const TextStyle(
-                      color: KokColors.muted,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      if (athlete.code.trim().isNotEmpty) _tag(athlete.code),
-                      _tag(athlete.cabor.name),
-                      if (athlete.statusLabel.trim().isNotEmpty)
-                        _tag(athlete.statusLabel),
-                    ],
-                  ),
+                  if (athlete.code.trim().isNotEmpty) _tag(athlete.code),
+                  _tag(athlete.cabor.name),
+                  if (athlete.statusLabel.trim().isNotEmpty)
+                    _tag(athlete.statusLabel),
                 ],
               ),
-            ),
-            const Icon(Icons.chevron_right, color: KokColors.muted),
-          ],
+            ],
+          ),
         ),
-      ),
+        const Icon(Icons.chevron_right, color: KokColors.muted),
+      ],
     ),
   );
 

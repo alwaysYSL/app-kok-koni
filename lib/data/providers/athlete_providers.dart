@@ -323,6 +323,20 @@ class AthletePaginationController extends Notifier<AthletePaginationState> {
     loadFirstPage();
   }
 
+  void updateFilters({String? sex, int? status}) {
+    final normalizedSex = (sex == null || sex.trim().isEmpty)
+        ? null
+        : sex.trim();
+    if (state.sex == normalizedSex && state.status == status) return;
+    state = state.copyWith(
+      sex: normalizedSex,
+      clearSex: normalizedSex == null,
+      status: status,
+      clearStatus: status == null,
+    );
+    loadFirstPage();
+  }
+
   void updateSort(String sort) {
     if (state.sort == sort) return;
     state = state.copyWith(sort: sort);

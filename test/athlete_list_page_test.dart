@@ -16,6 +16,7 @@ import 'package:kok_app/data/providers/snapshot_provider.dart';
 import 'package:kok_app/data/request_cancellation.dart';
 import 'package:kok_app/data/services/athlete_service.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
+import 'package:kok_app/shared/widgets.dart';
 
 import 'test_composition.dart';
 
@@ -47,10 +48,10 @@ const _domicile = AthleteDomicile(
   districtName: 'Garut',
 );
 
-Athlete _athlete(int id, {AthleteClub? club}) => Athlete(
+Athlete _athlete(int id, {AthleteClub? club, String? name}) => Athlete(
   id: id,
   code: 'AT-$id',
-  name: 'Atlet $id',
+  name: name ?? 'Atlet $id',
   sex: 'l',
   sexLabel: 'Laki-Laki',
   photoUrl: '',
@@ -144,6 +145,29 @@ Future<ProviderContainer> _pumpDirectory(
 }
 
 void main() {
+  testWidgets('athlete card uses shared surface and allows two name lines', (
+    tester,
+  ) async {
+    const longName = 'Atlet Berprestasi Garut Kota dengan Nama Sangat Panjang';
+    final service = _AthleteService(
+      ({required offset, required limit, sex, status, search}) =>
+          PaginatedResult(
+            items: [_athlete(1, name: longName)],
+            limit: limit,
+            offset: offset,
+            total: 1,
+          ),
+    );
+    await _pumpDirectory(tester, service);
+
+    expect(
+      find.ancestor(of: find.text(longName), matching: find.byType(Surface)),
+      findsOneWidget,
+    );
+    expect(tester.widget<Text>(find.text(longName)).maxLines, 2);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'directory shows server total and nullable club, then opens athlete',
     (tester) async {
@@ -164,7 +188,7 @@ void main() {
       );
       await _pumpDirectory(tester, service);
 
-      expect(find.text('Daftar Atlet'), findsOneWidget);
+      expect(find.text('Atlet'), findsWidgets);
       expect(find.text('361 atlet'), findsOneWidget);
       expect(find.text('Klub belum tercatat'), findsOneWidget);
       expect(find.text('PB Garut'), findsOneWidget);
@@ -195,7 +219,7 @@ void main() {
 
     await tester.drag(
       find.byKey(const ValueKey('athlete-list')),
-      const Offset(0, -2000),
+      const Offset(0, -4000),
     );
     await tester.pumpAndSettle();
     expect(
@@ -248,7 +272,7 @@ void main() {
     final container = await _pumpDirectory(tester, service);
     await tester.drag(
       find.byKey(const ValueKey('athlete-list')),
-      const Offset(0, -2000),
+      const Offset(0, -4000),
     );
     await tester.pumpAndSettle();
     expect(
@@ -267,6 +291,11 @@ void main() {
     );
     expect(find.text('Koneksi ke server terganggu.'), findsOneWidget);
     expect(find.text('Coba Lagi'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const ValueKey('athlete-list')),
+      const Offset(0, -120),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Coba Lagi'));
     await tester.pumpAndSettle();
     expect(find.text('Koneksi ke server terganggu.'), findsNothing);
@@ -302,7 +331,7 @@ void main() {
       final container = await _pumpDirectory(tester, service);
       await tester.drag(
         find.byKey(const ValueKey('athlete-list')),
-        const Offset(0, -2000),
+        const Offset(0, -4000),
       );
       await tester.pumpAndSettle();
       expect(
@@ -417,30 +446,46 @@ void main() {
     },
   );
 
-  testWidgets('gender and status chips apply server filters', (tester) async {
-    final service = _AthleteService(
-      ({required offset, required limit, sex, status, search}) =>
-          PaginatedResult(
-            items: sex == 'l' && status == 1 ? [_athlete(9)] : [],
-            limit: limit,
-            offset: offset,
-            total: sex == 'l' && status == 1 ? 1 : 0,
-          ),
-    );
-    await _pumpDirectory(tester, service);
-    await tester.tap(find.text('Laki-Laki').first);
-    await tester.pumpAndSettle();
-    expect(find.text('0 atlet'), findsOneWidget);
+  testWidgets(
+    'filter sheet stages gender and status until apply, then resets',
+    (tester) async {
+      final requests = <(String?, int?)>[];
+      final service = _AthleteService(({
+        required offset,
+        required limit,
+        sex,
+        status,
+        search,
+      }) {
+        requests.add((sex, status));
+        return PaginatedResult(
+          items: sex == 'l' && status == 1 ? [_athlete(9)] : [],
+          limit: limit,
+          offset: offset,
+          total: sex == 'l' && status == 1 ? 1 : 0,
+        );
+      });
+      await _pumpDirectory(tester, service);
+      expect(requests, [(null, null)]);
+      await tester.tap(find.text('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Laki-Laki').last);
+      await tester.tap(find.text('Aktif').last);
+      expect(requests, [(null, null)]);
+      await tester.tap(find.text('Terapkan'));
+      await tester.pumpAndSettle();
+      expect(requests, [(null, null), ('l', 1)]);
+      expect(find.text('Atlet 9'), findsOneWidget);
+      expect(find.text('1 atlet'), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Aktif').first,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Aktif').first);
-    await tester.pumpAndSettle();
-    expect(find.text('Atlet 9'), findsOneWidget);
-    expect(find.text('1 atlet'), findsOneWidget);
-  });
+      await tester.tap(find.text('Filter'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reset'));
+      expect(requests, [(null, null), ('l', 1)]);
+      await tester.tap(find.text('Terapkan'));
+      await tester.pumpAndSettle();
+      expect(requests.last, (null, null));
+      expect(find.text('0 atlet'), findsOneWidget);
+    },
+  );
 }

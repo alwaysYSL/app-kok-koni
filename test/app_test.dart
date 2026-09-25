@@ -21,6 +21,8 @@ import 'package:kok_app/features/dashboard_decorations.dart';
 import 'package:kok_app/features/home_page.dart';
 import 'package:kok_app/features/search/global_search_page.dart';
 import 'package:kok_app/features/athlete_detail/athlete_detail_page.dart';
+import 'package:kok_app/features/athlete_list/athlete_list_page.dart';
+import 'package:kok_app/features/committee_page.dart';
 import 'package:kok_app/features/sport_detail/sport_detail_page.dart';
 
 class _FakeSecureKeyValStore implements SecureKeyValStore {
@@ -163,6 +165,37 @@ Future<void> signInTestUser(
 }
 
 void main() {
+  testWidgets('bottom Atlet destination opens the root athlete directory', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await signInTestUser(container);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Atlet').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AthleteListPage), findsOneWidget);
+    expect(find.text('Daftar Atlet'), findsNothing);
+    expect(find.byTooltip('Kembali'), findsNothing);
+  });
+
+  testWidgets('Profile opens demo KOK committee after navigation change', (
+    tester,
+  ) async {
+    final container = await start(tester);
+    await signInTestUser(container);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profil').last);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Kepengurusan KOK'), 160);
+    await tester.tap(find.text('Kepengurusan KOK'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommitteePage), findsOneWidget);
+  });
+
   testWidgets(
     'club documents reflect registration availability without actions',
     (tester) async {

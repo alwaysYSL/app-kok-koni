@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/auth/domain/user_principal.dart';
 import '../core/auth/presentation/auth_controller.dart';
 import '../core/composition/app_composition.dart';
@@ -82,6 +83,17 @@ class ProfilePage extends ConsumerWidget {
           _ExecutiveProfileCard(
             user: user,
             kontingenName: summary?.kontingen?.name,
+          ),
+          _buildSectionHeader('ORGANISASI'),
+          _MenuTile(
+            icon: Icons.groups_outlined,
+            iconBg: KokColors.pale,
+            iconColor: KokColors.blue,
+            title: 'Kepengurusan KOK',
+            subtitle: isDemoData
+                ? 'Lihat data kepengurusan demo'
+                : 'Belum tersedia dari SICABOR',
+            onTap: () => context.push('/committee'),
           ),
           if (isDemoData)
             DataView(
