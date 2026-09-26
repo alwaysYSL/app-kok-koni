@@ -323,11 +323,11 @@ void main() {
         await tester.ensureVisible(search);
         await tester.enterText(search, 'test');
         await tester.pump(const Duration(milliseconds: 600));
-        await tester.ensureVisible(
-          find.text(
-            'Tidak ada ${tab.toLowerCase()} yang sesuai dengan filter.',
-          ),
+        await tester.drag(
+          find.byType(CustomScrollView).hitTestable().first,
+          const Offset(0, -220),
         );
+        await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         expect(
           find.text(
@@ -336,8 +336,56 @@ void main() {
           findsOneWidget,
         );
       }
-      expect(find.byKey(const Key('detail-header-lip')), findsNothing);
+      expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
     });
+
+    for (final width in [320.0, 390.0]) {
+      testWidgets('long cabor identity fits ${width.toInt()} dp', (
+        tester,
+      ) async {
+        tester.view.physicalSize = Size(width, 844);
+        tester.view.devicePixelRatio = 1;
+        tester.view.padding = const FakeViewPadding(top: 24);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        final composition = await _createTestComposition(
+          dataMode: DataMode.remote,
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              appCompositionProvider.overrideWithValue(composition),
+              currentUserProvider.overrideWithValue(userWithExport),
+              caborByIdProvider(31).overrideWith(
+                (ref) => const Cabor(
+                  id: 31,
+                  code: 'CB-31',
+                  name:
+                      'Persatuan Cabang Olahraga Renang Artistik Kabupaten Garut',
+                  groupName: 'Persatuan Renang Artistik Indonesia',
+                  status: 1,
+                  statusLabel: 'Aktif',
+                  totalClub: 7,
+                  totalAthlete: 64,
+                ),
+              ),
+            ],
+            child: const MaterialApp(home: SportDetailPage(sport: '31')),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final lipTop = tester
+            .getTopLeft(find.byKey(const Key('detail-header-lip')))
+            .dy;
+        final statsBottom = tester
+            .getBottomLeft(find.text('Atlet di kecamatan'))
+            .dy;
+        expect(statsBottom, lessThan(lipTop - 16));
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('remote identity retry reloads a failed page', (tester) async {
       var attempts = 0;
@@ -779,6 +827,12 @@ void main() {
         expect(find.byKey(const Key('detail-header-lip')), findsOneWidget);
         final tabs = tester.widget<TabBar>(find.byType(TabBar));
         expect(tabs.tabs.map((tab) => (tab as Tab).text), ['Atlet', 'Klub']);
+        expect((tabs.indicator as BoxDecoration).color, isNot(Colors.white));
+        expect(find.byKey(const Key('cabor-compact-header')), findsNothing);
+        await tester.drag(find.byType(NestedScrollView), const Offset(0, -500));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('cabor-compact-header')), findsOneWidget);
+        expect(find.text('Atlet').hitTestable(), findsOneWidget);
       },
     );
 

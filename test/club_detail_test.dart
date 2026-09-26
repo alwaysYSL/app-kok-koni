@@ -251,10 +251,12 @@ class _TestAthletePaginationController extends AthletePaginationController {
     super.scope, [
     this._initialState = const AthletePaginationState(),
     this.onSearchUpdated,
+    this.onLoadMore,
   ]);
 
   final AthletePaginationState _initialState;
   final void Function(String?)? onSearchUpdated;
+  final VoidCallback? onLoadMore;
 
   @override
   AthletePaginationState build() => _initialState;
@@ -263,7 +265,7 @@ class _TestAthletePaginationController extends AthletePaginationController {
   Future<void> loadFirstPage() async {}
 
   @override
-  Future<void> loadMore() async {}
+  Future<void> loadMore() async => onLoadMore?.call();
 
   @override
   void updateSearch(String? query) {
@@ -330,6 +332,10 @@ void main() {
     testWidgets('club title and back action stay above tabs after scrolling', (
       tester,
     ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         createRemoteTestApp(
           initialLocation: '/club/10',
@@ -341,6 +347,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.byKey(const Key('club-compact-header')), findsNothing);
+      final heroGap =
+          tester.getTopLeft(find.byKey(const Key('detail-header-lip'))).dy -
+          tester
+              .getBottomLeft(find.text('42 atlet terdaftar di klub').first)
+              .dy;
+      expect(heroGap, lessThan(80));
       await tester.drag(find.byType(NestedScrollView), const Offset(0, -500));
       await tester.pumpAndSettle();
 
@@ -365,6 +378,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
+      var loadMoreCalls = 0;
       await tester.pumpWidget(
         createRemoteTestApp(
           initialLocation: '/club/10',
@@ -377,8 +391,10 @@ void main() {
                 (idCabor: null, idClub: 10),
                 AthletePaginationState(
                   items: List.filled(20, sampleAthlete1),
-                  total: 20,
+                  total: 40,
                 ),
+                null,
+                () => loadMoreCalls++,
               ),
             ),
           ],
@@ -401,7 +417,50 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Atlet').hitTestable(), findsOneWidget);
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
+      await tester.pumpAndSettle();
+      expect(loadMoreCalls, greaterThan(0));
     });
+
+    for (final width in [320.0, 390.0]) {
+      testWidgets('long club identity fits ${width.toInt()} dp', (
+        tester,
+      ) async {
+        tester.view.physicalSize = Size(width, 844);
+        tester.view.devicePixelRatio = 1;
+        tester.view.padding = const FakeViewPadding(top: 24);
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        final longClub = sampleRemoteClubDetail.copyWith(
+          name: 'Persatuan Bulutangkis Garuda Perkasa Kecamatan Garut Kota',
+          code: 'KGCL-KODE-PANJANG-0001',
+          cabor: const domain_club.ClubCabor(
+            id: 1,
+            code: 'BULUTANGKIS',
+            name: 'Bulutangkis Prestasi Kecamatan Garut Kota',
+          ),
+        );
+        await tester.pumpWidget(
+          createRemoteTestApp(
+            initialLocation: '/club/10',
+            overrides: [
+              clubDetailProvider(10).overrideWith((ref) async => longClub),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final lipTop = tester
+            .getTopLeft(find.byKey(const Key('detail-header-lip')))
+            .dy;
+        final statsBottom = tester
+            .getBottomLeft(find.text('42 atlet terdaftar di klub').first)
+            .dy;
+        expect(statsBottom, lessThan(lipTop - 16));
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     for (final width in [320.0, 390.0]) {
       testWidgets('remote tabs fit ${width.toInt()} dp with inactive club', (
@@ -717,6 +776,8 @@ void main() {
         expect(find.text('Data belum tersedia'), findsOneWidget);
 
         // 4. Test tap on non-null ID item navigates
+        await tester.ensureVisible(find.text('Haji Ahmad Subagja'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Haji Ahmad Subagja'));
         await tester.pumpAndSettle();
         expect(personReached, isTrue);

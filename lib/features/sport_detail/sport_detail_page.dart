@@ -18,7 +18,7 @@ import '../../data/providers/cabor_providers.dart';
 import '../../data/providers/club_providers.dart';
 import '../../data/providers/profile_providers.dart';
 import '../../shared/widgets.dart';
-import '../../shared/detail_header_lip.dart';
+import '../../shared/collapsing_detail_header.dart';
 import '../dashboard_decorations.dart';
 import 'sport_brand_palette.dart';
 
@@ -29,6 +29,53 @@ bool _isRemoteMode(WidgetRef ref) {
   } catch (_) {
     return false;
   }
+}
+
+double _remoteCaborHeroHeight(
+  BuildContext context, {
+  required String name,
+  required String? groupName,
+  required String scopeName,
+}) {
+  final width = MediaQuery.sizeOf(context).width;
+  final scaler = MediaQuery.textScalerOf(context);
+  final direction = Directionality.of(context);
+  final fontFamily = Theme.of(context).textTheme.bodyMedium?.fontFamily;
+
+  double extraTextHeight(String value, double fontSize, FontWeight weight) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: value,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: weight,
+          fontFamily: fontFamily,
+        ),
+      ),
+      textDirection: direction,
+      textScaler: scaler,
+      maxLines: 2,
+    )..layout(maxWidth: width - 32);
+    final extra = (painter.height - scaler.scale(fontSize) * 1.2).clamp(
+      0.0,
+      double.infinity,
+    );
+    painter.dispose();
+    return extra;
+  }
+
+  final titleExtra = extraTextHeight(name, 24, FontWeight.bold);
+  final groupExtra = groupName == null || groupName.trim().isEmpty
+      ? 0.0
+      : extraTextHeight(groupName, 14, FontWeight.normal);
+  final scopeExtra = extraTextHeight(scopeName, 14, FontWeight.normal);
+  final base = width < 350 ? 290.0 : 250.0;
+  return base +
+      MediaQuery.paddingOf(context).top +
+      titleExtra +
+      groupExtra +
+      scopeExtra +
+      ((titleExtra + groupExtra + scopeExtra) > 12 ? 32 : 0);
 }
 
 class SportDetailPage extends ConsumerStatefulWidget {
@@ -172,9 +219,10 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
               backgroundColor: Colors.white,
               body: NestedScrollView(
                 headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                  SliverToBoxAdapter(
-                    child: DetailHeaderLip(
-                      header: Container(
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: CollapsingDetailHeader(
+                      hero: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -206,6 +254,8 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                                 ),
                                 Text(
                                   cabor.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: Colors.white,
@@ -216,10 +266,16 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                                 if (cabor.groupName?.trim().isNotEmpty ?? false)
                                   Text(
                                     cabor.groupName!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
                                     style: const TextStyle(color: Colors.white),
                                   ),
                                 Text(
                                   scopeName,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
                                   style: const TextStyle(color: Colors.white70),
                                 ),
                                 const SizedBox(height: 16),
@@ -276,13 +332,22 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _RemoteCaborStickyDelegate(
-                      name: cabor.name,
-                      palette: palette,
+                      heroHeight: _remoteCaborHeroHeight(
+                        context,
+                        name: cabor.name,
+                        groupName: cabor.groupName,
+                        scopeName: scopeName,
+                      ),
+                      topInset: MediaQuery.paddingOf(context).top,
+                      title: cabor.name,
+                      headerColor: palette.headerEnd,
+                      foregroundColor: Colors.white,
+                      tabs: const DetailPillTabBar(
+                        labels: ['Atlet', 'Klub'],
+                        selectedColor: KokColors.navy,
+                        selectedForeground: Colors.white,
+                      ),
+                      compactHeaderKey: const Key('cabor-compact-header'),
                       onBack: () {
                         if (context.canPop()) {
                           context.pop();
@@ -293,23 +358,11 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
                     ),
                   ),
                 ],
-                body: LayoutBuilder(
-                  builder: (context, constraints) => SingleChildScrollView(
-                    child: SizedBox(
-                      height: constraints.maxHeight < 420
-                          ? 420
-                          : constraints.maxHeight,
-                      child: TabBarView(
-                        children: [
-                          _RemoteAthletesTab(
-                            caborId: cabor.id,
-                            palette: palette,
-                          ),
-                          _RemoteClubsTab(caborId: cabor.id, palette: palette),
-                        ],
-                      ),
-                    ),
-                  ),
+                body: TabBarView(
+                  children: [
+                    _RemoteAthletesTab(caborId: cabor.id, palette: palette),
+                    _RemoteClubsTab(caborId: cabor.id, palette: palette),
+                  ],
                 ),
               ),
             ),
@@ -1384,100 +1437,6 @@ Status Berkas   : $verifiedCount/$athleteCount Lengkap ($pct%)
   }
 }
 
-class _RemoteCaborStickyDelegate extends SliverPersistentHeaderDelegate {
-  _RemoteCaborStickyDelegate({
-    required this.name,
-    required this.palette,
-    required this.onBack,
-  });
-
-  final String name;
-  final SportBrandPalette palette;
-  final VoidCallback onBack;
-
-  @override
-  double get minExtent => 116;
-
-  @override
-  double get maxExtent => 116;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return DecoratedBox(
-      decoration: BoxDecoration(color: palette.headerEnd),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 56,
-            child: Row(
-              children: [
-                IconButton(
-                  tooltip: 'Kembali',
-                  onPressed: onBack,
-                  icon: const Icon(Icons.chevron_left, color: Colors.white),
-                ),
-                Expanded(
-                  child: Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
-          Expanded(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    color: KokColors.pale,
-                    borderRadius: BorderRadius.all(Radius.circular(22)),
-                  ),
-                  child: TabBar(
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    labelColor: palette.chartColor,
-                    unselectedLabelColor: KokColors.muted,
-                    indicator: const BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.all(Radius.circular(22)),
-                    ),
-                    tabs: const [
-                      Tab(text: 'Atlet'),
-                      Tab(text: 'Klub'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _RemoteCaborStickyDelegate oldDelegate) =>
-      oldDelegate.name != name || oldDelegate.palette != palette;
-}
-
 class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   _SliverTabBarDelegate(this.tabBar);
   final TabBar tabBar;
@@ -1512,7 +1471,6 @@ class _RemoteAthletesTab extends ConsumerStatefulWidget {
 
 class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
 
   static const _sexFilterOptions = [
@@ -1536,30 +1494,13 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
             .loadFirstPage();
       }
     });
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.hasClients &&
-        _scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200) {
-      ref
-          .read(
-            athletePaginationProvider((
-              idCabor: widget.caborId,
-              idClub: null,
-            )).notifier,
-          )
-          .loadMore();
-    }
   }
 
   void _onSearchChanged(String query) {
@@ -1590,138 +1531,152 @@ class _RemoteAthletesTabState extends ConsumerState<_RemoteAthletesTab> {
       )).notifier,
     );
 
-    return RefreshIndicator(
-      onRefresh: () => controller.refresh(),
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {});
-                      _onSearchChanged(val);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari nama atlet...',
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        size: 20,
-                        color: KokColors.muted,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _debounceTimer?.cancel();
-                                _searchController.clear();
-                                controller.updateSearch(null);
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0 &&
+            notification.metrics.axis == Axis.vertical &&
+            notification.metrics.pixels > 0 &&
+            notification.metrics.extentAfter <= 200) {
+          controller.loadMore();
+        }
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: () => controller.refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  // Search bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {});
+                        _onSearchChanged(val);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama atlet...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 20,
+                          color: KokColors.muted,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _debounceTimer?.cancel();
+                                  _searchController.clear();
+                                  controller.updateSearch(null);
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Filter chips (Jenis Kelamin)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: _sexFilterOptions.map((opt) {
-                      final isSelected = state.sex == opt.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(opt.label),
-                          selected: isSelected,
-                          onSelected: (_) =>
-                              controller.updateSexFilter(opt.value),
-                          selectedColor: widget.palette.softAccent,
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? widget.palette.chartColor
-                                : KokColors.cardTitle,
-                          ),
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
+                  // Filter chips (Jenis Kelamin)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: _sexFilterOptions.map((opt) {
+                        final isSelected = state.sex == opt.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(opt.label),
+                            selected: isSelected,
+                            onSelected: (_) =>
+                                controller.updateSexFilter(opt.value),
+                            selectedColor: widget.palette.softAccent,
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? widget.palette.chartColor
-                                  : const Color(0xFFE5E7EB),
+                                  : KokColors.cardTitle,
+                            ),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? widget.palette.chartColor
+                                    : const Color(0xFFE5E7EB),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                // Filter Warning Banner (if present)
-                if (state.hasFilterWarning)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Color(0xFF2563EB),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.filterWarningMessage ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1E40AF),
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
                   ),
 
-                const SizedBox(height: 6),
-              ],
+                  // Filter Warning Banner (if present)
+                  if (state.hasFilterWarning)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF2563EB),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              state.filterWarningMessage ?? '',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1E40AF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 6),
+                ],
+              ),
             ),
-          ),
-          ..._buildBodySlivers(state, controller),
-        ],
+            ..._buildBodySlivers(state, controller),
+          ],
+        ),
       ),
     );
   }
@@ -1998,7 +1953,6 @@ class _RemoteClubsTab extends ConsumerStatefulWidget {
 
 class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
 
   static const _statusFilterOptions = [
@@ -2017,23 +1971,13 @@ class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
             .loadFirstPage();
       }
     });
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.hasClients &&
-        _scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200) {
-      ref.read(clubPaginationProvider(widget.caborId).notifier).loadMore();
-    }
   }
 
   void _onSearchChanged(String query) {
@@ -2054,138 +1998,152 @@ class _RemoteClubsTabState extends ConsumerState<_RemoteClubsTab> {
       clubPaginationProvider(widget.caborId).notifier,
     );
 
-    return RefreshIndicator(
-      onRefresh: () => controller.refresh(),
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {});
-                      _onSearchChanged(val);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari nama klub...',
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        size: 20,
-                        color: KokColors.muted,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _debounceTimer?.cancel();
-                                _searchController.clear();
-                                controller.updateSearch(null);
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0 &&
+            notification.metrics.axis == Axis.vertical &&
+            notification.metrics.pixels > 0 &&
+            notification.metrics.extentAfter <= 200) {
+          controller.loadMore();
+        }
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: () => controller.refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  // Search bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {});
+                        _onSearchChanged(val);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama klub...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 20,
+                          color: KokColors.muted,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _debounceTimer?.cancel();
+                                  _searchController.clear();
+                                  controller.updateSearch(null);
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Filter chips (Status)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: _statusFilterOptions.map((opt) {
-                      final isSelected = state.status == opt.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(opt.label),
-                          selected: isSelected,
-                          onSelected: (_) =>
-                              controller.updateStatusFilter(opt.value),
-                          selectedColor: widget.palette.softAccent,
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? widget.palette.chartColor
-                                : KokColors.cardTitle,
-                          ),
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
+                  // Filter chips (Status)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: _statusFilterOptions.map((opt) {
+                        final isSelected = state.status == opt.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(opt.label),
+                            selected: isSelected,
+                            onSelected: (_) =>
+                                controller.updateStatusFilter(opt.value),
+                            selectedColor: widget.palette.softAccent,
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? widget.palette.chartColor
-                                  : const Color(0xFFE5E7EB),
+                                  : KokColors.cardTitle,
+                            ),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? widget.palette.chartColor
+                                    : const Color(0xFFE5E7EB),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                // Filter Warning Banner (if present)
-                if (state.hasFilterWarning)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Color(0xFF2563EB),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.filterWarningMessage ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1E40AF),
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
                   ),
 
-                const SizedBox(height: 6),
-              ],
+                  // Filter Warning Banner (if present)
+                  if (state.hasFilterWarning)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF2563EB),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              state.filterWarningMessage ?? '',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1E40AF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 6),
+                ],
+              ),
             ),
-          ),
-          ..._buildBodySlivers(state, controller),
-        ],
+            ..._buildBodySlivers(state, controller),
+          ],
+        ),
       ),
     );
   }

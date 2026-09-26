@@ -19,7 +19,7 @@ import '../../data/models/club_detail.dart' as domain_detail;
 import '../../data/providers/athlete_providers.dart';
 import '../../data/providers/club_providers.dart';
 import '../../shared/widgets.dart';
-import '../../shared/detail_header_lip.dart';
+import '../../shared/collapsing_detail_header.dart';
 import '../dashboard_decorations.dart';
 import '../detail_pages.dart';
 import 'club_brand_palette.dart';
@@ -434,22 +434,24 @@ class _RemoteClubDetailContentState extends State<_RemoteClubDetailContent> {
         body: NestedScrollView(
           headerSliverBuilder: (sliverContext, innerBoxIsScrolled) {
             return [
-              SliverToBoxAdapter(
-                child: DetailHeaderLip(
-                  header: _RemoteClubDetailHeader(
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: CollapsingDetailHeader(
+                  hero: _RemoteClubDetailHeader(
                     detail: detail,
                     palette: palette,
                   ),
-                ),
-              ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _ClubStickyHeaderDelegate(
-                  name: detail.name,
-                  palette: palette,
+                  heroHeight: _remoteClubHeroHeight(context, detail),
+                  topInset: MediaQuery.paddingOf(context).top,
+                  title: detail.name,
+                  headerColor: palette.headerEnd,
+                  foregroundColor: palette.foreground,
+                  tabs: ClubDetailRemoteTabBar(palette: palette),
+                  compactHeaderKey: const Key('club-compact-header'),
                   onBack: () => ClubDetailPage._goBack(context),
                   onShare: () =>
                       ClubDetailPage._shareRemoteClub(context, detail),
+                  shareTooltip: 'Bagikan info klub',
                 ),
               ),
             ];
@@ -465,6 +467,83 @@ class _RemoteClubDetailContentState extends State<_RemoteClubDetailContent> {
       ),
     );
   }
+}
+
+double _remoteClubHeroHeight(
+  BuildContext context,
+  domain_detail.ClubDetail detail,
+) {
+  final width = MediaQuery.sizeOf(context).width;
+  final scaler = MediaQuery.textScalerOf(context);
+  final direction = Directionality.of(context);
+  final fontFamily = Theme.of(context).textTheme.bodyMedium?.fontFamily;
+  final title = TextPainter(
+    text: TextSpan(
+      text: detail.name,
+      style: TextStyle(
+        fontSize: 22,
+        height: 1.15,
+        fontWeight: FontWeight.w800,
+        fontFamily: fontFamily,
+      ),
+    ),
+    textDirection: direction,
+    textScaler: scaler,
+    maxLines: 2,
+  )..layout(maxWidth: width - 48);
+  final titleExtra = (title.height - scaler.scale(22 * 1.15)).clamp(
+    0.0,
+    double.infinity,
+  );
+  title.dispose();
+
+  final availableBadgeWidth = width - 48;
+  final badges = [
+    detail.code,
+    detail.cabor.name,
+    detail.statusLabel.toUpperCase(),
+  ];
+  var rowWidth = 0.0;
+  var rowHeight = 0.0;
+  var badgeHeight = 0.0;
+  for (final label in badges) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          fontFamily: fontFamily,
+        ),
+      ),
+      textDirection: direction,
+      textScaler: scaler,
+    )..layout(maxWidth: availableBadgeWidth - 20);
+    final itemWidth = painter.width + 20;
+    final itemHeight = painter.height + 8;
+    painter.dispose();
+    if (rowWidth > 0 && rowWidth + 8 + itemWidth > availableBadgeWidth) {
+      badgeHeight += rowHeight + 8;
+      rowWidth = itemWidth;
+      rowHeight = itemHeight;
+    } else {
+      rowWidth += (rowWidth == 0 ? 0 : 8) + itemWidth;
+      rowHeight = rowHeight < itemHeight ? itemHeight : rowHeight;
+    }
+  }
+  badgeHeight += rowHeight;
+  final badgeExtra = (badgeHeight - (scaler.scale(11) + 8)).clamp(
+    0.0,
+    double.infinity,
+  );
+  final otherTextExtra =
+      (scaler.scale(17) - 17).clamp(0.0, double.infinity) * 2;
+  final base = width < 350 ? 370.0 : 330.0;
+  return base +
+      MediaQuery.paddingOf(context).top +
+      titleExtra +
+      badgeExtra +
+      otherTextExtra;
 }
 
 class _RemoteClubDetailHeader extends StatelessWidget {
@@ -1408,7 +1487,6 @@ class _RemoteClubAthletesTab extends ConsumerStatefulWidget {
 class _RemoteClubAthletesTabState
     extends ConsumerState<_RemoteClubAthletesTab> {
   final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
 
   static const _sexFilterOptions = [
@@ -1432,30 +1510,13 @@ class _RemoteClubAthletesTabState
             .loadFirstPage();
       }
     });
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _searchController.dispose();
-    _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.hasClients &&
-        _scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 200) {
-      ref
-          .read(
-            athletePaginationProvider((
-              idCabor: null,
-              idClub: widget.club.id,
-            )).notifier,
-          )
-          .loadMore();
-    }
   }
 
   void _onSearchChanged(String query) {
@@ -1486,151 +1547,165 @@ class _RemoteClubAthletesTabState
       )).notifier,
     );
 
-    return RefreshIndicator(
-      onRefresh: () => controller.refresh(),
-      child: CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Search bar
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) {
-                      setState(() {});
-                      _onSearchChanged(val);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari nama atlet...',
-                      prefixIcon: const Icon(
-                        Icons.search,
-                        size: 20,
-                        color: KokColors.muted,
-                      ),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _debounceTimer?.cancel();
-                                _searchController.clear();
-                                controller.updateSearch(null);
-                                setState(() {});
-                              },
-                            )
-                          : null,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFFD4D8E0)),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.depth == 0 &&
+            notification.metrics.axis == Axis.vertical &&
+            notification.metrics.pixels > 0 &&
+            notification.metrics.extentAfter <= 200) {
+          controller.loadMore();
+        }
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: () => controller.refresh(),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Search bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {});
+                        _onSearchChanged(val);
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Cari nama atlet...',
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          size: 20,
+                          color: KokColors.muted,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _debounceTimer?.cancel();
+                                  _searchController.clear();
+                                  controller.updateSearch(null);
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFFD4D8E0),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Filter chips (Jenis Kelamin)
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: _sexFilterOptions.map((opt) {
-                      final isSelected = state.sex == opt.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(opt.label),
-                          selected: isSelected,
-                          onSelected: (_) =>
-                              controller.updateSexFilter(opt.value),
-                          selectedColor: widget.palette.softAccent,
-                          labelStyle: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? widget.palette.selectedTab
-                                : KokColors.cardTitle,
-                          ),
-                          backgroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: BorderSide(
+                  // Filter chips (Jenis Kelamin)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: _sexFilterOptions.map((opt) {
+                        final isSelected = state.sex == opt.value;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(opt.label),
+                            selected: isSelected,
+                            onSelected: (_) =>
+                                controller.updateSexFilter(opt.value),
+                            selectedColor: widget.palette.softAccent,
+                            labelStyle: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? widget.palette.selectedTab
-                                  : const Color(0xFFE5E7EB),
+                                  : KokColors.cardTitle,
+                            ),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? widget.palette.selectedTab
+                                    : const Color(0xFFE5E7EB),
+                              ),
                             ),
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                // Filter Warning Banner (if present)
-                if (state.hasFilterWarning)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEFF6FF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFBFDBFE)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.info_outline,
-                          color: Color(0xFF2563EB),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.filterWarningMessage ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF1E40AF),
-                            ),
-                          ),
-                        ),
-                      ],
+                        );
+                      }).toList(),
                     ),
                   ),
 
-                // Subtitle / info header explaining counts
-                if (!state.isLoading && state.error == null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Text(
-                      '${state.total} atlet dari kecamatan ini · ${widget.club.totalAthleteInClub} atlet terdaftar di klub',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: KokColors.muted,
-                        fontStyle: FontStyle.italic,
+                  // Filter Warning Banner (if present)
+                  if (state.hasFilterWarning)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.info_outline,
+                            color: Color(0xFF2563EB),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              state.filterWarningMessage ?? '',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF1E40AF),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-              ],
+
+                  // Subtitle / info header explaining counts
+                  if (!state.isLoading && state.error == null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Text(
+                        '${state.total} atlet dari kecamatan ini · ${widget.club.totalAthleteInClub} atlet terdaftar di klub',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: KokColors.muted,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          ..._buildBodySlivers(state, controller),
-        ],
+            ..._buildBodySlivers(state, controller),
+          ],
+        ),
       ),
     );
   }
@@ -1852,82 +1927,4 @@ class _RemoteClubAthletesTabState
       ),
     );
   }
-}
-
-class _ClubStickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _ClubStickyHeaderDelegate({
-    required this.name,
-    required this.palette,
-    required this.onBack,
-    required this.onShare,
-  });
-
-  final String name;
-  final ClubBrandPalette palette;
-  final VoidCallback onBack;
-  final VoidCallback onShare;
-
-  @override
-  double get minExtent => 138;
-
-  @override
-  double get maxExtent => 138;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return SizedBox(
-      height: 138,
-      child: Column(
-        children: [
-          SizedBox(
-            height: 58,
-            child: AnimatedContainer(
-              key: const ValueKey('club-compact-header'),
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              color: palette.headerEnd,
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Kembali',
-                    onPressed: onBack,
-                    color: palette.foreground,
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: palette.foreground,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Bagikan info klub',
-                    onPressed: onShare,
-                    color: palette.foreground,
-                    icon: const Icon(Icons.share_outlined),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 80, child: ClubDetailRemoteTabBar(palette: palette)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _ClubStickyHeaderDelegate oldDelegate) =>
-      oldDelegate.name != name || oldDelegate.palette != palette;
 }
